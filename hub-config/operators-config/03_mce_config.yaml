@@ -1,6 +1,11 @@
 apiVersion: multicluster.openshift.io/v1
 kind: MultiClusterEngine
 metadata:
+  labels:
+    app.kubernetes.io/instance: hub-operators-config
+    installer.name: multiclusterhub
+    installer.namespace: open-cluster-management
+    multiclusterhubs.operator.open-cluster-management.io/managed-by: "true"  
   annotations:
     argocd.argoproj.io/sync-wave: "0"
   name: multiclusterengine

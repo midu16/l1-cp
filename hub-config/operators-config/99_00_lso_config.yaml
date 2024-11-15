@@ -16,12 +16,12 @@ spec:
       - key: kubernetes.io/hostname
         operator: In
         values:
-        - master0.b11oe21mno.dyn.onebts.espoo.nsn-rdnet.net
-        - master1.b11oe21mno.dyn.onebts.espoo.nsn-rdnet.net
-        - master2.b11oe21mno.dyn.onebts.espoo.nsn-rdnet.net
+        - master0.example.com
+        - master1.example.com
+        - master2.example.com
   storageClassDevices:
   - devicePaths:
-    - /dev/disk/by-path/pci-0000:00:11.5-ata-3
+    - /dev/disk/by-path/pci-0000:18:00.0-nvme-1
     storageClassName: localblock
     volumeMode: Block
 

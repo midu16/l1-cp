@@ -5,6 +5,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "0"
     workload.openshift.io/allowed: management
+    argocd.argoproj.io/managed-by: openshift-gitops
   name: openshift-storage
   labels:
     openshift.io/cluster-monitoring: "true"

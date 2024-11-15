@@ -10,38 +10,7 @@ metadata:
 data:
   ca-bundle.crt: |
     -----BEGIN CERTIFICATE-----
-    MIIF6zCCA9OgAwIBAgIUTy1sggOk1oAKZBvwlKbVFjId/30wDQYJKoZIhvcNAQEN
-    BQAwgYQxCzAJBgNVBAYTAkNOMREwDwYDVQQIDAhIZWxzaW5raTERMA8GA1UEBwwI
-    SGVsc2lua2kxEDAOBgNVBAoMB2V4YW1wbGUxETAPBgNVBAsMCFBlcnNvbmFsMSow
-    KAYDVQQDDCFoYXJib3IyLmpvaW50bGFiLmZ4Lm5zbi1yZG5ldC5uZXQwHhcNMjQw
-    NzIzMDQyODQ3WhcNMzQwNzIxMDQyODQ3WjCBhDELMAkGA1UEBhMCQ04xETAPBgNV
-    BAgMCEhlbHNpbmtpMREwDwYDVQQHDAhIZWxzaW5raTEQMA4GA1UECgwHZXhhbXBs
-    ZTERMA8GA1UECwwIUGVyc29uYWwxKjAoBgNVBAMMIWhhcmJvcjIuam9pbnRsYWIu
-    ZngubnNuLXJkbmV0Lm5ldDCCAiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIB
-    AMj6Y0z8S9f9Fn/ESAK6Q7SkcCN+TKaC1AfqZjgVy7eR9L6K/7KKwzd02sUcHwDy
-    ALCO9rkFxW/Pix2whuIovtPXO2CnbVoHiBHC/A5fe7w0mahXC3kPI5AeHIyqeVVu
-    mif8f+y8vmZV7VujhpCb3sYaA4Z9hfXHuXAhaPoGjGLcZRRLtSbr1V129BO7DVV7
-    KVkyrLByBf/nXW9DoYVrFWYercsicCx7j8XKGz/bEClNFNXxSgphpETJO4LEG+tp
-    bG3lsBkI0pd6HJVccbuRSKVr09W+L2KfPX+m4p+9wSdGZgDhh6wrC5iohe32R4n3
-    9ItGWm4YmbRU+phftF8FnMc4VD6Tmc4SDMvC14ARhd7nzKw8bp/+tMSZXspU9sIR
-    qYONmrcGeRZhotKZYMSlxz+0ey5FVNy/epqmFgh0tmvN6BorQbjgWPsFGAfI3B+o
-    NT8lGwgvF7Vzewtjyjr9sB2F3t28hVv1TwpgIVb1Fb3HpiLBnNYEirHjyWRC4Bc1
-    eZk3+yYAd3SyMZIiIu9dWJ/e3GqQej2nInq5vUPriFzKx5BvZ9o72WFyh9TrqU+F
-    YAuhkaMluv8hOgb07/d7Hs1vuacjeCeWcrpazO1hHEJiQhyYOOwS8pqSdS61il19
-    9830A9iBwIT0qvQXi7GDEwxBWJ7RH/hi0lIZRecry73PAgMBAAGjUzBRMB0GA1Ud
-    DgQWBBTd6skSbvJ7XqogK/cPQqqEitdAETAfBgNVHSMEGDAWgBTd6skSbvJ7Xqog
-    K/cPQqqEitdAETAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBDQUAA4ICAQBw
-    DAEPsBVefmZJxeN4sz0RPRV/Z/cEHo2mrOqIzsoIVKV/86T5eX2ClqCfX31fqOp+
-    E/ELFy5BMXOUBkso+Lk/sZ+Z0Nh39S1Dqwe8Ph/8/kakJ2MIHbaLVtnvqfgnTYg4
-    ndczuAv3lFVZEvsvZMXM6sFsXsKwQ5Jh4HyisfYmCOSXOCq5boUClcQjgdXRQYQo
-    Dxf9dCiajF9fSAKI3hh0RQ/z9ypTCaDHRBYZRCUWepi+pVRvUyrS4kmAt5Ygjbe+
-    SLG94QIeYGKP+wRJOo5vooML/AUaDLsw2JxbmhN4krADqSWwd8ZOruchbY6znblC
-    RPwscpyxyp19fPnAtX89GcpIjj7brscw5CwctN1oHOkR/mXQUmNvELPZGuujcqyQ
-    2NeQQzFovhG1NtzPHaQ0FAYXow38ii8q4NWv7Yin+9cstSHY+FG4y3iDo3n7r/U8
-    kUkfeLORlLVpuKVx5jIcjuxbyOjkOyFBOAVXVMEOgt1fRmYxyVTIDftQ9LQRzc/B
-    xV60mA2zKRDJrHb9nDI5MWrVMcyImBh2LFeILUg1BTzpE0VnUzcToyd80oU/bkw4
-    nXXU4z0ARHpExbS7gTme86aDMytV6/zHAyU2yQndadfvnsBoldOYCAob/Ax/V1nR
-    6UfhhTTE9sSCPAJ5zV20+4zfwTpmvwWSNVsTz/a5zQ==
+    asdfasdfasdfasd
     -----END CERTIFICATE-----
   registries.conf: |
     unqualified-search-registries = ["registry.access.redhat.com", "docker.io"]
@@ -135,6 +104,8 @@ data:
       location = "registry.example:443/ocp4-release/openshift"
     [[registry.mirror]]
       location = "registry.example:443/ocp4-release/openshift/release"
+    [[registry.mirror]]
+      location = "mn-ran-ocp-release-local.artifactory-espoo2.int.net.nokia.com:443/ocp4-release/openshift"
 
 ---
 apiVersion: v1
@@ -184,7 +155,7 @@ spec:
     name: custom-registries
   osImages:
   - cpuArchitecture: x86_64
-    openshiftVersion: "4.14"
-    rootFSUrl: http://10.23.223.72:88/rhcos-4.14.0-x86_64-live-rootfs.x86_64.img
-    url: http://10.23.223.72:88/rhcos-4.14.0-x86_64-live.x86_64.iso
-    version: 414.92.202310170514-0
+    openshiftVersion: "4.16"
+    rootFSUrl: http://10.16.35.3/redhat/rhcos-live-rootfs.x86_64.img
+    url: http://10.16.35.3/redhat/rhcos-live.x86_64.iso
+    version: 416.94.202406172220-0
