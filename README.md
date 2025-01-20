@@ -523,6 +523,10 @@ And store them to your AirGapped HTTP(s) Server, this content its required while
 # ./oc adm release extract -a .docker/config.json \
      --command=openshift-install registry.example:5000/ocp-release:4.16.15-x86_64  
 ```
+> [!WARNING]
+> **Usage:**
+>  - `--idms-file=''`, this specifies the path to an `ImageDigestMirrorSet` file. If provided, the data in this file will be used to locate alternative image sources.
+>  - Additionally, the `--certificate-authority=''` flag is **optional** if the AirGapped Registry is already saved to the workstation.
 
 - Generating the [workingdir](./workingdir/) directory structure:
 
@@ -678,6 +682,21 @@ Once the Hub Cluster OCP and `openshift-gitop-operator` are fully deploy, you ca
 ```
 [Each worker node that has local storage devices to be used by OpenShift Container Storage must have a specific label to deploy OpenShift Container Storage pods.](https://docs.redhat.com/en/documentation/red_hat_openshift_container_storage/4.4/html-single/deploying_openshift_container_storage/index#requirements-for-installing-openshift-container-storage-using-local-storage-devices_aws-vmware)
 
+- Login to the GitOps Operator:
+```bash
+# ARGOCD_PASS=$(oc get secret -n openshift-gitops openshift-gitops-cluster -o jsonpath='{.data.admin\.password}' | base64 --decode)
+# ARGOCD_ROUTE=$(oc get routes -n openshift-gitops -o jsonpath='{.items[?(@.metadata.name=="openshift-gitops-server")].spec.host}')
+# echo $ARGOCD_PASS
+fAktrva8iwMBNFg9Wy5o4lnDHQs2zCZb
+# argocd login $ARGOCD_ROUTE
+WARNING: server certificate had error: tls: failed to verify certificate: x509: certificate signed by unknown authority. Proceed insecurely (y/n)? y
+WARN[0003] Failed to invoke grpc call. Use flag --grpc-web in grpc calls. To avoid this warning message, use flag --grpc-web.
+Username: admin
+Password:
+'admin:login' logged in successfully
+Context 'openshift-gitops-server-openshift-gitops.apps.hub.5g-deployment.lab' updated
+```
+
 - [Add the Git reporsitory](https://argo-cd.readthedocs.io/en/latest/user-guide/commands/argocd_repo_add/#argocd-repo-add-command-reference) to the `openshift-gitops` operator:
 ```bash
   # Add a Git repository via SSH using a private key for authentication, ignoring the server's host key:
@@ -688,10 +707,70 @@ Once the Hub Cluster OCP and `openshift-gitop-operator` are fully deploy, you ca
 ```
 More information about [Setting up an Argo CD instance](https://docs.redhat.com/en/documentation/red_hat_openshift_gitops/1.14/html/argo_cd_instance/setting-up-argocd-instance)
 
-- Create the [Hub ArgoCD Applications](./hub-config/hub-operators-argoapps.yaml):
-```bash
-# oc create -f ./hub-config/hub-operators-argoapps.yaml
-```
+> [!WARNING]
+> **Ensure that the Git server in use contains the necessary [hub-config](./hub-config/) directory**  
+> The `hub-config` directory holds critical configuration files required for setting up and managing the target environment. It is crucial that the Git server > hosting these configurations reflects the exact environment version you plan to install.
+> 
+> ### Steps to Ensure Proper Setup:
+> 1. **Clone the [hub-config](./hub-config/) Directory**:  
+>    Begin by cloning the [hub-config](./hub-config/) directory from its original source (e.g., a central repository or template) to your Git server.
+> 
+> 2. **Customize the Configurations**:  
+>    - Review the content of the [hub-config](./hub-config/) directory files and ensure that it aligns with the target version and environment-specific parameters you intend to deploy.
+>    - Update any environment variables, versions, or deployment-specific configurations to match your desired setup.
+>       - Ensure that the [argopatch.json](./hub-config/argocd/argopatch.json):
+>         ```json
+> 	        "image": "registry.example:443/ocp4-release/openshift4/ztp-site-generate-rhel8:v4.16"
+>         ```
+>         Reflects your environment, version and AirGapped Registry FQDN, namespace convention, etc.
+>       - When customizing the [operators-deployment](./hub-config/operators-deployment/) it is critical to validate that the Subscription Custom Resource (CR) includes a `spec.source` field with the correct naming. Specifically, the value `cs-redhat-operator-index` must match the name used during the ABI deployment of the hub cluster.
+>       - When customizing the [operators-config](./hub-config/operators-config/) it is critical to ensure that the following files reflect the environment:
+>           - [00_rhacm_config.yaml](./hub-config/operators-config/00_rhacm_config.yaml): 
+>             ```yaml
+>             installer.open-cluster-management.io/mce-subscription-spec: '{"source": "cs-redhat-operator-index"}'
+>             ```
+>             The value `cs-redhat-operator-index` must match the name used during the ABI deployment of the hub cluster and the one mentioned  for the `mce-operator` subscription.
+>           - [01_ai_config.yaml](./hub-config/operators-config/01_ai_config.yaml): 
+>               - [custom-registries](https://docs.redhat.com/en/documentation/red_hat_advanced_cluster_management_for_kubernetes/2.11/html/clusters/cluster_mce_overview#mce_and_agent) ConfigMap CR which where:  
+>                            - `data.ca-bundle.crt` includes the AirGapped Registry certificates
+>                            - `data.registries.conf` includes the data which its stored under the hub `/etc/containers/registries.conf`
+>          - The files [01_ai_config.yaml](./hub-config/operators-config/01_ai_config.yaml) and [02_ai_config.yaml](./hub-config/operators-config/02_ai_config.yaml) are designed to define the configuration for the Assisted Installer (AI) component, specifically addressing the configuration of a ConfigMap CR for caching Red Hat CoreOS (RHCOS) images. The distinction lies in their support for different protocols: HTTP or HTTPS.
+>             - Protocol Used:
+>                 - `01_ai_config.yaml`: Configures the use  of an HTTP web server. This is suitable for environments where security concerns are minimal or the network is isolated and secure, making HTTPS unnecessary.
+>                 - `02_ai_config.yaml`: Configures the use of an HTTPS web server. HTTPS is the preferred protocol for environments requiring encrypted communication to protect data integrity and prevent unauthorized access.
+>            - [99_00_lso_config.yaml](./hub-config/operators-config/99_00_lso_config.yaml):
+>             ```yaml
+>                nodeSelector:
+>                 nodeSelectorTerms:
+>                 - matchExpressions:
+>                   - key: kubernetes.io/hostname
+>                     operator: In
+>                     values:
+>                     - master0.b11oe21mno.dyn.onebts.example.com
+>                     - master1.b11oe21mno.dyn.onebts.example.com
+>                     - master2.b11oe21mno.dyn.onebts.example.com
+>               storageClassDevices:
+>               - devicePaths:
+>                 - /dev/disk/by-path/pci-0000:00:11.5-ata-3
+>              ```
+>             The value `master{0,1,2}.b11oe21mno.dyn.onebts.example.com` must precisely match the FQDN of the HUB nodes in your environment, as these names are critical for proper node identification during deployment. A mismatch can lead to errors in assigning roles or managing the nodes. Verify node names using `oc get nodes` and ensure they align with the configuration. Similarly, the `devicePaths: /dev/disk/by-path/pci-0000:00:11.5-ata-3` must correspond to the actual disk path on each node, as this ensures the correct disk is used for storage or provisioning. Check these paths on the nodes using `ls -l /dev/disk/by-path/` and `lsblk`.
+> To ensure accuracy, update your configuration files to reflect the correct node names and device paths. 
+> 3. **Push to Your Git Server**:  
+>    Once the necessary updates are complete, push the updated [hub-config](./hub-config/) directory to your Git server:  
+>    ```bash
+>    git add .
+>    git commit -m "Updated hub-config for target environment version <version-number>"
+>    git push <your-git-server-url>
+>    ```
+> 
+> 4. **Verify the Environment Compatibility**:  
+>    - Confirm that the configurations in the [hub-config](./hub-config/) repository reflect the intended environment's requirements. This ensures seamless installation and deployment.
+>    - By ensuring the Git server mirrors the accurate [hub-config](./hub-config/) content tailored to the target version, you reduce the risk of misconfiguration, deployment > failures, and version mismatches during installation.
+>    -  Create the [Hub ArgoCD Applications](./hub-config/hub-operators-argoapps.yaml):
+>     ```bash
+>     # oc create -f ./hub-config/hub-operators-argoapps.yaml
+>     ```
+
 > [!WARNING]
 > Ensure that the Git-Server values are set according to your system for [hub-operators-argoapps.yaml](./hub-config/hub-operators-argoapps.yaml).
 >
