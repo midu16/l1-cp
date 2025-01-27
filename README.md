@@ -826,6 +826,53 @@ _Answer: In complex setups, resources often have dependencies, such as namespace
 - The risk of resource conflicts or misconfigurations is minimized.
 - Multi-stage setups are coordinated smoothly.
 
+_How to verify that operators in Openshift have been successfully deployed?_
+
+_Answer: To verify that operators in OpenShift have been successfully deployed, follow the steps outlined in the OpenShift documentation [1], [2]. These steps ensure a systematic check of the Operator lifecycle management and deployment status:_ 
+_- The Web Console manner:_ 
+    _Access the OpenShift Web Console: Navigate to the OpenShift console and log in using appropriate credentials. This provides a graphical interface to check operator installations._ 
+_-Check Installed Operators:Go to Operators > Installed Operators in the console. Verify the list of operators installed in the desired namespace. The status column will indicate whether the operator is running successfully (e.g., "Succeeded")._
+
+_- The oc-cli manner:_
+```bash
+oc get csv -A | awk '!seen[$2]++'
+```
+ _The PHASE column will indicate whether the operator is running successfully (e.g., "Succeeded")_
+
+_- Validate Operator Pods:_
+_Use the OpenShift CLI (oc) to check the status of the pods related to the operator. Run the following command_
+```bash
+oc get pods -n <namespace>
+```
+_Replace <namespace> with the operator's namespace. All pods related to the operator should be in the "Running" or "Completed" state._
+
+> [!WARNING]
+> For the `OpenDataFundation Operator` follow the following [approach](https://github.com/midu16/l1-cp?tab=readme-ov-file#no-osd-pods-are-running-in-an-ocs-4x-cluster-even-when-the-osd-prepare-pods-are-in-completed-state-why).
+
+_- Verify Operator Conditions:_
+_Review the status of the operator's custom resource definitions (CRDs) to confirm they are functioning correctly:_
+```bash
+oc describe <crd-name> -n <namespace>
+```
+_Inspect the "Conditions" section for indications of readiness or errors._
+_- Check Events and Logs:_
+_If there are issues, inspect events for the namespace:_ 
+```bash
+oc get events -n <namespace>
+```
+_Additionally, check the logs of the operator's deployment or pod to identify errors:_
+```bash
+oc logs <pod-name> -n <namespace>
+```
+_Consult the Operator’s Documentation:_
+_For specific operators, refer to the operator's documentation available in the OpenShift OperatorHub or the operator provider’s official documentation. This often contains troubleshooting steps and detailed requirements._
+_Refer to the official OpenShift documentation for more details:_
+
+_[1] : [OpenShift Operator Framework Overview](https://docs.openshift.com/container-platform/4.16/operators/understanding/olm-understanding-operatorhub.html)_
+
+_[2] : [Troubleshooting Operator Issues](https://docs.openshift.com/container-platform/4.17/operators/admin/olm-troubleshooting-operator-issues.html)_
+
+_By following these steps, you can systematically verify the deployment and operational status of operators in your OpenShift environment._
 
 ### Step 6. [Spoke deployment](https://docs.redhat.com/en/documentation/openshift_container_platform/4.16/html/edge_computing/ztp-deploying-far-edge-sites#ztp-deploying-far-edge-sites)
 
