@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>L1-CloudPlatform</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.css">
+<link href="https://cdn.jsdelivr.net/npm/katex-copytex@latest/dist/katex-copytex.min.css" rel="stylesheet" type="text/css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="l1-cloudplatform">L1-CloudPlatform</h1>
+<p>The purpose of this repo its to document all the steps in deploying a CloudPlatform which purpose its to deploy, manage and monitor a number of Spoke(s) OCP Clusters.</p>
+<div class="markdown-alert markdown-alert-caution"><p class="markdown-alert-title"><svg class="octicon octicon-stop mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M4.47.22A.749.749 0 0 1 5 0h6c.199 0 .389.079.53.22l4.25 4.25c.141.14.22.331.22.53v6a.749.749 0 0 1-.22.53l-4.25 4.25A.749.749 0 0 1 11 16H5a.749.749 0 0 1-.53-.22L.22 11.53A.749.749 0 0 1 0 11V5c0-.199.079-.389.22-.53Zm.84 1.28L1.5 5.31v5.38l3.81 3.81h5.38l3.81-3.81V5.31L10.69 1.5ZM8 4a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 4Zm0 8a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Caution</p><p>Unless specified otherwise, everything contained in this repository is unsupported by Red Hat.</p>
+</div>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ul>
+<li><a href="#l1-cloudplatform">L1-CloudPlatform</a>
+<ul>
+<li><a href="#table-of-contents">Table of Contents</a></li>
+<li><a href="#method-of-procedure">Method of Procedure</a>
+<ul>
+<li><a href="#prerequisites">Prerequisites</a>
+<ul>
+<li><a href="#high-level-diagram-of-the-hub-set-up">High Level Diagram of the Hub Set-up:</a></li>
+</ul>
+</li>
+<li><a href="#step-0-download-the-pre-requisites-binaries">Step 0. Download the pre-requisites binaries</a></li>
+<li><a href="#step-1-mirorring-the-oci-content-for-a-disconnected-installation-using-oc-mirror">Step 1. Mirorring the OCI content for a disconnected installation using oc-mirror</a></li>
+<li><a href="#step-2-mirroring-the-oci-content-to-a-airgapped-registry">Step 2. Mirroring the OCI content to a AirGapped Registry</a></li>
+<li><a href="#step-3-downloading-the-rhcos-to-airgapped-https-server">Step 3. Downloading the RHCOS to AirGapped HTTP(s) Server</a></li>
+<li><a href="#step-4-agent-based-installer">Step 4. Agent-based Installer</a></li>
+<li><a href="#step-5-hub-configuration">Step 5. Hub Configuration</a></li>
+<li><a href="#step-6-spoke-deployment">Step 6. Spoke deployment</a></li>
+</ul>
+</li>
+<li><a href="#troubleshooting">Troubleshooting</a></li>
+<li><a href="#conclusions">Conclusions</a>
+<ul>
+<li><a href="#argocd-application-management">ArgoCD application management:</a></li>
+<li><a href="#no-osd-pods-are-running-in-an-ocs-4x-cluster-even-when-the-osd-prepare-pods-are-in-completed-state-why">No OSD pods are running in an OCS 4.x cluster, even when the OSD Prepare pods are in Completed state, Why?</a></li>
+</ul>
+</li>
+<li><a href="#results-and-problems">Results and Problems</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="method-of-procedure">Method of Procedure</h2>
+<h3 id="prerequisites"><a href="https://docs.openshift.com/container-platform/4.16/installing/installing_with_agent_based_installer/preparing-to-install-with-agent-based-installer.html">Prerequisites</a></h3>
+<p>In order to have a fully functional Hub Cluster and deploy Managed/Spoke(s) Clusters ensure your environment meets the following <a href="https://docs.openshift.com/container-platform/4.16/installing/installing_with_agent_based_installer/preparing-to-install-with-agent-based-installer.html">prerequisites</a>:</p>
+<ul>
+<li><a href="https://docs.openshift.com/container-platform/4.16/installing/disconnected_install/installing-mirroring-creating-registry.html">AirGapped Registry</a></li>
+</ul>
+<p><em>Download and install a local, minimal single instance deployment of Red Hat Quay to aid bootstrapping the first disconnected cluster. <a href="https://docs.openshift.com/container-platform/4.17/disconnected/mirroring/installing-mirroring-installation-images.html#installation-about-mirror-registry_installing-mirroring-installation-images">Learn more</a></em></p>
+<ul>
+<li>AirGapped HTTP(s) Server</li>
+</ul>
+<p><em>Install a local, minimal single instance deployment of an http-server to aid bootstrapping the first Hub and for Managed/Spoke(s) Disconnected Cluster(s).</em></p>
+<ul>
+<li>Git-Server</li>
+</ul>
+<p><em>Install a local, minimal single instance deployment of an git-server to aid the Hub day2-operators deployment + configuration and bootstrapping the Managed/Spoke(s) Disconnected Cluster(s).</em></p>
+<ul>
+<li>DNS-Server</li>
+</ul>
+<h4 id="high-level-diagram-of-the-hub-set-up">High Level Diagram of the Hub Set-up:</h4>
+<p><img src="file:////home/arahikai/projects/personal/l1-cp/media/c__Users_idumi_OneDrive_Documents_GitHub_l1-cp_media_HighLevelDiagram.png" alt="HighLevelDiagram"></p>
+<h3 id="step-0-download-the-pre-requisites-binaries">Step 0. Download the pre-requisites binaries</h3>
+<div class="markdown-alert markdown-alert-warning"><p class="markdown-alert-title"><svg class="octicon octicon-alert mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368Zm.53 3.996v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Warning</p><p>Ensure to properly configure your proxy in case of proxy usage for reaching domains like <code>quay.io</code> and or <code>registry.redhat.io</code>.
+Linux OS example:</p>
+<pre><code class="language-bash"><span class="hljs-built_in">export</span> https_proxy=<span class="hljs-string">&quot;https://proxy.server.com:PORT&quot;</span>
+<span class="hljs-built_in">export</span> http_proxy=<span class="hljs-string">&quot;http://proxy.server.com:PORT&quot;</span>
+<span class="hljs-built_in">export</span> no_proxy=<span class="hljs-string">&quot;localhost,127.0.0.1,::1&quot;</span>  <span class="hljs-comment"># Addresses to bypass proxy</span>
+</code></pre>
+<p>In the above example, ensure to use your environment values!</p>
+</div>
+<ul>
+<li>Ensure my environment has <code>oc-mirror</code> client:</li>
+</ul>
+<pre><code class="language-bash">curl -L https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.16.15/oc-mirror.tar.gz | tar -xz &amp;&amp; <span class="hljs-built_in">chmod</span> +x oc-mirror
+</code></pre>
+<p>Installing the <a href="https://docs.openshift.com/container-platform/4.16/installing/disconnected_install/installing-mirroring-disconnected.html#installing-mirroring-disconnected">oc-mirror</a> OpenShift CLI plugin.</p>
+<ul>
+<li>Ensure my environment has <code>oc</code> client:</li>
+</ul>
+<pre><code class="language-bash">curl -LO https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.16.15/openshift-client-linux-4.16.15.tar.gz &amp;&amp; tar -xzf openshift-client-linux-4.16.15.tar.gz &amp;&amp; <span class="hljs-built_in">chmod</span> +x oc kubectl
+</code></pre>
+<h3 id="step-1-mirorring-the-oci-content-for-a-disconnected-installation-using-oc-mirror">Step 1. Mirorring the OCI content for a <a href="https://docs.openshift.com/container-platform/4.16/installing/disconnected_install/installing-mirroring-disconnected.html">disconnected installation using oc-mirror</a></h3>
+<div class="markdown-alert markdown-alert-warning"><p class="markdown-alert-title"><svg class="octicon octicon-alert mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368Zm.53 3.996v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Warning</p><p>Ensure to include in your <code>config.json</code> the pull-secret of your AirGapped Registry and Red Hat public <a href="https://console.redhat.com/openshift/install/pull-secret">pull-secret</a>.</p>
+</div>
+<p>Once we have all the prerequisite met on the system, lets proceed in creating the <a href="./imageset-config.yml">imageset-config.yml</a> file:</p>
+<p>Example for <code>advanced-cluster-management</code>:</p>
+<pre><code class="language-bash"><span class="hljs-comment"># DOCKER_CONFIG=/root/.docker/; ./oc-mirror list operators --catalog registry.redhat.io/redhat/redhat-operator-index:v4.16 --package=advanced-cluster-management</span>
+
+NAME                         DISPLAY NAME                                DEFAULT CHANNEL
+advanced-cluster-management  Advanced Cluster Management <span class="hljs-keyword">for</span> Kubernetes  release-2.12
+
+PACKAGE                      CHANNEL       HEAD
+advanced-cluster-management  release-2.10  advanced-cluster-management.v2.10.6
+advanced-cluster-management  release-2.11  advanced-cluster-management.v2.11.3
+advanced-cluster-management  release-2.12  advanced-cluster-management.v2.12.0
+</code></pre>
+<p>In order to validate all the day2-operators default channel version an example its provided in <a href="./process_packages.sh">process_packages.sh</a>, the script its producing the following output:</p>
+<pre><code class="language-bash"><span class="hljs-comment"># ./process_packages.sh</span>
+Processing package: advanced-cluster-management
+NAME                         DISPLAY NAME                                DEFAULT CHANNEL
+advanced-cluster-management  Advanced Cluster Management <span class="hljs-keyword">for</span> Kubernetes  release-2.12
+
+PACKAGE                      CHANNEL       HEAD
+advanced-cluster-management  release-2.10  advanced-cluster-management.v2.10.6
+advanced-cluster-management  release-2.11  advanced-cluster-management.v2.11.3
+advanced-cluster-management  release-2.12  advanced-cluster-management.v2.12.0
+Processing package: multicluster-engine
+NAME                 DISPLAY NAME                        DEFAULT CHANNEL
+multicluster-engine  multicluster engine <span class="hljs-keyword">for</span> Kubernetes  stable-2.7
+
+PACKAGE              CHANNEL     HEAD
+multicluster-engine  stable-2.5  multicluster-engine.v2.5.7
+multicluster-engine  stable-2.6  multicluster-engine.v2.6.3
+multicluster-engine  stable-2.7  multicluster-engine.v2.7.1
+Processing package: topology-aware-lifecycle-manager
+NAME                              DISPLAY NAME                      DEFAULT CHANNEL
+topology-aware-lifecycle-manager  Topology Aware Lifecycle Manager  stable
+
+PACKAGE                           CHANNEL  HEAD
+topology-aware-lifecycle-manager  4.16     topology-aware-lifecycle-manager.v4.16.2
+topology-aware-lifecycle-manager  stable   topology-aware-lifecycle-manager.v4.16.2
+Processing package: openshift-gitops-operator
+NAME                       DISPLAY NAME              DEFAULT CHANNEL
+openshift-gitops-operator  Red Hat OpenShift GitOps  latest
+
+PACKAGE                    CHANNEL      HEAD
+openshift-gitops-operator  gitops-1.10  openshift-gitops-operator.v1.10.6
+openshift-gitops-operator  gitops-1.11  openshift-gitops-operator.v1.11.7-0.1724840231.p
+openshift-gitops-operator  gitops-1.12  openshift-gitops-operator.v1.12.6
+openshift-gitops-operator  gitops-1.13  openshift-gitops-operator.v1.13.3
+openshift-gitops-operator  gitops-1.14  openshift-gitops-operator.v1.14.2
+openshift-gitops-operator  gitops-1.6   openshift-gitops-operator.v1.6.6
+openshift-gitops-operator  gitops-1.7   openshift-gitops-operator.v1.7.4-0.1690486082.p
+openshift-gitops-operator  gitops-1.8   openshift-gitops-operator.v1.8.6
+openshift-gitops-operator  gitops-1.9   openshift-gitops-operator.v1.9.4
+openshift-gitops-operator  latest       openshift-gitops-operator.v1.14.2
+Processing package: odf-operator
+NAME          DISPLAY NAME               DEFAULT CHANNEL
+odf-operator  OpenShift Data Foundation  stable-4.16
+
+PACKAGE       CHANNEL      HEAD
+odf-operator  stable-4.15  odf-operator.v4.15.8-rhodf
+odf-operator  stable-4.16  odf-operator.v4.16.3-rhodf
+Processing package: ocs-operator
+NAME          DISPLAY NAME                 DEFAULT CHANNEL
+ocs-operator  OpenShift Container Storage  stable-4.16
+
+PACKAGE       CHANNEL      HEAD
+ocs-operator  stable-4.15  ocs-operator.v4.15.8-rhodf
+ocs-operator  stable-4.16  ocs-operator.v4.16.3-rhodf
+Processing package: odf-csi-addons-operator
+NAME                     DISPLAY NAME  DEFAULT CHANNEL
+odf-csi-addons-operator  CSI Addons    stable-4.16
+
+PACKAGE                  CHANNEL      HEAD
+odf-csi-addons-operator  stable-4.15  odf-csi-addons-operator.v4.15.8-rhodf
+odf-csi-addons-operator  stable-4.16  odf-csi-addons-operator.v4.16.3-rhodf
+Processing package: local-storage-operator
+NAME                    DISPLAY NAME   DEFAULT CHANNEL
+local-storage-operator  Local Storage  stable
+
+PACKAGE                 CHANNEL  HEAD
+local-storage-operator  stable   local-storage-operator.v4.16.0-202411190033
+Processing package: mcg-operator
+NAME          DISPLAY NAME     DEFAULT CHANNEL
+mcg-operator  NooBaa Operator  stable-4.16
+
+PACKAGE       CHANNEL      HEAD
+mcg-operator  stable-4.15  mcg-operator.v4.15.8-rhodf
+mcg-operator  stable-4.16  mcg-operator.v4.16.3-rhodf
+Processing package: cluster-logging
+NAME             DISPLAY NAME               DEFAULT CHANNEL
+cluster-logging  Red Hat OpenShift Logging  stable-6.1
+
+PACKAGE          CHANNEL     HEAD
+cluster-logging  stable      cluster-logging.v5.9.9
+cluster-logging  stable-5.8  cluster-logging.v5.8.15
+cluster-logging  stable-5.9  cluster-logging.v5.9.9
+cluster-logging  stable-6.0  cluster-logging.v6.0.2
+cluster-logging  stable-6.1  cluster-logging.v6.1.0
+Processing package: odf-prometheus-operator
+NAME                     DISPLAY NAME         DEFAULT CHANNEL
+odf-prometheus-operator  Prometheus Operator  stable-4.16
+
+PACKAGE                  CHANNEL      HEAD
+odf-prometheus-operator  stable-4.16  odf-prometheus-operator.v4.16.3-rhodf
+Processing package: recipe
+NAME    DISPLAY NAME  DEFAULT CHANNEL
+recipe  Recipe        stable-4.16
+
+PACKAGE  CHANNEL      HEAD
+recipe   stable-4.16  recipe.v4.16.3-rhodf
+Processing package: rook-ceph-operator
+NAME                DISPLAY NAME  DEFAULT CHANNEL
+rook-ceph-operator  Rook-Ceph     stable-4.16
+
+PACKAGE             CHANNEL      HEAD
+rook-ceph-operator  stable-4.16  rook-ceph-operator.v4.16.3-rhodf
+All packages processed.
+</code></pre>
+<p>Utilize the values obtained during the <code>day2-operator</code> package inspection to verify that the <code>DEFAULT CHANNEL</code> is correctly templated in the <a href="./imageset-config.yml">imageset-config.yml</a> file. Once validated, proceed with the mirroring process:</p>
+<pre><code class="language-bash"><span class="hljs-comment"># DOCKER_CONFIG=${HOME}/.docker/config.json; ./oc-mirror --config imageset-config.yml file:///apps/idumi/</span>
+Creating directory: home/oc-mirror-workspace/src/publish
+Creating directory: home/oc-mirror-workspace/src/v2
+Creating directory: home/oc-mirror-workspace/src/charts
+Creating directory: home/oc-mirror-workspace/src/release-signatures
+backend is not configured <span class="hljs-keyword">in</span> imageset-config.yaml, using stateless mode
+backend is not configured <span class="hljs-keyword">in</span> imageset-config.yaml, using stateless mode
+No metadata detected, creating new workspace
+..redacted..
+info: Mirroring completed <span class="hljs-keyword">in</span> 2h3m21.48s (9.416MB/s)
+Creating archive /apps/idumi/mirror_seq1_000000.tar
+Creating archive /apps/idumi/mirror_seq1_000001.tar
+Creating archive /apps/idumi/mirror_seq1_000002.tar
+Creating archive /apps/idumi/mirror_seq1_000003.tar
+Creating archive /apps/idumi/mirror_seq1_000004.tar
+Creating archive /apps/idumi/mirror_seq1_000005.tar
+Creating archive /apps/idumi/mirror_seq1_000006.tar
+Creating archive /apps/idumi/mirror_seq1_000007.tar
+Creating archive /apps/idumi/mirror_seq1_000008.tar
+Creating archive /apps/idumi/mirror_seq1_000009.tar
+Creating archive /apps/idumi/mirror_seq1_000010.tar
+Creating archive /apps/idumi/mirror_seq1_000011.tar
+Creating archive /apps/idumi/mirror_seq1_000012.tar
+Creating archive /apps/idumi/mirror_seq1_000013.tar
+Creating archive /apps/idumi/mirror_seq1_000014.tar
+Creating archive /apps/idumi/mirror_seq1_000015.tar
+Creating archive /apps/idumi/mirror_seq1_000016.tar
+Creating archive /apps/idumi/mirror_seq1_000017.tar
+</code></pre>
+<div class="markdown-alert markdown-alert-warning"><p class="markdown-alert-title"><svg class="octicon octicon-alert mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368Zm.53 3.996v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Warning</p><p>The message <code>info: Mirroring completed in 2h3m21.48s (9.416MB/s)</code> is provided as an illustrative example and should not be interpreted as a definitive benchmark. Actual performance may vary depending on factors such as internet broadband speed, network latency, disk performance, and other environmental conditions.</p>
+</div>
+<p>The full mirroring logs can be reffer at <a href="./.oc-mirror.log">.oc-mirror.log</a>
+Once the mirroring process has ended, the following content has been created:</p>
+<pre><code class="language-bash"><span class="hljs-comment"># ls -lh /apps/idumi/</span>
+total 68G
+-rw-r--r-- 1 root root 3.8G Nov 30 13:36 mirror_seq1_000000.tar
+-rw-r--r-- 1 root root 4.0G Nov 30 13:37 mirror_seq1_000001.tar
+-rw-r--r-- 1 root root 4.0G Nov 30 13:40 mirror_seq1_000002.tar
+-rw-r--r-- 1 root root 4.0G Nov 30 13:42 mirror_seq1_000003.tar
+-rw-r--r-- 1 root root 4.0G Nov 30 13:44 mirror_seq1_000004.tar
+-rw-r--r-- 1 root root 3.7G Nov 30 13:46 mirror_seq1_000005.tar
+-rw-r--r-- 1 root root 4.0G Nov 30 13:49 mirror_seq1_000006.tar
+-rw-r--r-- 1 root root 4.0G Nov 30 13:52 mirror_seq1_000007.tar
+-rw-r--r-- 1 root root 4.0G Nov 30 13:55 mirror_seq1_000008.tar
+-rw-r--r-- 1 root root 4.0G Nov 30 13:59 mirror_seq1_000009.tar
+-rw-r--r-- 1 root root 4.0G Nov 30 14:02 mirror_seq1_000010.tar
+-rw-r--r-- 1 root root 4.0G Nov 30 14:05 mirror_seq1_000011.tar
+-rw-r--r-- 1 root root 4.0G Nov 30 14:07 mirror_seq1_000012.tar
+-rw-r--r-- 1 root root 4.0G Nov 30 14:10 mirror_seq1_000013.tar
+-rw-r--r-- 1 root root 4.0G Nov 30 14:13 mirror_seq1_000014.tar
+-rw-r--r-- 1 root root 4.0G Nov 30 14:16 mirror_seq1_000015.tar
+-rw-r--r-- 1 root root 4.0G Nov 30 14:19 mirror_seq1_000016.tar
+-rw-r--r-- 1 root root  83M Nov 30 14:19 mirror_seq1_000017.tar
+drwxr-xr-x 3 root root 4.0K Nov 30 11:30 oc-mirror-workspace
+</code></pre>
+<p>For any reference of the <a href="./imageset-config.yml">imageset-config.yml</a>.</p>
+<div class="markdown-alert markdown-alert-warning"><p class="markdown-alert-title"><svg class="octicon octicon-alert mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368Zm.53 3.996v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Warning</p><p>In order to ensure that we adhere to the latest <code>day2-operator</code> channel used, ensure that your <code>imageset-config.yaml</code> content its allign the content reflected by running:</p>
+<pre><code class="language-bash">oc-mirror list operators --catalog=registry.redhat.io/redhat/redhat-operator-index:v4.16 --package=advanced-cluster-management
+Logging to .oc-mirror.log
+NAME                         DISPLAY NAME                                DEFAULT CHANNEL
+advanced-cluster-management  Advanced Cluster Management <span class="hljs-keyword">for</span> Kubernetes  release-2.12
+
+PACKAGE                      CHANNEL       HEAD
+advanced-cluster-management  release-2.10  advanced-cluster-management.v2.10.6
+advanced-cluster-management  release-2.11  advanced-cluster-management.v2.11.3
+advanced-cluster-management  release-2.12  advanced-cluster-management.v2.12.0
+</code></pre>
+<p>As outlined in the above example, the <a href="./imageset-config.yml">imageset-config.yml</a> used in week46-2024 it was refering the <code>release-2.11</code> default channel for the <code>advanced-cluster-management</code>, in order to adhere to the latest changes, use the <a href="./imageset-config-w47.yml">imageset-config-w47.yml</a>.</p>
+</div>
+<h3 id="step-2-mirroring-the-oci-content-to-a-airgapped-registry">Step 2. Mirroring the OCI content to a AirGapped Registry</h3>
+<p>Based on the <code>.tar</code> files generated in the previous step, we will now outline the procedure required to mirror the content to an air-gapped registry, as demonstrated in the following example:</p>
+<pre><code class="language-bash"><span class="hljs-comment"># DOCKER_CONFIG=${HOME}/.docker/config.json;  \</span>
+    ./oc-mirror --from=./apps/idumi/ docker://registry.example:5000 
+</code></pre>
+<div class="markdown-alert markdown-alert-warning"><p class="markdown-alert-title"><svg class="octicon octicon-alert mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368Zm.53 3.996v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Warning</p><p>Prior running the oc-mirror command ensure that the umask on the machine you are running is at least <code>022</code> by checking:</p>
+</div>
+<pre><code class="language-bash">❯ <span class="hljs-built_in">umask</span>
+022
+</code></pre>
+<blockquote>
+<p>User can set umask with <code>umask 022</code>
+With too strict umask OpenShift is not able to start the catalog container correctly</p>
+</blockquote>
+<p>To provide a detailed illustration of the process, we will reference the following AirGapped Registry: <code>infra.5g-deployment.lab:8443</code>. The contents of this registry are outlined below:</p>
+<pre><code class="language-bash"><span class="hljs-comment"># curl -X GET -u admin:raspberry https://infra.5g-deployment.lab:8443/v2/_catalog --insecure | jq .</span>
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100    20  100    20    0     0    152      0 --:--:-- --:--:-- --:--:--   152
+{
+  <span class="hljs-string">&quot;repositories&quot;</span>: []
+}
+</code></pre>
+<p>As outline above the AirGapped Registry its empty, starting the mirroring from the <code>.tar</code> file(s) to the AirGapped Registry:</p>
+<pre><code class="language-bash"> <span class="hljs-comment"># DOCKER_CONFIG=${HOME}/.docker/config.json; ./oc-mirror --from=/apps/idumi/ docker://infra.5g-deployment.lab:8443/l1-cp</span>
+Checking push permissions <span class="hljs-keyword">for</span> infra.5g-deployment.lab:8443
+Publishing image <span class="hljs-built_in">set</span> from archive <span class="hljs-string">&quot;/apps/idumi/&quot;</span> to registry <span class="hljs-string">&quot;infra.5g-deployment.lab:8443&quot;</span>
+..redacted..
+info: Planning completed <span class="hljs-keyword">in</span> 10ms
+uploading: infra.5g-deployment.lab:8443/l1-<span class="hljs-built_in">cp</span>/openshift/release sha256:84126cf41de41b2dd11560aada5c79cb9a55fb5c91929b5685bc129121cc9301 24.95KiB
+uploading: infra.5g-deployment.lab:8443/l1-<span class="hljs-built_in">cp</span>/openshift/release sha256:781837ff0f7c938dca851957050ee20b75813a82d87e92a4f6fdac8efa5e799b 327.9MiB
+sha256:a2e18a2dd3d2dac63f06a5775f082bdd1c2bd360a5173bef2e08a974832a04fa infra.5g-deployment.lab:8443/l1-<span class="hljs-built_in">cp</span>/openshift/release:4.16.15-x86_64-agent-installer-api-server
+info: Mirroring completed <span class="hljs-keyword">in</span> 10.89s (31.56MB/s)
+Wrote release signatures to oc-mirror-workspace/results-1732973958
+catalogs/registry.redhat.io/redhat/redhat-operator-index/v4.16/include-config.gob
+catalogs/registry.redhat.io/redhat/redhat-operator-index/v4.16/index/index.json
+catalogs/registry.redhat.io/redhat/redhat-operator-index/v4.16/layout/blobs/sha256/045d7948b63e2d84f9e5548232898905900f2be572e8970e0d1991179efd6c73
+catalogs/registry.redhat.io/redhat/redhat-operator-index/v4.16/layout/blobs/sha256/0fe3a205d2d8f036e2b1e1d50d10c4c3537cc2ba8f3f4a3e43d952358dfc22c6
+catalogs/registry.redhat.io/redhat/redhat-operator-index/v4.16/layout/blobs/sha256/129afbc56d6c83f9d3eacc90ee800ea03bc146145affcd16327d2b08a7600910
+catalogs/registry.redhat.io/redhat/redhat-operator-index/v4.16/layout/blobs/sha256/209ada9ff01f0bf1048c543af20a04764ba772ae8104eceb4cdd0d20eb98963a
+catalogs/registry.redhat.io/redhat/redhat-operator-index/v4.16/layout/blobs/sha256/229d90090e889dcdd32709d2f6628f13f139436e2e8cb9bdaf75858e39be22c5
+catalogs/registry.redhat.io/redhat/redhat-operator-index/v4.16/layout/blobs/sha256/35e4749f4cfb8cebcf039ad81f0716b7ab14f56cb7d529be452e04b99b6a7968
+catalogs/registry.redhat.io/redhat/redhat-operator-index/v4.16/layout/blobs/sha256/36489ff863648fd4898ae5297bff9ff47492bcde2ee85face77af37ce67c013d
+catalogs/registry.redhat.io/redhat/redhat-operator-index/v4.16/layout/blobs/sha256/38e753e5cb9360955b30410172d735a0a410f6106aa75ab14cae94bbbdc0bb41
+catalogs/registry.redhat.io/redhat/redhat-operator-index/v4.16/layout/blobs/sha256/45c5063cd74e2470c823ccc90f6e0f674d58673a855264faa6140d1f176b1b2f
+catalogs/registry.redhat.io/redhat/redhat-operator-index/v4.16/layout/blobs/sha256/4c1db222f00d2dc5398975427c640d1dcd01637fa8e449f8a1ceed811f23ec2e
+catalogs/registry.redhat.io/redhat/redhat-operator-index/v4.16/layout/blobs/sha256/52c29b8da622cfd57d1149eb0412d839d2faeb6935f5a361ee1405ef9d698d5a
+catalogs/registry.redhat.io/redhat/redhat-operator-index/v4.16/layout/blobs/sha256/545dc39de9d4cb017d563a4c16706add7f7e98a025aa8bea0d9439072bac0ef7
+catalogs/registry.redhat.io/redhat/redhat-operator-index/v4.16/layout/blobs/sha256/56c1e812f51f0e0a3e5d8759584a0da13604839e8c5941ff694ca61928ceedc9
+catalogs/registry.redhat.io/redhat/redhat-operator-index/v4.16/layout/blobs/sha256/6c9198eeea467f59d150b1fd553f1276338f09cf974719635b07c74962f4540c
+catalogs/registry.redhat.io/redhat/redhat-operator-index/v4.16/layout/blobs/sha256/6dc2ad2bc4e6e1396d7796ad71946955cd4adca263d3aeafb7fcc9fb3f75721f
+catalogs/registry.redhat.io/redhat/redhat-operator-index/v4.16/layout/blobs/sha256/771989c1f0baf2cdd5765e7078b31867daa242b18a311f2e11da1323b2a6b8fd
+catalogs/registry.redhat.io/redhat/redhat-operator-index/v4.16/layout/blobs/sha256/7a7842534d9ed2a95ea1ed40c1414c63b4424384c91d1f4b55bafee7e4f134eb
+catalogs/registry.redhat.io/redhat/redhat-operator-index/v4.16/layout/blobs/sha256/846e7d78a49474ba894609edcdac9ede80da3a4192637ca64d9f6065332e9267
+catalogs/registry.redhat.io/redhat/redhat-operator-index/v4.16/layout/blobs/sha256/919ae6d903c8fa1cfce3a4bfc8ec05cb974ee6003a01ebe6c61eb86dff65cd6d
+catalogs/registry.redhat.io/redhat/redhat-operator-index/v4.16/layout/blobs/sha256/92123690d207b7aebf26528b24e9f046fc6b2e0894369dba143b5255980879c9
+catalogs/registry.redhat.io/redhat/redhat-operator-index/v4.16/layout/blobs/sha256/a86d822494a2039dd151cbec25e9648384fa5ec173948793a496b6d683be23e8
+catalogs/registry.redhat.io/redhat/redhat-operator-index/v4.16/layout/blobs/sha256/ae0badd537673e93bcbcf384ce6acda3cdfef75d43bd2f7bc766ef5ffba3e51a
+catalogs/registry.redhat.io/redhat/redhat-operator-index/v4.16/layout/blobs/sha256/bc254f73ff381207aa1947298b09bdd264aa4e2e2ea2c3d14547269825a04720
+catalogs/registry.redhat.io/redhat/redhat-operator-index/v4.16/layout/blobs/sha256/cce32ddbadbc53ae62d9dab4a4d826d19ceb12eb5a425e2ead149f2999a8a589
+catalogs/registry.redhat.io/redhat/redhat-operator-index/v4.16/layout/blobs/sha256/de8028df1e6bc94a4a00e2815ab52eb3f1f76dc8819bc6bdc7c3fdd4485f5fc7
+catalogs/registry.redhat.io/redhat/redhat-operator-index/v4.16/layout/blobs/sha256/e204c2423a2d004dce141e310c51e0fe2b4b0510daac18c342faf3e0782051a6
+catalogs/registry.redhat.io/redhat/redhat-operator-index/v4.16/layout/blobs/sha256/f7fb3a4ecfa2bf89c492c78ac4e0c108e099152ff074ece5ddd1ffe1ee1d21f5
+catalogs/registry.redhat.io/redhat/redhat-operator-index/v4.16/layout/blobs/sha256/fc7937896fdcdf126302a9dcb481bcbe091a13e65b1cb3ba137fce459c92e8d6
+catalogs/registry.redhat.io/redhat/redhat-operator-index/v4.16/layout/index.json
+catalogs/registry.redhat.io/redhat/redhat-operator-index/v4.16/layout/oci-layout
+Rendering catalog image <span class="hljs-string">&quot;infra.5g-deployment.lab:8443/l1-cp/redhat/redhat-operator-index:v4.16&quot;</span> with file-based catalog
+Writing image mapping to oc-mirror-workspace/results-1732973958/mapping.txt
+Writing UpdateService manifests to oc-mirror-workspace/results-1732973958
+Writing CatalogSource manifests to oc-mirror-workspace/results-1732973958
+Writing ICSP manifests to oc-mirror-workspace/results-1732973958
+</code></pre>
+<div class="markdown-alert markdown-alert-warning"><p class="markdown-alert-title"><svg class="octicon octicon-alert mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368Zm.53 3.996v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Warning</p><p>To ensure proper configuration, it is essential to maintain the  mirrored directory <code>oc-mirror-workspace/results-1732973958/</code> and its  associated files, <code>catalogSource-cs-redhat-operator-index.yaml</code> and  <code>imageContentSourcePolicy.yaml</code>, as they are referenced in the <a href="./workingdir/install-config.yaml">install-config.yaml</a>. The specified  files must be stored under the <a href="./workingdir/openshift/">openshift</a> directory.</p>
+<p>Additionally, the contents of <code>imageContentSourcePolicy.yaml</code> are required to be properly incorporated into <code>install-config.yaml</code> as follows:</p>
+<pre><code class="language-yaml"><span class="hljs-meta">---</span>
+<span class="hljs-string">..redacted..</span>
+  <span class="hljs-attr">repositoryDigestMirrors:</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-attr">mirrors:</span>
+    <span class="hljs-bullet">-</span> <span class="hljs-string">infra.5g-deployment.lab:8443/l1-cp/openshift/release</span>
+    <span class="hljs-attr">source:</span> <span class="hljs-string">quay.io/openshift-release-dev/ocp-v4.0-art-dev</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-attr">mirrors:</span>
+    <span class="hljs-bullet">-</span> <span class="hljs-string">infra.5g-deployment.lab:8443/l1-cp/openshift/release-images</span>
+    <span class="hljs-attr">source:</span> <span class="hljs-string">quay.io/openshift-release-dev/ocp-release</span>
+</code></pre>
+<p>Ensure that these configurations are correctly placed and updated to support the deployment process effectively.</p>
+</div>
+<p>Building on the previous example, we will proceed to validate the contents of the AirGapped Registry upon completion of the mirroring process:</p>
+<pre><code class="language-bash"><span class="hljs-comment"># curl -X GET -u admin:raspberry https://infra.5g-deployment.lab:8443/v2/_catalog --insecure | jq .</span>
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100  4732    0  4732    0     0  26288      0 --:--:-- --:--:-- --:--:-- 26143
+{
+  <span class="hljs-string">&quot;repositories&quot;</span>: [
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/addon-manager-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/assisted-image-service-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/assisted-installer-agent-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/assisted-installer-controller-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/assisted-installer-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/assisted-service-8-rhel8&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/assisted-service-9-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/backplane-rhel9-operator&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/cluster-api-provider-agent-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/cluster-api-provider-kubevirt-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/cluster-api-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/cluster-curator-controller-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/cluster-image-set-controller-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/cluster-proxy-addon-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/cluster-proxy-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/clusterclaims-controller-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/clusterlifecycle-state-metrics-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/console-mce-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/discovery-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/hive-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/hypershift-addon-rhel9-operator&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/hypershift-cli-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/hypershift-rhel9-operator&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/image-based-install-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/kube-rbac-proxy-mce-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/managed-serviceaccount-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/managedcluster-import-controller-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/mce-operator-bundle&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/multicloud-manager-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/must-gather-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/placement-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/provider-credential-controller-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/registration-operator-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/registration-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/multicluster-engine/work-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/odf4/cephcsi-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/odf4/mcg-core-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/odf4/mcg-operator-bundle&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/odf4/mcg-rhel9-operator&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/odf4/ocs-client-console-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/odf4/ocs-client-operator-bundle&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/odf4/ocs-client-rhel9-operator&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/odf4/ocs-metrics-exporter-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/odf4/ocs-operator-bundle&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/odf4/ocs-rhel9-operator&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/odf4/odf-console-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/odf4/odf-cosi-sidecar-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/odf4/odf-csi-addons-operator-bundle&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/odf4/odf-csi-addons-rhel9-operator&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/odf4/odf-csi-addons-sidecar-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/odf4/odf-must-gather-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/odf4/odf-operator-bundle&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/odf4/odf-prometheus-operator-bundle&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/odf4/odf-rhel9-operator&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/odf4/odr-recipe-operator-bundle&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/odf4/odr-rhel9-operator&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/odf4/rook-ceph-operator-bundle&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/odf4/rook-ceph-rhel9-operator&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift/graph-image&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift/release&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift/release-images&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift-gitops-1/argo-rollouts-rhel8&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift-gitops-1/argocd-rhel8&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift-gitops-1/console-plugin-rhel8&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift-gitops-1/dex-rhel8&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift-gitops-1/gitops-operator-bundle&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift-gitops-1/gitops-rhel8&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift-gitops-1/gitops-rhel8-operator&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift-gitops-1/kam-delivery-rhel8&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift-gitops-1/must-gather-rhel8&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift-logging/cluster-logging-operator-bundle&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift-logging/cluster-logging-rhel9-operator&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift-logging/log-file-metric-exporter-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift-logging/vector-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift4/ose-configmap-reloader-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift4/ose-csi-external-attacher-rhel8&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift4/ose-csi-external-attacher-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift4/ose-csi-external-provisioner&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift4/ose-csi-external-provisioner-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift4/ose-csi-external-resizer&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift4/ose-csi-external-resizer-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift4/ose-csi-external-snapshotter-rhel8&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift4/ose-csi-external-snapshotter-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift4/ose-csi-node-driver-registrar&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift4/ose-csi-node-driver-registrar-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift4/ose-haproxy-router&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift4/ose-kube-rbac-proxy&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift4/ose-kube-rbac-proxy-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift4/ose-local-storage-diskmaker-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift4/ose-local-storage-mustgather-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift4/ose-local-storage-operator-bundle&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift4/ose-local-storage-rhel9-operator&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift4/ose-oauth-proxy&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift4/ose-oauth-proxy-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift4/ose-prometheus-alertmanager-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift4/ose-prometheus-config-reloader-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift4/ose-prometheus-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift4/ose-prometheus-rhel9-operator&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift4/topology-aware-lifecycle-manager-aztp-rhel9&quot;</span>,
+    <span class="hljs-string">&quot;l1-cp/openshift4/topology-aware-lifecycle-manager-operator-bundle&quot;</span>
+  ]
+}
+</code></pre>
+<p>The following table privides an overview of the ammount of disk space required for the AirGapped Registry + a 10% overhead when mirroring the <a href="./imageset-config.yml">imageset-config.yaml</a> :</p>
+<table>
+<thead>
+<tr>
+<th>Version</th>
+<th>Storage Required</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cluster Release Operators 4.16.15</td>
+<td>~ 20 GiB</td>
+<td>A single Release</td>
+</tr>
+<tr>
+<td>RHACM day2-operators</td>
+<td>~ 50 GiB</td>
+<td>A single Release of RHACM Day2 Operators <a href="./imageset-config.yml">imageset-config.yml</a></td>
+</tr>
+<tr>
+<td>Additional troubleshooting OCI(s)</td>
+<td>~ 4 GiB</td>
+<td>A single Release</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td><strong>74 GiB</strong></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>The following table privides an overview of the ammount of disk space required for the AirGapped Registry + a 10% overhead when mirroring the <a href="./imageset-config-w47-versions.yml">imageset-config-w47-versions.yml</a> :</p>
+<table>
+<thead>
+<tr>
+<th>Version</th>
+<th>Storage Required</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cluster Release Operators 4.16.15</td>
+<td>~ 20 GiB</td>
+<td>A single Release</td>
+</tr>
+<tr>
+<td>RHACM day2-operators</td>
+<td>~ 47 GiB</td>
+<td>A single version of RHACM Day2 Operators <a href="./imageset-config-w47-versions.yml">imageset-config-w47-versions.yml</a></td>
+</tr>
+<tr>
+<td>Additional troubleshooting OCI(s)</td>
+<td>~ 4 GiB</td>
+<td>A single Release</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td><strong>71 GiB</strong></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="step-3-downloading-the-rhcos-to-airgapped-https-server">Step 3. Downloading the RHCOS to AirGapped HTTP(s) Server</h3>
+<p>The <a href="https://mirror.openshift.com/pub/openshift-v4/x86_64/dependencies/rhcos/4.16/4.16.3/">rhcos sources for deploying Managed/Spoke(s) 4.16 Clusters</a> its</p>
+<p>Ensure that you are downloading the following content:</p>
+<ul>
+<li><a href="https://mirror.openshift.com/pub/openshift-v4/x86_64/dependencies/rhcos/4.16/4.16.3/rhcos-4.16.3-x86_64-live-rootfs.x86_64.img">rhcos-4.16.0-x86_64-live-rootfs.x86_64.img</a></li>
+<li><a href="https://mirror.openshift.com/pub/openshift-v4/x86_64/dependencies/rhcos/4.16/4.16.3/rhcos-4.16.3-x86_64-live.x86_64.iso">rhcos-4.16.0-x86_64-live.x86_64.iso</a></li>
+</ul>
+<p>And store them to your AirGapped HTTP(s) Server, this content its required while configuring <a href="./hub-config/operators-config/01_ai_config.yaml">multicluster-engine</a> operator.</p>
+<h3 id="step-4-agent-based-installer">Step 4. <a href="https://docs.redhat.com/en/documentation/openshift_container_platform/4.16/html-single/installing_an_on-premise_cluster_with_the_agent-based_installer/index#about-the-agent-based-installer">Agent-based Installer</a></h3>
+<ul>
+<li>Generating the <code>oc</code> client:</li>
+</ul>
+<pre><code class="language-bash"><span class="hljs-comment"># ./oc adm release extract -a .docker/config.json \</span>
+     --<span class="hljs-built_in">command</span>=oc registry.example:5000/ocp-release:4.16.15-x86_64 
+</code></pre>
+<ul>
+<li>Generating the <code>openshift-install</code> client:</li>
+</ul>
+<pre><code class="language-bash"><span class="hljs-comment"># ./oc adm release extract -a .docker/config.json \</span>
+     --<span class="hljs-built_in">command</span>=openshift-install registry.example:5000/ocp-release:4.16.15-x86_64  
+</code></pre>
+<div class="markdown-alert markdown-alert-warning"><p class="markdown-alert-title"><svg class="octicon octicon-alert mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368Zm.53 3.996v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Warning</p><p><strong>Usage:</strong></p>
+<ul>
+<li><code>--idms-file=''</code>, this specifies the path to an <code>ImageDigestMirrorSet</code> file. If provided, the data in this file will be used to locate alternative image sources.</li>
+<li>Additionally, the <code>--certificate-authority=''</code> flag is <strong>optional</strong> if the AirGapped Registry is already saved to the workstation.</li>
+</ul>
+</div>
+<ul>
+<li>Generating the <a href="./workingdir/">workingdir</a> directory structure:</li>
+</ul>
+<pre><code class="language-bash"><span class="hljs-comment"># mkdir -p ${HOME}/workingdir</span>
+<span class="hljs-comment"># tree ${HOME}/workingdir</span>
+.
+├── agent-config.yaml
+├── install-config.yaml
+└── openshift
+    ├── 99-masters-chrony-configuration.yaml
+    ├── 99_01_argo.yaml
+    ├── catalogSource-cs-redhat-operator-index.yaml
+    ├── disable-operatorhub.yaml
+    └── imageContentSourcePolicy.yaml
+
+2 directories, 7 files
+</code></pre>
+<p>Explaining all the parameters of the <a href="./workingdir/install-config.yaml">install-config.yaml</a>, you can use the following approach:</p>
+<pre><code class="language-bash"><span class="hljs-comment"># ./openshift-install explain installconfig.platform.baremetal</span>
+KIND:     InstallConfig
+VERSION:  v1
+
+RESOURCE: &lt;object&gt;
+  BareMetal is the configuration used when installing on bare metal.
+
+FIELDS:
+    apiVIP &lt;string&gt;
+      Format: ip
+      DeprecatedAPIVIP is the VIP to use <span class="hljs-keyword">for</span> internal API communication Deprecated: Use APIVIPs
+
+    apiVIPs &lt;[]string&gt;
+      Format: ip
+      APIVIPs contains the VIP(s) to use <span class="hljs-keyword">for</span> internal API communication. In dual stack clusters it contains an IPv4 and IPv6 address, otherwise only one VIP
+
+    bootstrapExternalStaticGateway &lt;string&gt;
+      Format: ip
+      BootstrapExternalStaticGateway is the static network gateway of the bootstrap node. This can be useful <span class="hljs-keyword">in</span> environments without a DHCP server.
+
+    bootstrapExternalStaticIP &lt;string&gt;
+      Format: ip
+      BootstrapExternalStaticIP is the static IP address of the bootstrap node. This can be useful <span class="hljs-keyword">in</span> environments without a DHCP server.
+
+    bootstrapOSImage &lt;string&gt;
+      BootstrapOSImage is a URL to override the default OS image <span class="hljs-keyword">for</span> the bootstrap node. The URL must contain a sha256 <span class="hljs-built_in">hash</span> of the image e.g https://mirror.example.com/images/qemu.qcow2.gz?sha256=a07bd...
+
+    bootstrapProvisioningIP &lt;string&gt;
+      Format: ip
+      BootstrapProvisioningIP is the IP used on the bootstrap VM to bring up provisioning services that are used to create the control-plane machines
+
+    clusterOSImage &lt;string&gt;
+      ClusterOSImage is a URL to override the default OS image <span class="hljs-keyword">for</span> cluster nodes. The URL must contain a sha256 <span class="hljs-built_in">hash</span> of the image e.g https://mirror.example.com/images/metal.qcow2.gz?sha256=3b5a8...
+
+    clusterProvisioningIP &lt;string&gt;
+      ClusterProvisioningIP is the IP on the dedicated provisioning network <span class="hljs-built_in">where</span> the baremetal-operator pod runs provisioning services, and an http server to cache some downloaded content e.g RHCOS/IPA images
+
+    defaultMachinePlatform &lt;object&gt;
+      DefaultMachinePlatform is the default configuration used when installing on bare metal <span class="hljs-keyword">for</span> machine pools <span class="hljs-built_in">which</span> <span class="hljs-keyword">do</span> not define their own platform configuration.
+
+    externalBridge &lt;string&gt;
+      External bridge is used <span class="hljs-keyword">for</span> external communication.
+
+    externalMACAddress &lt;string&gt;
+      ExternalMACAddress is used to allow setting a static unicast MAC address <span class="hljs-keyword">for</span> the bootstrap host on the external network. Consider using the QEMU vendor prefix `52:54:00`. If left blank, libvirt will generate one <span class="hljs-keyword">for</span> you.
+
+    hosts &lt;[]object&gt; -required-
+      Hosts is the information needed to create the objects <span class="hljs-keyword">in</span> Ironic.
+      Host stores all the configuration data <span class="hljs-keyword">for</span> a baremetal host.
+
+    ingressVIP &lt;string&gt;
+      Format: ip
+      DeprecatedIngressVIP is the VIP to use <span class="hljs-keyword">for</span> ingress traffic Deprecated: Use IngressVIPs
+
+    ingressVIPs &lt;[]string&gt;
+      Format: ip
+      IngressVIPs contains the VIP(s) to use <span class="hljs-keyword">for</span> ingress traffic. In dual stack clusters it contains an IPv4 and IPv6 address, otherwise only one VIP
+
+    libvirtURI &lt;string&gt;
+      Default: <span class="hljs-string">&quot;qemu:///system&quot;</span>
+      LibvirtURI is the identifier <span class="hljs-keyword">for</span> the libvirtd connection.  It must be reachable from the host <span class="hljs-built_in">where</span> the installer is run. Default is qemu:///system
+
+    provisioningBridge &lt;string&gt;
+      Provisioning bridge is used <span class="hljs-keyword">for</span> provisioning nodes, on the host that will run the bootstrap VM.
+
+    provisioningDHCPExternal &lt;boolean&gt;
+      DeprecatedProvisioningDHCPExternal indicates that DHCP is provided by an external service. This parameter is replaced by ProvisioningNetwork being <span class="hljs-built_in">set</span> to <span class="hljs-string">&quot;Unmanaged&quot;</span>.
+
+    provisioningDHCPRange &lt;string&gt;
+      ProvisioningDHCPRange is used to provide DHCP services to hosts <span class="hljs-keyword">for</span> provisioning.
+
+    provisioningHostIP &lt;string&gt;
+      DeprecatedProvisioningHostIP is the deprecated version of clusterProvisioningIP. When the baremetal platform was initially added to the installer, the JSON field <span class="hljs-keyword">for</span> ClusterProvisioningIP was incorrectly <span class="hljs-built_in">set</span> to <span class="hljs-string">&quot;provisioningHostIP.&quot;</span>  This field is here to allow backwards-compatibility.
+
+    provisioningMACAddress &lt;string&gt;
+      ProvisioningMACAddress is used to allow setting a static unicast MAC address <span class="hljs-keyword">for</span> the bootstrap host on the provisioning network. Consider using the QEMU vendor prefix `52:54:00`. If left blank, libvirt will generate one <span class="hljs-keyword">for</span> you.
+
+    provisioningNetwork &lt;string&gt;
+      Default: <span class="hljs-string">&quot;Managed&quot;</span>
+      Valid Values: <span class="hljs-string">&quot;&quot;</span>,<span class="hljs-string">&quot;Managed&quot;</span>,<span class="hljs-string">&quot;Unmanaged&quot;</span>,<span class="hljs-string">&quot;Disabled&quot;</span>
+      ProvisioningNetwork is used to indicate <span class="hljs-keyword">if</span> we will have a provisioning network, and how it will be managed.
+
+    provisioningNetworkCIDR &lt;Any&gt;
+      ProvisioningNetworkCIDR defines the network to use <span class="hljs-keyword">for</span> provisioning.
+
+    provisioningNetworkInterface &lt;string&gt;
+      ProvisioningNetworkInterface is the name of the network interface on a control plane baremetal host that is connected to the provisioning network.
+</code></pre>
+<ul>
+<li>Installing the <a href="https://docs.openshift.com/container-platform/4.16/installing/installing_with_agent_based_installer/installing-with-agent-based-installer.html#installing-ocp-agent-inputs_installing-with-agent-based-installer">nmstatectl</a> on the host:</li>
+</ul>
+<pre><code class="language-bash"><span class="hljs-comment"># dnf install /usr/bin/nmstatectl -y</span>
+</code></pre>
+<ul>
+<li>Generating the <code>.iso</code> content:</li>
+</ul>
+<div class="markdown-alert markdown-alert-warning"><p class="markdown-alert-title"><svg class="octicon octicon-alert mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368Zm.53 3.996v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Warning</p><p>Ensure at this stage to create a local back-up of your <code>workingdir/</code>. This is important in case of any required troubleshooting because the <code>openshift-install agent create image</code> will &quot;consume&quot; the files to generate the <em>agent.x86_64.iso</em> .</p>
+</div>
+<pre><code class="language-bash"><span class="hljs-comment"># ./openshift-install agent create image --dir ${HOME}/workingdir/. --log-level debug</span>
+</code></pre>
+<p>Once the <code>agent.x86_64.iso</code> file has been generated, mount it to the Server(s) BMC and boot from it.</p>
+<pre><code class="language-bash">$ tree .
+.
+├── agent.x86_64.iso
+├── auth
+│   ├── kubeadmin-password
+│   └── kubeconfig
+├── oc                  <span class="hljs-comment"># (optional: This binary can be also store under /usr/local/bin/)</span>
+├── openshift-install   <span class="hljs-comment"># (optional: This binary can be also store under /usr/local/bin/)</span>
+└── rendezvousIP
+
+1 directory, 6 files
+</code></pre>
+<div class="markdown-alert markdown-alert-warning"><p class="markdown-alert-title"><svg class="octicon octicon-alert mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368Zm.53 3.996v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Warning</p><p>Ensure at this stage to NOT remove the <code>./auth/{kubeadmin-password, kubeconfig}</code> because this will prevent the administrator to access the cluster.</p>
+</div>
+<ul>
+<li><a href="https://docs.openshift.com/container-platform/4.16/installing/installing_with_agent_based_installer/installing-with-agent-based-installer.html#installing-ocp-agent-verify_installing-with-agent-based-installer">Monitoring the installation process</a>:</li>
+</ul>
+<pre><code class="language-bash">./openshift-install --<span class="hljs-built_in">dir</span> <span class="hljs-variable">${HOME}</span>/workingdir/. agent wait-for install-complete \
+    --log-level=info
+</code></pre>
+<h3 id="step-5-hub-configuration">Step 5. <a href="https://docs.redhat.com/en/documentation/red_hat_openshift_gitops/1.12/html-single/argo_cd_applications/index">Hub Configuration</a></h3>
+<p>Once the Hub Cluster OCP and <code>openshift-gitop-operator</code> are fully deploy, you can proceed by creating the Hub Configuration ArgoCD Applications:</p>
+<ul>
+<li>To install support for ZTP-related CRs inside ArgoCD we need to patch the ArgoCD application with customized image:</li>
+</ul>
+<pre><code class="language-bash"><span class="hljs-comment"># oc patch argocd openshift-gitops -n openshift-gitops --type=merge --patch-file ./hub-config/argocd/argocdpatch.json</span>
+</code></pre>
+<ul>
+<li>Label the Storage nodes of your Hub Cluster:</li>
+</ul>
+<pre><code class="language-bash"><span class="hljs-comment"># oc label nodes master{0,1,2} cluster.ocs.openshift.io/openshift-storage=&quot;&quot;</span>
+</code></pre>
+<p><a href="https://docs.redhat.com/en/documentation/red_hat_openshift_container_storage/4.4/html-single/deploying_openshift_container_storage/index#requirements-for-installing-openshift-container-storage-using-local-storage-devices_aws-vmware">Each worker node that has local storage devices to be used by OpenShift Container Storage must have a specific label to deploy OpenShift Container Storage pods.</a></p>
+<ul>
+<li>Login to the GitOps Operator:</li>
+</ul>
+<pre><code class="language-bash"><span class="hljs-comment"># ARGOCD_PASS=$(oc get secret -n openshift-gitops openshift-gitops-cluster -o jsonpath=&#x27;{.data.admin\.password}&#x27; | base64 --decode)</span>
+<span class="hljs-comment"># ARGOCD_ROUTE=$(oc get routes -n openshift-gitops -o jsonpath=&#x27;{.items[?(@.metadata.name==&quot;openshift-gitops-server&quot;)].spec.host}&#x27;)</span>
+<span class="hljs-comment"># echo $ARGOCD_PASS</span>
+fAktrva8iwMBNFg9Wy5o4lnDHQs2zCZb
+<span class="hljs-comment"># argocd login $ARGOCD_ROUTE</span>
+WARNING: server certificate had error: tls: failed to verify certificate: x509: certificate signed by unknown authority. Proceed insecurely (y/n)? y
+WARN[0003] Failed to invoke grpc call. Use flag --grpc-web <span class="hljs-keyword">in</span> grpc calls. To avoid this warning message, use flag --grpc-web.
+Username: admin
+Password:
+<span class="hljs-string">&#x27;admin:login&#x27;</span> logged <span class="hljs-keyword">in</span> successfully
+Context <span class="hljs-string">&#x27;openshift-gitops-server-openshift-gitops.apps.hub.5g-deployment.lab&#x27;</span> updated
+</code></pre>
+<ul>
+<li><a href="https://argo-cd.readthedocs.io/en/latest/user-guide/commands/argocd_repo_add/#argocd-repo-add-command-reference">Add the Git reporsitory</a> to the <code>openshift-gitops</code> operator:</li>
+</ul>
+<pre><code class="language-bash">  <span class="hljs-comment"># Add a Git repository via SSH using a private key for authentication, ignoring the server&#x27;s host key:</span>
+  argocd repo add git@git.example.com:repos/repo --insecure-ignore-host-key --ssh-private-key-path ~/id_rsa
+
+  <span class="hljs-comment"># Add a Git repository via SSH on a non-default port - need to use ssh:// style URLs here</span>
+  argocd repo add ssh://git@git.example.com:2222/repos/repo --ssh-private-key-path ~/id_rsa
+</code></pre>
+<p>More information about <a href="https://docs.redhat.com/en/documentation/red_hat_openshift_gitops/1.14/html/argo_cd_instance/setting-up-argocd-instance">Setting up an Argo CD instance</a></p>
+<div class="markdown-alert markdown-alert-warning"><p class="markdown-alert-title"><svg class="octicon octicon-alert mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368Zm.53 3.996v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Warning</p><p><strong>Ensure that the Git server in use contains the necessary <a href="./hub-config/">hub-config</a> directory</strong><br>
+The <code>hub-config</code> directory holds critical configuration files required for setting up and managing the target environment. It is crucial that the Git server &gt; hosting these configurations reflects the exact environment version you plan to install.</p>
+<h3 id="steps-to-ensure-proper-setup">Steps to Ensure Proper Setup:</h3>
+<ol>
+<li>
+<p><strong>Clone the <a href="./hub-config/">hub-config</a> Directory</strong>:<br>
+Begin by cloning the <a href="./hub-config/">hub-config</a> directory from its original source (e.g., a central repository or template) to your Git server.</p>
+</li>
+<li>
+<p><strong>Customize the Configurations</strong>:</p>
+<ul>
+<li>Review the content of the <a href="./hub-config/">hub-config</a> directory files and ensure that it aligns with the target version and environment-specific parameters you intend to deploy.</li>
+<li>Update any environment variables, versions, or deployment-specific configurations to match your desired setup.
+<ul>
+<li>Ensure that the <a href="./hub-config/argocd/argopatch.json">argopatch.json</a>:<pre><code class="language-json">  <span class="hljs-attr">&quot;image&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;registry.example:443/ocp4-release/openshift4/ztp-site-generate-rhel8:v4.16&quot;</span>
+</code></pre>
+Reflects your environment, version and AirGapped Registry FQDN, namespace convention, etc.</li>
+<li>When customizing the <a href="./hub-config/operators-deployment/">operators-deployment</a> it is critical to validate that the Subscription Custom Resource (CR) includes a <code>spec.source</code> field with the correct naming. Specifically, the value <code>cs-redhat-operator-index</code> must match the name used during the ABI deployment of the hub cluster.</li>
+<li>When customizing the <a href="./hub-config/operators-config/">operators-config</a> it is critical to ensure that the following files reflect the environment:
+<ul>
+<li><a href="./hub-config/operators-config/00_rhacm_config.yaml">00_rhacm_config.yaml</a>:<pre><code class="language-yaml"><span class="hljs-attr">installer.open-cluster-management.io/mce-subscription-spec:</span> <span class="hljs-string">&#x27;{&quot;source&quot;: &quot;cs-redhat-operator-index&quot;}&#x27;</span>
+</code></pre>
+The value <code>cs-redhat-operator-index</code> must match the name used during the ABI deployment of the hub cluster and the one mentioned  for the <code>mce-operator</code> subscription.</li>
+<li><a href="./hub-config/operators-config/01_ai_config.yaml">01_ai_config.yaml</a>:
+<ul>
+<li><a href="https://docs.redhat.com/en/documentation/red_hat_advanced_cluster_management_for_kubernetes/2.11/html/clusters/cluster_mce_overview#mce_and_agent">custom-registries</a> ConfigMap CR which where:<br>
+- <code>data.ca-bundle.crt</code> includes the AirGapped Registry certificates
+- <code>data.registries.conf</code> includes the data which its stored under the hub <code>/etc/containers/registries.conf</code></li>
+</ul>
+</li>
+<li>The files <a href="./hub-config/operators-config/01_ai_config.yaml">01_ai_config.yaml</a> and <a href="./hub-config/operators-config/02_ai_config.yaml">02_ai_config.yaml</a> are designed to define the configuration for the Assisted Installer (AI) component, specifically addressing the configuration of a ConfigMap CR for caching Red Hat CoreOS (RHCOS) images. The distinction lies in their support for different protocols: HTTP or HTTPS.
+<ul>
+<li>Protocol Used:
+<ul>
+<li><code>01_ai_config.yaml</code>: Configures the use  of an HTTP web server. This is suitable for environments where security concerns are minimal or the network is isolated and secure, making HTTPS unnecessary.</li>
+<li><code>02_ai_config.yaml</code>: Configures the use of an HTTPS web server. HTTPS is the preferred protocol for environments requiring encrypted communication to protect data integrity and prevent unauthorized access.</li>
+</ul>
+</li>
+<li><a href="./hub-config/operators-config/99_00_lso_config.yaml">99_00_lso_config.yaml</a>:</li>
+</ul>
+<pre><code class="language-yaml">   <span class="hljs-attr">nodeSelector:</span>
+    <span class="hljs-attr">nodeSelectorTerms:</span>
+    <span class="hljs-bullet">-</span> <span class="hljs-attr">matchExpressions:</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">key:</span> <span class="hljs-string">kubernetes.io/hostname</span>
+        <span class="hljs-attr">operator:</span> <span class="hljs-string">In</span>
+        <span class="hljs-attr">values:</span>
+        <span class="hljs-bullet">-</span> <span class="hljs-string">master0.b11oe21mno.dyn.onebts.example.com</span>
+        <span class="hljs-bullet">-</span> <span class="hljs-string">master1.b11oe21mno.dyn.onebts.example.com</span>
+        <span class="hljs-bullet">-</span> <span class="hljs-string">master2.b11oe21mno.dyn.onebts.example.com</span>
+  <span class="hljs-attr">storageClassDevices:</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-attr">devicePaths:</span>
+    <span class="hljs-bullet">-</span> <span class="hljs-string">/dev/disk/by-path/pci-0000:00:11.5-ata-3</span>
+</code></pre>
+The value <code>master{0,1,2}.b11oe21mno.dyn.onebts.example.com</code> must precisely match the FQDN of the HUB nodes in your environment, as these names are critical for proper node identification during deployment. A mismatch can lead to errors in assigning roles or managing the nodes. Verify node names using <code>oc get nodes</code> and ensure they align with the configuration. Similarly, the <code>devicePaths: /dev/disk/by-path/pci-0000:00:11.5-ata-3</code> must correspond to the actual disk path on each node, as this ensures the correct disk is used for storage or provisioning. Check these paths on the nodes using <code>ls -l /dev/disk/by-path/</code> and <code>lsblk</code>.
+To ensure accuracy, update your configuration files to reflect the correct node names and device paths.</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p><strong>Push to Your Git Server</strong>:<br>
+Once the necessary updates are complete, push the updated <a href="./hub-config/">hub-config</a> directory to your Git server:</p>
+<pre><code class="language-bash">git add .
+git commit -m <span class="hljs-string">&quot;Updated hub-config for target environment version &lt;version-number&gt;&quot;</span>
+git push &lt;your-git-server-url&gt;
+</code></pre>
+</li>
+<li>
+<p><strong>Verify the Environment Compatibility</strong>:</p>
+<ul>
+<li>Confirm that the configurations in the <a href="./hub-config/">hub-config</a> repository reflect the intended environment's requirements. This ensures seamless installation and deployment.</li>
+<li>By ensuring the Git server mirrors the accurate <a href="./hub-config/">hub-config</a> content tailored to the target version, you reduce the risk of misconfiguration, deployment &gt; failures, and version mismatches during installation.</li>
+<li>Create the <a href="./hub-config/hub-operators-argoapps.yaml">Hub ArgoCD Applications</a>:</li>
+</ul>
+<pre><code class="language-bash"><span class="hljs-comment"># oc create -f ./hub-config/hub-operators-argoapps.yaml</span>
+</code></pre>
+</li>
+</ol>
+</div>
+<div class="markdown-alert markdown-alert-warning"><p class="markdown-alert-title"><svg class="octicon octicon-alert mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368Zm.53 3.996v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Warning</p><p>Ensure that the Git-Server values are set according to your system for <a href="./hub-config/hub-operators-argoapps.yaml">hub-operators-argoapps.yaml</a>.</p>
+<p>Example used:</p>
+<pre><code class="language-bash">path: hub-config/operators-deployment
+repoURL: <span class="hljs-string">&#x27;git@10.23.223.72:/home/git/acm.git&#x27;</span>
+targetRevision: master
+</code></pre>
+</div>
+<p>In the <a href="./hub-config/hub-operators-argoapps.yaml">hub-operators-argoapps.yaml</a>, the annotation <code>argocd.argoproj.io/sync-wave</code> determines the order in which resources are applied during a sync operation. Each resource annotated with this field is assigned to a &quot;wave,&quot; and ArgoCD applies resources in ascending order of the wave values. This mechanism ensures proper sequencing of dependent resources.</p>
+<p>Here's how the <strong>sync-wave</strong> values for the given resources influence their application order:</p>
+<p><strong>Sync-Wave &quot;0&quot;</strong></p>
+<ul>
+<li>These resources are applied first since they have the lowest wave value:
+<ul>
+<li><strong>Provisioning</strong></li>
+<li><strong>MultiClusterEngine</strong></li>
+<li><strong>LocalVolume</strong></li>
+<li><strong>ClusterRoleBinding</strong></li>
+</ul>
+</li>
+</ul>
+<p>These resources typically establish foundational configurations, roles, and infrastructure required by other components.</p>
+<p><strong>Sync-Wave &quot;1&quot;</strong></p>
+<ul>
+<li>These resources depend on the foundational setup:
+<ul>
+<li><strong>MultiClusterHub</strong></li>
+<li><strong>OCSInitialization</strong></li>
+<li><strong>StorageCluster</strong></li>
+<li><strong>StorageSystem</strong></li>
+</ul>
+</li>
+</ul>
+<p>These are applied after the resources in wave &quot;0,&quot; setting up critical subsystems like OpenShift Container Storage (OCS) and MultiClusterHub.</p>
+<p><strong>Sync-Wave &quot;2&quot;</strong></p>
+<ul>
+<li>These include configurations and services that require prior components to be active:
+<ul>
+<li><strong>ConfigMap (custom-registries)</strong></li>
+<li><strong>ConfigMap (assisted-service-config)</strong></li>
+<li><strong>AgentServiceConfig</strong></li>
+</ul>
+</li>
+</ul>
+<p>This wave prepares the necessary configurations and setups for services to function effectively.</p>
+<p><strong>Sync-Wave &quot;20&quot;</strong></p>
+<ul>
+<li>These are applied after all lower-wave components are in place:
+<ul>
+<li><strong>Secret (thanos-object-storage)</strong></li>
+<li><strong>MultiClusterObservability</strong></li>
+<li><strong>Namespace (ibu-odf-s3-storage)</strong></li>
+</ul>
+</li>
+</ul>
+<p>This high wave value ensures that these resources are configured only after all other dependencies are resolved.</p>
+<p><em>Why is <code>sync-wave</code> important?</em></p>
+<p><em>Answer: In complex setups, resources often have dependencies, such as namespaces needing to exist before placing ConfigMaps, or a storage system requiring proper initial configuration before being utilized.</em> By leveraging sync-wave annotations:</p>
+<ul>
+<li>Resources are applied in the correct sequence.</li>
+<li>The risk of resource conflicts or misconfigurations is minimized.</li>
+<li>Multi-stage setups are coordinated smoothly.</li>
+</ul>
+<h3 id="step-6-spoke-deployment">Step 6. <a href="https://docs.redhat.com/en/documentation/openshift_container_platform/4.16/html/edge_computing/ztp-deploying-far-edge-sites#ztp-deploying-far-edge-sites">Spoke deployment</a></h3>
+<p>In this section we are going to outline the steps required to achieve a first RHACM Managed/Spoke(s) Deployment.</p>
+<ul>
+<li>Create the <a href="./hub-config/spoke-argoapps.yaml">Spoke ArgoCD Applications</a>:</li>
+</ul>
+<pre><code class="language-bash"><span class="hljs-comment"># oc create -f ./hub-config/spoke-argoapps.yaml</span>
+</code></pre>
+<div class="markdown-alert markdown-alert-warning"><p class="markdown-alert-title"><svg class="octicon octicon-alert mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368Zm.53 3.996v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Warning</p><p>Ensure that the Git-Server values are set according to your system for <a href="./hub-config/spoke-argoapps.yaml">spoke-argoapps.yaml</a>.</p>
+</div>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<p>Ensure to collect the following logs if the <a href="https://docs.openshift.com/container-platform/4.16/installing/installing_with_agent_based_installer/installing-with-agent-based-installer.html#installing-ocp-agent-gather-log_installing-with-agent-based-installer">AgentBasedInstaller fails during the installation</a></p>
+<h2 id="conclusions">Conclusions</h2>
+<h3 id="argocd-application-management">ArgoCD application management:</h3>
+<p>This can be easly achieved by using the <code>argocd</code> <a href="https://argo-cd.readthedocs.io/en/stable/cli_installation/">client</a>.</p>
+<ul>
+<li>How to use the <code>argocd</code> client to interact with <code>gitops-operator</code> from <code>RHACM Hub Cluster</code> ?</li>
+</ul>
+<p><em>Answer:</em></p>
+<ul>
+<li>Obtain the <code>ArgoCD Password</code>:</li>
+</ul>
+<pre><code class="language-bash"><span class="hljs-comment"># ARGOCD_PASS=$(oc get secret -n openshift-gitops openshift-gitops-cluster -o jsonpath=&#x27;{.data.admin\.password}&#x27; | base64 --decode)</span>
+</code></pre>
+<ul>
+<li>Obtain the <code>ArgoCD</code> Address:</li>
+</ul>
+<pre><code class="language-bash"><span class="hljs-comment"># ARGOCD_ROUTE=$(oc get routes -n openshift-gitops -o jsonpath=&#x27;{.items[?(@.metadata.name==&quot;openshift-gitops-server&quot;)].spec.host}&#x27;)</span>
+</code></pre>
+<p>You can check the content fo the <code>ARGOCD_PASS</code> bash variable as follows:</p>
+<pre><code class="language-bash"><span class="hljs-comment"># echo $ARGOCD_PASS</span>
+fAktrva8iwMBNFg9Wy5o4lnDHQs2zCZb
+</code></pre>
+<ul>
+<li>Login to the <code>openshift-gitops</code> operator through <code>argocd</code> client:</li>
+</ul>
+<pre><code class="language-bash"><span class="hljs-comment"># argocd login $ARGOCD_ROUTE</span>
+WARNING: server certificate had error: tls: failed to verify certificate: x509: certificate signed by unknown authority. Proceed insecurely (y/n)? y
+WARN[0003] Failed to invoke grpc call. Use flag --grpc-web <span class="hljs-keyword">in</span> grpc calls. To avoid this warning message, use flag --grpc-web.
+Username: admin
+Password:
+<span class="hljs-string">&#x27;admin:login&#x27;</span> logged <span class="hljs-keyword">in</span> successfully
+Context <span class="hljs-string">&#x27;openshift-gitops-server-openshift-gitops.apps.hub.example.com&#x27;</span> updated
+</code></pre>
+<ul>
+<li>Synchronize the ArgoCD Application</li>
+</ul>
+<pre><code class="language-bash">argocd app <span class="hljs-built_in">sync</span> clusters --force --prune
+</code></pre>
+<h3 id="no-osd-pods-are-running-in-an-ocs-4x-cluster-even-when-the-osd-prepare-pods-are-in-completed-state-why">No OSD pods are running in an OCS 4.x cluster, even when the <a href="https://access.redhat.com/solutions/6910101">OSD Prepare pods are in Completed state</a>, Why?</h3>
+<p>If you are redeploying the OCP Cluster and the application disks were previously used by another Ceph Cluster, ensure to perform the clean-up.</p>
+<pre><code class="language-bash"><span class="hljs-comment"># sgdisk --zap-all /dev/sdb &amp;&amp; sudo wipefs -a /dev/sdb</span>
+</code></pre>
+<h2 id="results-and-problems">Results and Problems</h2>
+<ul>
+<li>
+<p>It has not created the <a href="./hub-config/operators-config/gitops_service_cluster.yaml">gitops_service_cluster.yaml</a>.</p>
+</li>
+<li>
+<p>Once the ODF Hub Cluster its created, ensure the following steps are done:</p>
+<ul>
+<li>master nodes gets labeled as below:</li>
+</ul>
+</li>
+</ul>
+<pre><code class="language-bash"><span class="hljs-comment"># oc label nodes master{0,1,2} cluster.ocs.openshift.io/openshift-storage=&quot;&quot;</span>
+</code></pre>
+<ul>
+<li>ensure that the application disks gets cleaned up:</li>
+</ul>
+<pre><code class="language-bash"><span class="hljs-comment"># sgdisk --zap-all /dev/sdb &amp;&amp; sudo wipefs -a /dev/sdb</span>
+</code></pre>
+
+            <script async src="https://cdn.jsdelivr.net/npm/katex-copytex@latest/dist/katex-copytex.min.js"></script>
+            
+        </body>
+        </html>

@@ -284,6 +284,16 @@ Based on the `.tar` files generated in the previous step, we will now outline th
     ./oc-mirror --from=./apps/idumi/ docker://registry.example:5000 
 ```
 
+> [!WARNING]
+> Prior running the oc-mirror command ensure that the umask on the machine you are running is at least `022` by checking:
+> ```bash
+> ❯ umask
+> 022
+>```
+> User can set umask with `umask 022`
+> With too strict umask OpenShift is not able to start the catalog container correctly
+
+
 To provide a detailed illustration of the process, we will reference the following AirGapped Registry: `infra.5g-deployment.lab:8443`. The contents of this registry are outlined below:
 
 ```bash

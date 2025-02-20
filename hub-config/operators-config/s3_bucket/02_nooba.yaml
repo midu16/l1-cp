@@ -3,7 +3,7 @@ apiVersion: noobaa.io/v1alpha1
 kind: NooBaa
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/sync-wave: "10"
   name: noobaa
   namespace: ibu-odf-s3-storage
 spec:
