@@ -2,6 +2,8 @@
 apiVersion: ran.openshift.io/v1
 kind: PolicyGenTemplate
 metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
   name: observability-secret
   namespace: local-policies
 spec:
@@ -11,7 +13,7 @@ spec:
       policyName: w10
       metadata:
         annotations:
-          ran.openshift.io/ztp-deploy-wave: "20"
+          ran.openshift.io/ztp-deploy-wave: "1"
   bindingRules:
     name: local-cluster
   bindingExcludedRules: {}

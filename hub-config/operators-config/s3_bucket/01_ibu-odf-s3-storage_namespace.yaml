@@ -3,7 +3,7 @@ apiVersion: v1
 kind: Namespace
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/sync-wave: "15"
   labels:
     kubernetes.io/metadata.name: ibu-odf-s3-storage
   name: ibu-odf-s3-storage
