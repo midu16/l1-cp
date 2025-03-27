@@ -1,6 +1,6 @@
 # L1-CloudPlatform
 
-The purpose of this repo its to document all the steps in deploying a CloudPlatform which purpose its to deploy, manage and monitor a number of Spoke(s) OCP Clusters.
+The purpose of this repo its to document all the steps in deploying a CloudPlatform which purpose its to deploy, manage and monitor a number of Spoke(s) OCP Clusters, using the version 4.16
 
 > [!CAUTION]
 > Unless specified otherwise, everything contained in this repository is unsupported by Red Hat.
@@ -18,6 +18,9 @@ The purpose of this repo its to document all the steps in deploying a CloudPlatf
     - [Step 4. Agent-based Installer](#step-4-agent-based-installer)
     - [Step 5. Hub Configuration](#step-5-hub-configuration)
     - [Step 6. Spoke deployment](#step-6-spoke-deployment)
+    - [Step 7. Hub Cluster Audit and Infra Logs Aggregation](#step-7-hub-cluster-audit-and-infra-logs-aggregation)
+    - [Step 8. Hub Cluster Backup and Restore](#step-8-hub-cluster-backup-and-restore)
+    - [Step 9. Hub Cluster Spoke's Observability](#step-9-hub-cluster-spokes-observability)
   - [Troubleshooting](#troubleshooting)
   - [Conclusions](#conclusions)
     - [ArgoCD application management:](#argocd-application-management)
@@ -849,6 +852,18 @@ In this section we are going to outline the steps required to achieve a first RH
 > Ensure that the Git-Server values are set according to your system for [spoke-argoapps.yaml](./hub-config/spoke-argoapps.yaml).
 >
 
+### Step 7. [Hub Cluster Audit and Infra Logs Aggregation](./audit_and_infra_logs_fw_to_hub.md)
+
+In this section we are going to outline the method of procedure required to achieve the Spoke's Audit and Infra logs to the RHACM Hub Cluster.
+
+
+### Step 8. [Hub Cluster Backup and Restore](./backup_and_restore.md)
+
+In this section we are going to outline the method of procedure required to achieve the Backup and restore of the RHACM Hub Cluster.
+
+### Step 9. [Hub Cluster Spoke's Observability](./observability_metrics_spoke_to_hub.md)
+
+In this section we are going to outline the method of procedure required to achieve the Spoke's metrics aggregation on the RHACM Hub Cluster.
 
 ## Troubleshooting
 
