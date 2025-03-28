@@ -33,3 +33,16 @@ spec:
     limits:
       cpu: "2"
       memory: 2Gi
+---
+apiVersion: objectbucket.io/v1alpha1
+kind: ObjectBucketClaim
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  name: my-bucket
+  namespace: ibu-odf-s3-storage
+spec:
+  generateBucketName: my-bucket
+  storageClassName: openshift-storage.noobaa.io
+  additionalConfig:
+    bucketclass: noobaa-default-bucket-class
