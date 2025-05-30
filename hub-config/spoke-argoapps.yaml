@@ -13,7 +13,7 @@ spec:
   source:
     path: site-configs
     repoURL: 'http://infra.5g-deployment.lab:3000/student/ztp-repository.git'
-    targetRevision: common-414
+    targetRevision: common-418
   syncPolicy:
     automated:
       prune: true
@@ -42,7 +42,7 @@ spec:
   source:
     path: site-policies
     repoURL: 'http://infra.5g-deployment.lab:3000/student/ztp-repository.git'
-    targetRevision: common-414
+    targetRevision: common-418
   syncPolicy:
     automated:
       prune: true
