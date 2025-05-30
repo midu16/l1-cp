@@ -11,37 +11,16 @@ metadata:
     installer.namespace: open-cluster-management
     multiclusterhubs.operator.open-cluster-management.io/managed-by: "true"
 spec:
-  availabilityConfig: High
+  availabilityConfig: Basic
+  targetNamespace: multicluster-engine
   overrides:
     components:
-    - enabled: true
-      name: local-cluster
-    - enabled: true
-      name: assisted-service
-    - enabled: true
-      name: cluster-lifecycle
-    - enabled: true
-      name: cluster-manager
-    - enabled: true
-      name: discovery
-    - enabled: true
-      name: hive
-    - enabled: true
-      name: server-foundation
-    - enabled: true
-      name: cluster-proxy-addon
-    - enabled: true
-      name: hypershift-local-hosting
-    - enabled: true
-      name: hypershift
-    - enabled: true
-      name: managedserviceaccount
-    - enabled: false
-      name: image-based-install-operator-preview
-    - enabled: true
-      name: console-mce
-  targetNamespace: multicluster-engine
-  tolerations:
-  - effect: NoSchedule
-    key: node-role.kubernetes.io/infra
-    operator: Exists
+    - name: image-based-install-operator
+      enabled: true
+      configOverrides: {}
+    - name: hypershift
+      enabled: false
+      configOverrides: {}
+    - name: hypershift-local-hosting
+      enabled: false
+      configOverrides: {}
