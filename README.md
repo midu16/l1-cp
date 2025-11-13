@@ -5,37 +5,6 @@ The purpose of this repo its to document all the steps in deploying a CloudPlatf
 > [!CAUTION]
 > Unless specified otherwise, everything contained in this repository is unsupported by Red Hat.
 
-## Documentation
-
-### PDF Generation
-
-This documentation is available as a PDF with preserved hyperlinks. Generate it locally:
-
-```bash
-# Install dependencies (first time only)
-make install-deps-fedora  # For Fedora/RHEL
-# or
-make install-deps         # For Ubuntu/Debian
-
-# Generate PDF
-make pdf-readme
-
-# View PDF
-make view-readme-pdf
-```
-
-**Features:**
-- ✅ All hyperlinks are preserved and clickable
-- ✅ Mermaid diagrams are rendered
-- ✅ Professional formatting with table of contents
-- ✅ Syntax-highlighted code blocks
-
-For detailed instructions, see [PDF Generation Guide](./docs/PDF_GENERATION.md).
-
-**Download Pre-generated PDFs:**
-- From GitHub Actions: Go to Actions → Select workflow run → Download artifacts
-- From Releases: Check the [Releases](../../releases) page
-
 ## Table of Contents
 - [L1-CloudPlatform](#l1-cloudplatform)
   - [Table of Contents](#table-of-contents)

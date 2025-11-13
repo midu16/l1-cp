@@ -28,10 +28,6 @@ jobs:
         with:
           node-version: '20'
           
-      - name: Install mermaid-cli
-        run: |
-          npm install -g @mermaid-js/mermaid-cli
-          
       - name: Install Pandoc and dependencies
         run: |
           sudo apt-get update
@@ -43,9 +39,9 @@ jobs:
             texlive-latex-extra \
             librsvg2-bin
             
-      - name: Install pandoc-mermaid-filter
+      - name: Install mermaid-cli and pandoc filter
         run: |
-          npm install -g @gerhobbelt/markdown-it-mermaid
+          npm install -g @mermaid-js/mermaid-cli
           pip install --upgrade pip
           pip install pandoc-mermaid-filter
           

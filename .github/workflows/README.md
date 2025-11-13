@@ -18,12 +18,18 @@ Automatically generates PDF documentation from Markdown files.
 - `ManagementClusterBP-Generated.pdf` - PDF version of the Management Cluster Best Practices document
 
 **Features:**
-- Preserves all hyperlinks in the PDF
-- Renders Mermaid diagrams
-- Generates table of contents
+- Preserves all hyperlinks in the PDF (clickable blue links)
+- Renders Mermaid diagrams using @mermaid-js/mermaid-cli
+- Generates table of contents with page numbers
 - Numbers sections automatically
 - Syntax highlighting for code blocks
 - Creates GitHub releases with PDF attachments (on main/master branch)
+
+**Dependencies:**
+- Pandoc (document converter)
+- XeLaTeX (PDF engine)
+- @mermaid-js/mermaid-cli (diagram renderer)
+- pandoc-mermaid-filter (Python filter)
 
 **Artifacts Retention:** 90 days
 
