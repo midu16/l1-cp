@@ -87,7 +87,7 @@ endif
 
 pdf-readme: check-deps ## Generate PDF from README.md
 	@echo "$(GREEN)Generating PDF from $(README_MD)...$(NC)"
-	$(PANDOC) $(README_MD) \
+	MERMAID_BIN=mmdc $(PANDOC) $(README_MD) \
 		-o $(README_PDF) \
 		--pdf-engine=xelatex \
 		--from=markdown+hard_line_breaks+pipe_tables+backtick_code_blocks \
@@ -129,7 +129,7 @@ pdf-readme: check-deps ## Generate PDF from README.md
 pdf-management: check-deps ## Generate PDF from ManagementClusterBP.md
 	@if [ -f $(MANAGEMENT_MD) ]; then \
 		echo "$(GREEN)Generating PDF from $(MANAGEMENT_MD)...$(NC)"; \
-		$(PANDOC) $(MANAGEMENT_MD) \
+		MERMAID_BIN=mmdc $(PANDOC) $(MANAGEMENT_MD) \
 			-o $(MANAGEMENT_PDF) \
 			--pdf-engine=xelatex \
 			--from=markdown+hard_line_breaks+pipe_tables+backtick_code_blocks \

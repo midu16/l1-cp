@@ -47,7 +47,7 @@ jobs:
           
       - name: Generate README PDF
         run: |
-          pandoc README.md \
+          MERMAID_BIN=mmdc pandoc README.md \
             -o README.pdf \
             --pdf-engine=xelatex \
             --from=markdown+hard_line_breaks+pipe_tables+backtick_code_blocks \
@@ -69,7 +69,7 @@ jobs:
       - name: Generate ManagementClusterBP PDF
         run: |
           if [ -f "ManagementClusterBP.md" ]; then
-            pandoc ManagementClusterBP.md \
+            MERMAID_BIN=mmdc pandoc ManagementClusterBP.md \
               -o ManagementClusterBP-Generated.pdf \
               --pdf-engine=xelatex \
               --from=markdown+hard_line_breaks+pipe_tables+backtick_code_blocks \
