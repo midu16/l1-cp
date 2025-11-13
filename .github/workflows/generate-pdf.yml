@@ -9,10 +9,13 @@ on:
       - 'README.md'
       - 'ManagementClusterBP.md'
       - '.github/workflows/generate-pdf.yml'
+      - 'Makefile'
+      - '.puppeteer-config.json'
   pull_request:
     paths:
       - 'README.md'
       - 'ManagementClusterBP.md'
+      - 'Makefile'
   workflow_dispatch:
 
 jobs:
@@ -27,97 +30,93 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
           
-      - name: Install Pandoc and dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            pandoc \
-            texlive-latex-base \
-            texlive-fonts-recommended \
-            texlive-fonts-extra \
-            texlive-latex-extra \
-            librsvg2-bin
-            
-      - name: Install mermaid-cli and pandoc filter
-        run: |
-          npm install -g @mermaid-js/mermaid-cli
-          pip install --upgrade pip
-          pip install pandoc-mermaid-filter
+      - name: Install dependencies
+        run: make install-deps
+        env:
+          DEBIAN_FRONTEND: noninteractive
           
-      - name: Generate README PDF
-        run: |
-          # Create mermaid config for puppeteer args
-          cat > /tmp/puppeteer-config.json <<EOF
-          {
-            "args": ["--no-sandbox", "--disable-setuid-sandbox"]
-          }
-          EOF
+      - name: Generate PDFs
+        run: make pdf
           
-          MERMAID_BIN=mmdc \
-          PUPPETEER_CFG=/tmp/puppeteer-config.json \
-          pandoc README.md \
-            -o README.pdf \
-            --pdf-engine=xelatex \
-            --from=markdown+hard_line_breaks+pipe_tables+backtick_code_blocks \
-            --to=pdf \
-            --standalone \
-            --toc \
-            --toc-depth=3 \
-            --number-sections \
-            --highlight-style=tango \
-            --variable=geometry:margin=1in \
-            --variable=linkcolor:blue \
-            --variable=urlcolor:blue \
-            --variable=toccolor:blue \
-            --metadata title="L1-CloudPlatform Documentation" \
-            --metadata author="Documentation Team" \
-            --metadata date="$(date +'%Y-%m-%d')" \
-            --filter pandoc-mermaid
-            
-      - name: Generate ManagementClusterBP PDF
-        run: |
-          if [ -f "ManagementClusterBP.md" ]; then
-            MERMAID_BIN=mmdc \
-            PUPPETEER_CFG=/tmp/puppeteer-config.json \
-            pandoc ManagementClusterBP.md \
-              -o ManagementClusterBP-Generated.pdf \
-              --pdf-engine=xelatex \
-              --from=markdown+hard_line_breaks+pipe_tables+backtick_code_blocks \
-              --to=pdf \
-              --standalone \
-              --toc \
-              --toc-depth=3 \
-              --number-sections \
-              --highlight-style=tango \
-              --variable=geometry:margin=1in \
-              --variable=linkcolor:blue \
-              --variable=urlcolor:blue \
-              --variable=toccolor:blue \
-              --metadata title="Management Cluster Best Practices" \
-              --metadata author="Documentation Team" \
-              --metadata date="$(date +'%Y-%m-%d')" \
-              --filter pandoc-mermaid
-          fi
+      - name: List generated PDFs
+        run: ls -lh *.pdf
           
       - name: Upload PDF artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: documentation-pdfs
-          path: |
-            README.pdf
-            ManagementClusterBP-Generated.pdf
+          name: documentation-pdfs-${{ github.sha }}
+          path: '*.pdf'
           retention-days: 90
+          if-no-files-found: error
+          
+      - name: Upload PDFs to repository (on main/master branch)
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          
+          # Create pdfs branch if it doesn't exist
+          git fetch origin pdfs:pdfs 2>/dev/null || git checkout --orphan pdfs
+          
+          # Switch to pdfs branch
+          git checkout pdfs || git checkout --orphan pdfs
+          
+          # Remove all files except PDFs
+          git rm -rf . 2>/dev/null || true
+          
+          # Copy generated PDFs
+          git checkout main -- README.pdf ManagementClusterBP-Generated.pdf 2>/dev/null || true
+          cp *.pdf . 2>/dev/null || true
+          
+          # Add timestamp file
+          echo "Generated: $(date +'%Y-%m-%d %H:%M:%S UTC')" > LAST_UPDATE.txt
+          echo "Commit: ${{ github.sha }}" >> LAST_UPDATE.txt
+          
+          # Commit and push
+          git add *.pdf LAST_UPDATE.txt
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update PDFs from commit ${{ github.sha }}"
+            git push origin pdfs
+          fi
           
       - name: Create Release (on main/master branch)
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG_NAME="docs-$(date +'%Y%m%d-%H%M%S')"
+          
+          # Create release notes
+          cat > release-notes.md <<EOF
+          # Documentation PDF Release
+          
+          Generated from commit: \`${{ github.sha }}\`
+          
+          ## Files
+          - **README.pdf** - Main documentation
+          - **ManagementClusterBP-Generated.pdf** - Management Cluster Best Practices
+          
+          ## Changes
+          $(git log -1 --pretty=format:'- %s' ${{ github.sha }})
+          
+          ## Generation Details
+          - Date: $(date +'%Y-%m-%d %H:%M:%S UTC')
+          - Workflow: ${{ github.workflow }}
+          - Run: ${{ github.run_number }}
+          EOF
+          
+          # Create release
           gh release create "$TAG_NAME" \
-            README.pdf \
-            ManagementClusterBP-Generated.pdf \
-            --title "Documentation Release $TAG_NAME" \
-            --notes "Automated documentation PDF generation from commit ${{ github.sha }}"
+            *.pdf \
+            --title "Documentation PDFs - $(date +'%Y-%m-%d')" \
+            --notes-file release-notes.md \
+            --latest=false
 

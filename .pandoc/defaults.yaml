@@ -35,6 +35,19 @@ variables:
   links-as-notes: false
   mainfont: DejaVu Sans
   monofont: DejaVu Sans Mono
+  header-includes: |
+    \usepackage{enumitem}
+    \setlistdepth{9}
+    \renewlist{itemize}{itemize}{9}
+    \setlist[itemize,1]{label=$\bullet$}
+    \setlist[itemize,2]{label=$\circ$}
+    \setlist[itemize,3]{label=$\diamond$}
+    \setlist[itemize,4]{label=$\ast$}
+    \setlist[itemize,5]{label=$\cdot$}
+    \setlist[itemize,6]{label=$\triangleright$}
+    \setlist[itemize,7]{label=$\star$}
+    \setlist[itemize,8]{label=$\dagger$}
+    \setlist[itemize,9]{label=$\ddagger$}
   
 # Metadata
 metadata:

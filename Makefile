@@ -61,6 +61,7 @@ ifeq ($(DISTRO),fedora)
 		texlive-collection-latexextra \
 		texlive-xetex \
 		librsvg2-tools \
+		chromium \
 		npm
 else ifeq ($(DISTRO),debian)
 	@echo "$(BLUE)Installing system packages (Debian/Ubuntu)...$(NC)"
@@ -73,6 +74,7 @@ else ifeq ($(DISTRO),debian)
 		texlive-latex-extra \
 		texlive-xetex \
 		librsvg2-bin \
+		chromium-browser \
 		npm
 else
 	@echo "$(RED)Error: Unsupported distribution. Please install dependencies manually.$(NC)"
@@ -81,13 +83,56 @@ else
 endif
 	@echo "$(BLUE)Installing mermaid-cli...$(NC)"
 	sudo npm install -g @mermaid-js/mermaid-cli
+	@echo "$(BLUE)Installing Puppeteer Chrome...$(NC)"
+	npx --yes puppeteer browsers install chrome-headless-shell
 	@echo "$(BLUE)Installing pandoc-mermaid-filter...$(NC)"
 	$(PIP) install --user pandoc-mermaid-filter
 	@echo "$(GREEN)✓ All dependencies installed successfully$(NC)"
 
 pdf-readme: check-deps ## Generate PDF from README.md
 	@echo "$(GREEN)Generating PDF from $(README_MD)...$(NC)"
-	MERMAID_BIN=mmdc PUPPETEER_CFG=.puppeteer-config.json $(PANDOC) $(README_MD) \
+	@# Create wrapper script for mmdc with puppeteer config
+	@printf '#!/bin/bash\nexec mmdc --puppeteerConfigFile $(CURDIR)/.puppeteer-config.json "$$@"\n' > /tmp/mmdc-wrapper.sh
+	@chmod +x /tmp/mmdc-wrapper.sh
+	@# Create LaTeX header for proper formatting
+	@echo '% Deep list nesting support' > /tmp/latex-header.tex
+	@echo '\usepackage{enumitem}' >> /tmp/latex-header.tex
+	@echo '\setlistdepth{9}' >> /tmp/latex-header.tex
+	@echo '\renewlist{itemize}{itemize}{9}' >> /tmp/latex-header.tex
+	@echo '\setlist[itemize,1]{label=$$\bullet$$}' >> /tmp/latex-header.tex
+	@echo '\setlist[itemize,2]{label=$$\circ$$}' >> /tmp/latex-header.tex
+	@echo '\setlist[itemize,3]{label=$$\diamond$$}' >> /tmp/latex-header.tex
+	@echo '\setlist[itemize,4]{label=$$\ast$$}' >> /tmp/latex-header.tex
+	@echo '\setlist[itemize,5]{label=$$\cdot$$}' >> /tmp/latex-header.tex
+	@echo '\setlist[itemize,6]{label=$$\triangleright$$}' >> /tmp/latex-header.tex
+	@echo '\setlist[itemize,7]{label=$$\star$$}' >> /tmp/latex-header.tex
+	@echo '\setlist[itemize,8]{label=$$\dagger$$}' >> /tmp/latex-header.tex
+	@echo '\setlist[itemize,9]{label=$$\ddagger$$}' >> /tmp/latex-header.tex
+	@echo '' >> /tmp/latex-header.tex
+	@echo '% Better font support for box-drawing characters' >> /tmp/latex-header.tex
+	@echo '\usepackage{fontspec}' >> /tmp/latex-header.tex
+	@echo '\setmonofont{Liberation Mono}[Scale=0.9]' >> /tmp/latex-header.tex
+	@echo '' >> /tmp/latex-header.tex
+	@echo '% Prevent code block overflow' >> /tmp/latex-header.tex
+	@echo '\usepackage{fvextra}' >> /tmp/latex-header.tex
+	@echo '\DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,breakanywhere,commandchars=\\\{\}}' >> /tmp/latex-header.tex
+	@echo '' >> /tmp/latex-header.tex
+	@echo '% Ensure images fit within margins and center them' >> /tmp/latex-header.tex
+	@echo '\usepackage{graphicx}' >> /tmp/latex-header.tex
+	@echo '\makeatletter' >> /tmp/latex-header.tex
+	@echo '\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}' >> /tmp/latex-header.tex
+	@echo '\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}' >> /tmp/latex-header.tex
+	@echo '\makeatother' >> /tmp/latex-header.tex
+	@echo '\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}' >> /tmp/latex-header.tex
+	@echo '' >> /tmp/latex-header.tex
+	@echo '% Center all images and figures' >> /tmp/latex-header.tex
+	@echo '\usepackage{float}' >> /tmp/latex-header.tex
+	@echo '\makeatletter' >> /tmp/latex-header.tex
+	@echo '\g@addto@macro\@floatboxreset\centering' >> /tmp/latex-header.tex
+	@echo '\makeatother' >> /tmp/latex-header.tex
+	@echo '\let\origincludegraphics\includegraphics' >> /tmp/latex-header.tex
+	@echo '\renewcommand{\includegraphics}[2][]{\centering\origincludegraphics[#1]{#2}}' >> /tmp/latex-header.tex
+	MERMAID_BIN=/tmp/mmdc-wrapper.sh $(PANDOC) $(README_MD) \
 		-o $(README_PDF) \
 		--pdf-engine=xelatex \
 		--from=markdown+hard_line_breaks+pipe_tables+backtick_code_blocks \
@@ -102,6 +147,7 @@ pdf-readme: check-deps ## Generate PDF from README.md
 		--variable=urlcolor:blue \
 		--variable=toccolor:blue \
 		--variable=fontsize:11pt \
+		--include-in-header=/tmp/latex-header.tex \
 		--metadata title="L1-CloudPlatform Documentation" \
 		--metadata author="Documentation Team" \
 		--metadata date="$$(date +'%Y-%m-%d')" \
@@ -121,6 +167,7 @@ pdf-readme: check-deps ## Generate PDF from README.md
 		--variable=urlcolor:blue \
 		--variable=toccolor:blue \
 		--variable=fontsize:11pt \
+		--include-in-header=/tmp/latex-header.tex \
 		--metadata title="L1-CloudPlatform Documentation" \
 		--metadata author="Documentation Team" \
 		--metadata date="$$(date +'%Y-%m-%d')"
@@ -129,7 +176,46 @@ pdf-readme: check-deps ## Generate PDF from README.md
 pdf-management: check-deps ## Generate PDF from ManagementClusterBP.md
 	@if [ -f $(MANAGEMENT_MD) ]; then \
 		echo "$(GREEN)Generating PDF from $(MANAGEMENT_MD)...$(NC)"; \
-		MERMAID_BIN=mmdc PUPPETEER_CFG=.puppeteer-config.json $(PANDOC) $(MANAGEMENT_MD) \
+		printf '#!/bin/bash\nexec mmdc --puppeteerConfigFile $(CURDIR)/.puppeteer-config.json "$$@"\n' > /tmp/mmdc-wrapper.sh; \
+		chmod +x /tmp/mmdc-wrapper.sh; \
+		echo '% Deep list nesting support' > /tmp/latex-header.tex; \
+		echo '\usepackage{enumitem}' >> /tmp/latex-header.tex; \
+		echo '\setlistdepth{9}' >> /tmp/latex-header.tex; \
+		echo '\renewlist{itemize}{itemize}{9}' >> /tmp/latex-header.tex; \
+		echo '\setlist[itemize,1]{label=$$\bullet$$}' >> /tmp/latex-header.tex; \
+		echo '\setlist[itemize,2]{label=$$\circ$$}' >> /tmp/latex-header.tex; \
+		echo '\setlist[itemize,3]{label=$$\diamond$$}' >> /tmp/latex-header.tex; \
+		echo '\setlist[itemize,4]{label=$$\ast$$}' >> /tmp/latex-header.tex; \
+		echo '\setlist[itemize,5]{label=$$\cdot$$}' >> /tmp/latex-header.tex; \
+		echo '\setlist[itemize,6]{label=$$\triangleright$$}' >> /tmp/latex-header.tex; \
+		echo '\setlist[itemize,7]{label=$$\star$$}' >> /tmp/latex-header.tex; \
+		echo '\setlist[itemize,8]{label=$$\dagger$$}' >> /tmp/latex-header.tex; \
+		echo '\setlist[itemize,9]{label=$$\ddagger$$}' >> /tmp/latex-header.tex; \
+		echo '' >> /tmp/latex-header.tex; \
+		echo '% Better font support for box-drawing characters' >> /tmp/latex-header.tex; \
+		echo '\usepackage{fontspec}' >> /tmp/latex-header.tex; \
+		echo '\setmonofont{Liberation Mono}[Scale=0.9]' >> /tmp/latex-header.tex; \
+		echo '' >> /tmp/latex-header.tex; \
+		echo '% Prevent code block overflow' >> /tmp/latex-header.tex; \
+		echo '\usepackage{fvextra}' >> /tmp/latex-header.tex; \
+		echo '\DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,breakanywhere,commandchars=\\\{\}}' >> /tmp/latex-header.tex; \
+		echo '' >> /tmp/latex-header.tex; \
+		echo '% Ensure images fit within margins' >> /tmp/latex-header.tex; \
+		echo '\usepackage{graphicx}' >> /tmp/latex-header.tex; \
+		echo '\makeatletter' >> /tmp/latex-header.tex; \
+		echo '\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}' >> /tmp/latex-header.tex; \
+		echo '\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}' >> /tmp/latex-header.tex; \
+		echo '\makeatother' >> /tmp/latex-header.tex; \
+		echo '\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}' >> /tmp/latex-header.tex; \
+		echo '' >> /tmp/latex-header.tex; \
+		echo '% Center all images and figures' >> /tmp/latex-header.tex; \
+		echo '\usepackage{float}' >> /tmp/latex-header.tex; \
+		echo '\makeatletter' >> /tmp/latex-header.tex; \
+		echo '\g@addto@macro\@floatboxreset\centering' >> /tmp/latex-header.tex; \
+		echo '\makeatother' >> /tmp/latex-header.tex; \
+		echo '\let\origincludegraphics\includegraphics' >> /tmp/latex-header.tex; \
+		echo '\renewcommand{\includegraphics}[2][]{\centering\origincludegraphics[#1]{#2}}' >> /tmp/latex-header.tex; \
+		MERMAID_BIN=/tmp/mmdc-wrapper.sh $(PANDOC) $(MANAGEMENT_MD) \
 			-o $(MANAGEMENT_PDF) \
 			--pdf-engine=xelatex \
 			--from=markdown+hard_line_breaks+pipe_tables+backtick_code_blocks \
@@ -144,6 +230,7 @@ pdf-management: check-deps ## Generate PDF from ManagementClusterBP.md
 			--variable=urlcolor:blue \
 			--variable=toccolor:blue \
 			--variable=fontsize:11pt \
+			--include-in-header=/tmp/latex-header.tex \
 			--metadata title="Management Cluster Best Practices" \
 			--metadata author="Documentation Team" \
 			--metadata date="$$(date +'%Y-%m-%d')" \
@@ -163,6 +250,7 @@ pdf-management: check-deps ## Generate PDF from ManagementClusterBP.md
 			--variable=urlcolor:blue \
 			--variable=toccolor:blue \
 			--variable=fontsize:11pt \
+			--include-in-header=/tmp/latex-header.tex \
 			--metadata title="Management Cluster Best Practices" \
 			--metadata author="Documentation Team" \
 			--metadata date="$$(date +'%Y-%m-%d')"; \
