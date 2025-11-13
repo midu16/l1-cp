@@ -1,0 +1,116 @@
+name: Generate PDF Documentation
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'README.md'
+      - 'ManagementClusterBP.md'
+      - '.github/workflows/generate-pdf.yml'
+  pull_request:
+    paths:
+      - 'README.md'
+      - 'ManagementClusterBP.md'
+  workflow_dispatch:
+
+jobs:
+  generate-pdf:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install mermaid-cli
+        run: |
+          npm install -g @mermaid-js/mermaid-cli
+          
+      - name: Install Pandoc and dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            pandoc \
+            texlive-latex-base \
+            texlive-fonts-recommended \
+            texlive-fonts-extra \
+            texlive-latex-extra \
+            librsvg2-bin
+            
+      - name: Install pandoc-mermaid-filter
+        run: |
+          npm install -g @gerhobbelt/markdown-it-mermaid
+          pip install --upgrade pip
+          pip install pandoc-mermaid-filter
+          
+      - name: Generate README PDF
+        run: |
+          pandoc README.md \
+            -o README.pdf \
+            --pdf-engine=xelatex \
+            --from=markdown+hard_line_breaks+pipe_tables+backtick_code_blocks \
+            --to=pdf \
+            --standalone \
+            --toc \
+            --toc-depth=3 \
+            --number-sections \
+            --highlight-style=tango \
+            --variable=geometry:margin=1in \
+            --variable=linkcolor:blue \
+            --variable=urlcolor:blue \
+            --variable=toccolor:blue \
+            --metadata title="L1-CloudPlatform Documentation" \
+            --metadata author="Documentation Team" \
+            --metadata date="$(date +'%Y-%m-%d')" \
+            --filter pandoc-mermaid
+            
+      - name: Generate ManagementClusterBP PDF
+        run: |
+          if [ -f "ManagementClusterBP.md" ]; then
+            pandoc ManagementClusterBP.md \
+              -o ManagementClusterBP-Generated.pdf \
+              --pdf-engine=xelatex \
+              --from=markdown+hard_line_breaks+pipe_tables+backtick_code_blocks \
+              --to=pdf \
+              --standalone \
+              --toc \
+              --toc-depth=3 \
+              --number-sections \
+              --highlight-style=tango \
+              --variable=geometry:margin=1in \
+              --variable=linkcolor:blue \
+              --variable=urlcolor:blue \
+              --variable=toccolor:blue \
+              --metadata title="Management Cluster Best Practices" \
+              --metadata author="Documentation Team" \
+              --metadata date="$(date +'%Y-%m-%d')" \
+              --filter pandoc-mermaid
+          fi
+          
+      - name: Upload PDF artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation-pdfs
+          path: |
+            README.pdf
+            ManagementClusterBP-Generated.pdf
+          retention-days: 90
+          
+      - name: Create Release (on main/master branch)
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME="docs-$(date +'%Y%m%d-%H%M%S')"
+          gh release create "$TAG_NAME" \
+            README.pdf \
+            ManagementClusterBP-Generated.pdf \
+            --title "Documentation Release $TAG_NAME" \
+            --notes "Automated documentation PDF generation from commit ${{ github.sha }}"
+

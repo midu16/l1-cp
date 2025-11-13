@@ -1,0 +1,43 @@
+# Pandoc defaults for PDF generation
+# This file provides default settings for generating PDFs from Markdown
+
+reader: markdown
+writer: pdf
+
+# PDF Engine
+pdf-engine: xelatex
+
+# Markdown extensions
+from: markdown+hard_line_breaks+pipe_tables+backtick_code_blocks+fenced_code_attributes+definition_lists+footnotes+inline_notes+superscript+subscript
+
+# Output options
+standalone: true
+toc: true
+toc-depth: 3
+number-sections: true
+
+# Syntax highlighting
+highlight-style: tango
+
+# Variables
+variables:
+  geometry:
+    - margin=1in
+    - paperheight=11in
+    - paperwidth=8.5in
+  fontsize: 11pt
+  linestretch: 1.25
+  linkcolor: blue
+  urlcolor: blue
+  toccolor: blue
+  citecolor: blue
+  colorlinks: true
+  links-as-notes: false
+  mainfont: DejaVu Sans
+  monofont: DejaVu Sans Mono
+  
+# Metadata
+metadata:
+  date: $date$
+  lang: en-US
+
