@@ -36,3 +36,6 @@ ENV/
 .DS_Store
 Thumbs.db
 *.pdf
+
+# Mermaid generated images
+mermaid-images/

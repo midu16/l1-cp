@@ -47,7 +47,16 @@ jobs:
           
       - name: Generate README PDF
         run: |
-          MERMAID_BIN=mmdc pandoc README.md \
+          # Create mermaid config for puppeteer args
+          cat > /tmp/puppeteer-config.json <<EOF
+          {
+            "args": ["--no-sandbox", "--disable-setuid-sandbox"]
+          }
+          EOF
+          
+          MERMAID_BIN=mmdc \
+          PUPPETEER_CFG=/tmp/puppeteer-config.json \
+          pandoc README.md \
             -o README.pdf \
             --pdf-engine=xelatex \
             --from=markdown+hard_line_breaks+pipe_tables+backtick_code_blocks \
@@ -69,7 +78,9 @@ jobs:
       - name: Generate ManagementClusterBP PDF
         run: |
           if [ -f "ManagementClusterBP.md" ]; then
-            MERMAID_BIN=mmdc pandoc ManagementClusterBP.md \
+            MERMAID_BIN=mmdc \
+            PUPPETEER_CFG=/tmp/puppeteer-config.json \
+            pandoc ManagementClusterBP.md \
               -o ManagementClusterBP-Generated.pdf \
               --pdf-engine=xelatex \
               --from=markdown+hard_line_breaks+pipe_tables+backtick_code_blocks \
