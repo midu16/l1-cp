@@ -131,7 +131,7 @@ pdf-readme: check-deps ## Generate PDF from README.md
 	@echo '\g@addto@macro\@floatboxreset\centering' >> /tmp/latex-header.tex
 	@echo '\makeatother' >> /tmp/latex-header.tex
 	@echo '\let\origincludegraphics\includegraphics' >> /tmp/latex-header.tex
-	@echo '\renewcommand{\includegraphics}[2][]{\centering\origincludegraphics[#1]{#2}}' >> /tmp/latex-header.tex
+	@printf '%s\n' '\renewcommand{\includegraphics}[2][]{\centering\origincludegraphics[#1]{#2}}' >> /tmp/latex-header.tex
 	MERMAID_BIN=/tmp/mmdc-wrapper.sh $(PANDOC) $(README_MD) \
 		-o $(README_PDF) \
 		--pdf-engine=xelatex \
@@ -214,7 +214,7 @@ pdf-management: check-deps ## Generate PDF from ManagementClusterBP.md
 		echo '\g@addto@macro\@floatboxreset\centering' >> /tmp/latex-header.tex; \
 		echo '\makeatother' >> /tmp/latex-header.tex; \
 		echo '\let\origincludegraphics\includegraphics' >> /tmp/latex-header.tex; \
-		echo '\renewcommand{\includegraphics}[2][]{\centering\origincludegraphics[#1]{#2}}' >> /tmp/latex-header.tex; \
+		printf '%s\n' '\renewcommand{\includegraphics}[2][]{\centering\origincludegraphics[#1]{#2}}' >> /tmp/latex-header.tex; \
 		MERMAID_BIN=/tmp/mmdc-wrapper.sh $(PANDOC) $(MANAGEMENT_MD) \
 			-o $(MANAGEMENT_PDF) \
 			--pdf-engine=xelatex \

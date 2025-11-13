@@ -55,38 +55,6 @@ jobs:
           retention-days: 90
           if-no-files-found: error
           
-      - name: Upload PDFs to repository (on main/master branch)
-        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-        run: |
-          git config user.name "GitHub Actions Bot"
-          git config user.email "actions@github.com"
-          
-          # Create pdfs branch if it doesn't exist
-          git fetch origin pdfs:pdfs 2>/dev/null || git checkout --orphan pdfs
-          
-          # Switch to pdfs branch
-          git checkout pdfs || git checkout --orphan pdfs
-          
-          # Remove all files except PDFs
-          git rm -rf . 2>/dev/null || true
-          
-          # Copy generated PDFs
-          git checkout main -- README.pdf ManagementClusterBP-Generated.pdf 2>/dev/null || true
-          cp *.pdf . 2>/dev/null || true
-          
-          # Add timestamp file
-          echo "Generated: $(date +'%Y-%m-%d %H:%M:%S UTC')" > LAST_UPDATE.txt
-          echo "Commit: ${{ github.sha }}" >> LAST_UPDATE.txt
-          
-          # Commit and push
-          git add *.pdf LAST_UPDATE.txt
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "Update PDFs from commit ${{ github.sha }}"
-            git push origin pdfs
-          fi
-          
       - name: Create Release (on main/master branch)
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
         env:
