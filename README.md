@@ -1066,3 +1066,4 @@ If you are redeploying the OCP Cluster and the application disks were previously
 ```bash
 # sgdisk --zap-all /dev/sdb && sudo wipefs -a /dev/sdb
 ```
+
