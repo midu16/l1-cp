@@ -69,7 +69,10 @@ ifeq ($(DISTRO),fedora)
 		texlive-xetex \
 		librsvg2-tools \
 		chromium \
-		npm
+		npm \
+		liberation-mono-fonts \
+		liberation-sans-fonts \
+		liberation-serif-fonts
 else ifeq ($(DISTRO),debian)
 	@echo "$(BLUE)Installing system packages (Debian/Ubuntu)...$(NC)"
 	$(SUDO) apt-get update
@@ -82,7 +85,8 @@ else ifeq ($(DISTRO),debian)
 		texlive-xetex \
 		librsvg2-bin \
 		chromium-browser \
-		npm
+		npm \
+		fonts-liberation
 else
 	@echo "$(RED)Error: Unsupported distribution. Please install dependencies manually.$(NC)"
 	@echo "$(YELLOW)Required packages: pandoc, texlive-xetex, librsvg2-tools/librsvg2-bin, npm$(NC)"
