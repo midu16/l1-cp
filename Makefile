@@ -10,6 +10,13 @@ RED    := \033[0;31m
 BLUE   := \033[0;34m
 NC     := \033[0m # No Color
 
+# Detect if running as root (e.g., in a container)
+ifeq ($(shell id -u),0)
+    SUDO :=
+else
+    SUDO := sudo
+endif
+
 # Detect Linux distribution
 ifeq ($(shell test -f /etc/os-release && grep -q "ID=fedora\|ID=rhel\|ID=\"rhel\"\|ID=centos" /etc/os-release && echo fedora), fedora)
     DISTRO := fedora
@@ -53,7 +60,7 @@ install-deps: ## Install required dependencies (auto-detects OS)
 	@echo "$(BLUE)Detected OS: $(DISTRO) (package manager: $(PKG_MANAGER))$(NC)"
 ifeq ($(DISTRO),fedora)
 	@echo "$(BLUE)Installing system packages (Fedora/RHEL)...$(NC)"
-	sudo dnf install -y \
+	$(SUDO) dnf install -y \
 		pandoc \
 		texlive-scheme-basic \
 		texlive-collection-fontsrecommended \
@@ -65,8 +72,8 @@ ifeq ($(DISTRO),fedora)
 		npm
 else ifeq ($(DISTRO),debian)
 	@echo "$(BLUE)Installing system packages (Debian/Ubuntu)...$(NC)"
-	sudo apt-get update
-	sudo apt-get install -y \
+	$(SUDO) apt-get update
+	$(SUDO) apt-get install -y \
 		pandoc \
 		texlive-latex-base \
 		texlive-fonts-recommended \
@@ -82,7 +89,7 @@ else
 	@exit 1
 endif
 	@echo "$(BLUE)Installing mermaid-cli...$(NC)"
-	sudo npm install -g @mermaid-js/mermaid-cli
+	$(SUDO) npm install -g @mermaid-js/mermaid-cli
 	@echo "$(BLUE)Installing Puppeteer Chrome...$(NC)"
 	npx --yes puppeteer browsers install chrome-headless-shell
 	@echo "$(BLUE)Installing pandoc-mermaid-filter...$(NC)"
@@ -91,8 +98,23 @@ endif
 
 pdf-readme: check-deps ## Generate PDF from README.md
 	@echo "$(GREEN)Generating PDF from $(README_MD)...$(NC)"
+	@# Detect Chromium path
+	@if [ -f /usr/bin/chromium ]; then \
+		CHROMIUM_PATH="/usr/bin/chromium"; \
+	elif [ -f /usr/bin/chromium-browser ]; then \
+		CHROMIUM_PATH="/usr/bin/chromium-browser"; \
+	elif [ -f /usr/bin/google-chrome ]; then \
+		CHROMIUM_PATH="/usr/bin/google-chrome"; \
+	else \
+		CHROMIUM_PATH=""; \
+	fi; \
+	if [ -n "$$CHROMIUM_PATH" ]; then \
+		echo "{\"executablePath\": \"$$CHROMIUM_PATH\", \"args\": [\"--no-sandbox\", \"--disable-setuid-sandbox\"]}" > /tmp/puppeteer-config.json; \
+	else \
+		echo "{\"args\": [\"--no-sandbox\", \"--disable-setuid-sandbox\"]}" > /tmp/puppeteer-config.json; \
+	fi
 	@# Create wrapper script for mmdc with puppeteer config
-	@printf '#!/bin/bash\nexec mmdc --puppeteerConfigFile $(CURDIR)/.puppeteer-config.json "$$@"\n' > /tmp/mmdc-wrapper.sh
+	@printf '#!/bin/bash\nexec mmdc --puppeteerConfigFile /tmp/puppeteer-config.json "$$@"\n' > /tmp/mmdc-wrapper.sh
 	@chmod +x /tmp/mmdc-wrapper.sh
 	@# Create LaTeX header for proper formatting
 	@echo '% Deep list nesting support' > /tmp/latex-header.tex
@@ -176,7 +198,21 @@ pdf-readme: check-deps ## Generate PDF from README.md
 pdf-management: check-deps ## Generate PDF from ManagementClusterBP.md
 	@if [ -f $(MANAGEMENT_MD) ]; then \
 		echo "$(GREEN)Generating PDF from $(MANAGEMENT_MD)...$(NC)"; \
-		printf '#!/bin/bash\nexec mmdc --puppeteerConfigFile $(CURDIR)/.puppeteer-config.json "$$@"\n' > /tmp/mmdc-wrapper.sh; \
+		if [ -f /usr/bin/chromium ]; then \
+			CHROMIUM_PATH="/usr/bin/chromium"; \
+		elif [ -f /usr/bin/chromium-browser ]; then \
+			CHROMIUM_PATH="/usr/bin/chromium-browser"; \
+		elif [ -f /usr/bin/google-chrome ]; then \
+			CHROMIUM_PATH="/usr/bin/google-chrome"; \
+		else \
+			CHROMIUM_PATH=""; \
+		fi; \
+		if [ -n "$$CHROMIUM_PATH" ]; then \
+			echo "{\"executablePath\": \"$$CHROMIUM_PATH\", \"args\": [\"--no-sandbox\", \"--disable-setuid-sandbox\"]}" > /tmp/puppeteer-config.json; \
+		else \
+			echo "{\"args\": [\"--no-sandbox\", \"--disable-setuid-sandbox\"]}" > /tmp/puppeteer-config.json; \
+		fi; \
+		printf '#!/bin/bash\nexec mmdc --puppeteerConfigFile /tmp/puppeteer-config.json "$$@"\n' > /tmp/mmdc-wrapper.sh; \
 		chmod +x /tmp/mmdc-wrapper.sh; \
 		echo '% Deep list nesting support' > /tmp/latex-header.tex; \
 		echo '\usepackage{enumitem}' >> /tmp/latex-header.tex; \

@@ -21,25 +21,27 @@ on:
 jobs:
   generate-pdf:
     runs-on: ubuntu-latest
+    container:
+      image: fedora:latest
     
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         
       - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+        run: |
+          dnf install -y nodejs npm
+          node --version
+          npm --version
       
       - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
+        run: |
+          dnf install -y python3 python3-pip
+          python3 --version
+          pip3 --version
           
       - name: Install dependencies
         run: make install-deps
-        env:
-          DEBIAN_FRONTEND: noninteractive
           
       - name: Generate PDFs
         run: make pdf
