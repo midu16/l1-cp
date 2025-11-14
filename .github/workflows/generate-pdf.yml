@@ -28,6 +28,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         
+      - name: Install basic build tools
+        run: |
+          dnf install -y make git which findutils
+          make --version
+        
       - name: Setup Node.js
         run: |
           dnf install -y nodejs npm
