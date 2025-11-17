@@ -6,15 +6,13 @@ on:
       - main
       - master
     paths:
-      - 'README.md'
-      - 'ManagementClusterBP.md'
+      - '**.md'
       - '.github/workflows/generate-pdf.yml'
       - 'Makefile'
       - '.puppeteer-config.json'
   pull_request:
     paths:
-      - 'README.md'
-      - 'ManagementClusterBP.md'
+      - '**.md'
       - 'Makefile'
   workflow_dispatch:
 
@@ -48,18 +46,28 @@ jobs:
           
       - name: Install dependencies
         run: make install-deps
+      
+      - name: List markdown files to process
+        run: make list-markdown
           
-      - name: Generate PDFs
+      - name: Generate PDFs from all markdown files
         run: make pdf
           
       - name: List generated PDFs
-        run: ls -lh *.pdf
+        run: |
+          echo "=== Generated PDF files ==="
+          find . -name '*.pdf' -not -path './node_modules/*' -not -path './.git/*' -type f -exec ls -lh {} \;
+          echo ""
+          echo "Total PDFs: $(find . -name '*.pdf' -not -path './node_modules/*' -not -path './.git/*' -type f | wc -l)"
           
       - name: Upload PDF artifacts
         uses: actions/upload-artifact@v4
         with:
           name: documentation-pdfs-${{ github.sha }}
-          path: '*.pdf'
+          path: |
+            **/*.pdf
+            !node_modules/**
+            !.git/**
           retention-days: 90
           if-no-files-found: error
 

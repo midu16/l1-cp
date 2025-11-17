@@ -1,4 +1,4 @@
-.PHONY: help pdf clean install-deps check-deps pdf-readme pdf-management all
+.PHONY: help pdf clean install-deps check-deps pdf-readme pdf-management pdf-all all list-markdown
 
 # Default target
 .DEFAULT_GOAL := help
@@ -34,6 +34,14 @@ README_MD := README.md
 README_PDF := README.pdf
 MANAGEMENT_MD := ManagementClusterBP.md
 MANAGEMENT_PDF := ManagementClusterBP-Generated.pdf
+
+# Find all markdown files (excluding certain directories)
+MD_FILES := $(shell find . -name '*.md' \
+	-not -path './node_modules/*' \
+	-not -path './.git/*' \
+	-not -path './abi-templater/workingdir/*' \
+	-type f)
+PDF_FILES := $(patsubst %.md,%.pdf,$(MD_FILES))
 
 # Tools
 PANDOC := pandoc
@@ -299,12 +307,129 @@ pdf-management: check-deps ## Generate PDF from ManagementClusterBP.md
 		echo "$(YELLOW)Warning: $(MANAGEMENT_MD) not found, skipping...$(NC)"; \
 	fi
 
-pdf: pdf-readme pdf-management ## Generate all PDF documents
+list-markdown: ## List all markdown files that will be processed
+	@echo "$(GREEN)Found markdown files:$(NC)"
+	@for md in $(MD_FILES); do \
+		echo "  $(BLUE)$$md$(NC) → $${md%.md}.pdf"; \
+	done
+	@echo ""
+	@echo "$(GREEN)Total: $(words $(MD_FILES)) files$(NC)"
+
+pdf-all: check-deps ## Generate PDFs from all markdown files
+	@echo "$(GREEN)Generating PDFs from all markdown files...$(NC)"
+	@# Setup shared configuration
+	@if [ -f /usr/bin/chromium ]; then \
+		CHROMIUM_PATH="/usr/bin/chromium"; \
+	elif [ -f /usr/bin/chromium-browser ]; then \
+		CHROMIUM_PATH="/usr/bin/chromium-browser"; \
+	elif [ -f /usr/bin/google-chrome ]; then \
+		CHROMIUM_PATH="/usr/bin/google-chrome"; \
+	else \
+		CHROMIUM_PATH=""; \
+	fi; \
+	if [ -n "$$CHROMIUM_PATH" ]; then \
+		echo "{\"executablePath\": \"$$CHROMIUM_PATH\", \"args\": [\"--no-sandbox\", \"--disable-setuid-sandbox\"]}" > /tmp/puppeteer-config.json; \
+	else \
+		echo "{\"args\": [\"--no-sandbox\", \"--disable-setuid-sandbox\"]}" > /tmp/puppeteer-config.json; \
+	fi
+	@printf '#!/bin/bash\nexec mmdc --puppeteerConfigFile /tmp/puppeteer-config.json "$$@"\n' > /tmp/mmdc-wrapper.sh
+	@chmod +x /tmp/mmdc-wrapper.sh
+	@# Create LaTeX header
+	@echo '% Deep list nesting support' > /tmp/latex-header.tex
+	@echo '\usepackage{enumitem}' >> /tmp/latex-header.tex
+	@echo '\setlistdepth{9}' >> /tmp/latex-header.tex
+	@echo '\renewlist{itemize}{itemize}{9}' >> /tmp/latex-header.tex
+	@echo '\setlist[itemize,1]{label=$$\bullet$$}' >> /tmp/latex-header.tex
+	@echo '\setlist[itemize,2]{label=$$\circ$$}' >> /tmp/latex-header.tex
+	@echo '\setlist[itemize,3]{label=$$\diamond$$}' >> /tmp/latex-header.tex
+	@echo '\setlist[itemize,4]{label=$$\ast$$}' >> /tmp/latex-header.tex
+	@echo '\setlist[itemize,5]{label=$$\cdot$$}' >> /tmp/latex-header.tex
+	@echo '\setlist[itemize,6]{label=$$\triangleright$$}' >> /tmp/latex-header.tex
+	@echo '\setlist[itemize,7]{label=$$\star$$}' >> /tmp/latex-header.tex
+	@echo '\setlist[itemize,8]{label=$$\dagger$$}' >> /tmp/latex-header.tex
+	@echo '\setlist[itemize,9]{label=$$\ddagger$$}' >> /tmp/latex-header.tex
+	@echo '' >> /tmp/latex-header.tex
+	@echo '% Better font support for box-drawing characters' >> /tmp/latex-header.tex
+	@echo '\usepackage{fontspec}' >> /tmp/latex-header.tex
+	@echo '\setmonofont{Liberation Mono}[Scale=0.9]' >> /tmp/latex-header.tex
+	@echo '' >> /tmp/latex-header.tex
+	@echo '% Prevent code block overflow' >> /tmp/latex-header.tex
+	@echo '\usepackage{fvextra}' >> /tmp/latex-header.tex
+	@echo '\DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,breakanywhere,commandchars=\\\{\}}' >> /tmp/latex-header.tex
+	@echo '' >> /tmp/latex-header.tex
+	@echo '% Ensure images fit within margins and center them' >> /tmp/latex-header.tex
+	@echo '\usepackage{graphicx}' >> /tmp/latex-header.tex
+	@echo '\makeatletter' >> /tmp/latex-header.tex
+	@echo '\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}' >> /tmp/latex-header.tex
+	@echo '\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}' >> /tmp/latex-header.tex
+	@echo '\makeatother' >> /tmp/latex-header.tex
+	@echo '\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}' >> /tmp/latex-header.tex
+	@echo '' >> /tmp/latex-header.tex
+	@echo '% Center all images and figures' >> /tmp/latex-header.tex
+	@echo '\usepackage{float}' >> /tmp/latex-header.tex
+	@echo '\makeatletter' >> /tmp/latex-header.tex
+	@echo '\g@addto@macro\@floatboxreset\centering' >> /tmp/latex-header.tex
+	@echo '\makeatother' >> /tmp/latex-header.tex
+	@echo '\let\origincludegraphics\includegraphics' >> /tmp/latex-header.tex
+	@printf '%s\n' '\renewcommand{\includegraphics}[2][]{\centering\origincludegraphics[#1]{#2}}' >> /tmp/latex-header.tex
+	@# Process each markdown file
+	@for md in $(MD_FILES); do \
+		pdf="$${md%.md}.pdf"; \
+		title=$$(basename "$$md" .md | sed 's/-/ /g' | sed 's/_/ /g'); \
+		echo "$(BLUE)Processing: $$md → $$pdf$(NC)"; \
+		MERMAID_BIN=/tmp/mmdc-wrapper.sh $(PANDOC) "$$md" \
+			-o "$$pdf" \
+			--pdf-engine=xelatex \
+			--from=markdown+hard_line_breaks+pipe_tables+backtick_code_blocks \
+			--to=pdf \
+			--standalone \
+			--toc \
+			--toc-depth=3 \
+			--number-sections \
+			--highlight-style=tango \
+			--variable=geometry:margin=1in \
+			--variable=linkcolor:blue \
+			--variable=urlcolor:blue \
+			--variable=toccolor:blue \
+			--variable=fontsize:11pt \
+			--include-in-header=/tmp/latex-header.tex \
+			--metadata title="$$title" \
+			--metadata author="Documentation Team" \
+			--metadata date="$$(date +'%Y-%m-%d')" \
+			--filter pandoc-mermaid 2>/dev/null || \
+		$(PANDOC) "$$md" \
+			-o "$$pdf" \
+			--pdf-engine=xelatex \
+			--from=markdown+hard_line_breaks+pipe_tables+backtick_code_blocks \
+			--to=pdf \
+			--standalone \
+			--toc \
+			--toc-depth=3 \
+			--number-sections \
+			--highlight-style=tango \
+			--variable=geometry:margin=1in \
+			--variable=linkcolor:blue \
+			--variable=urlcolor:blue \
+			--variable=toccolor:blue \
+			--variable=fontsize:11pt \
+			--include-in-header=/tmp/latex-header.tex \
+			--metadata title="$$title" \
+			--metadata author="Documentation Team" \
+			--metadata date="$$(date +'%Y-%m-%d')"; \
+		if [ $$? -eq 0 ]; then \
+			echo "$(GREEN)✓ Generated $$pdf$(NC)"; \
+		else \
+			echo "$(RED)✗ Failed to generate $$pdf$(NC)"; \
+		fi; \
+	done
 	@echo "$(GREEN)✓ All PDFs generated successfully$(NC)"
+
+pdf: pdf-all ## Generate all PDF documents (default: all markdown files)
+	@echo "$(GREEN)✓ Complete$(NC)"
 
 clean: ## Clean generated PDF files
 	@echo "$(YELLOW)Cleaning generated PDFs and images...$(NC)"
-	@rm -f $(README_PDF) $(MANAGEMENT_PDF)
+	@rm -f $(PDF_FILES)
 	@rm -rf mermaid-images/
 	@echo "$(GREEN)✓ Cleaned successfully$(NC)"
 
