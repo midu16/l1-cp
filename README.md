@@ -153,8 +153,29 @@ hub-demo/working-dir/cluster-resources/
 
 4. [working-dir](./workingdir/) 
 
+This section aims to document the content of the `workingdir/` as a minimal base for deploying and configuring the RH OpenShift Hub Cluster:
 
+```bash
+tree workingdir/
 
+workingdir/
+├── agent-config.yaml
+├── install-config.yaml
+├── install-config.yaml.bak
+└── openshift
+    ├── 98-var-lib-etcd.yaml
+    ├── 99_01_argo.yaml
+    ├── 99-masters-chrony-configuration.yaml
+    ├── catalogSource-cs-redhat-operator-index.yaml
+    ├── disable-operatorhub.yaml
+    └── idms-oc-mirror.yaml
+
+2 directories, 9 files
+```
+
+> [!NOTE]
+> The [catalogSource-cs-redhat-operator-index.yaml](./workingdir/openshift/catalogSource-cs-redhat-operator-index.yaml) content should be the same with the one obtain under `hub-demo/working-dir/cluster-resources/cs-redhat-operator-index-v4-18.yaml`
+> 
 
 5. Generating the `openshift-install`:
 

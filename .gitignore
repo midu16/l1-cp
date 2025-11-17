@@ -32,6 +32,8 @@ venv/
 env/
 ENV/
 .docker/
+hub/
+workingdir/install-config.yaml.bak
 
 # IDE specific files
 .vscode/
