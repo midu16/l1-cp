@@ -5,7 +5,9 @@ The purpose of this repo its to document all the steps in deploying a OpenShiftv
 > [!CAUTION]
 > Unless specified otherwise, everything contained in this repository is unsupported by Red Hat.
 
-[![Generate PDF Documentation](https://github.com/midu16/l1-cp/actions/workflows/generate-pdf.yml/badge.svg?branch=main)](https://github.com/midu16/l1-cp/actions/workflows/generate-pdf.yml) 
+[![Generate PDF Documentation](https://github.com/midu16/l1-cp/actions/workflows/generate-pdf.yml/badge.svg?branch=main)](https://github.com/midu16/l1-cp/actions/workflows/generate-pdf.yml)
+
+
 
 ## Table of Content
 
@@ -117,8 +119,50 @@ graph TB
 
 This section aims to document the 
 
+1. Download the `oc-mirror` client:
+
 ```bash
-oc-mirror -c imageset-config.yaml file://hub-demo/  docker:////infra.5g-deployment.lab:8443/hub-demo  --max-nested-paths 5 --parallel-images 10 --parallel-layers 10 --dest-tls-verify=false
+make download-oc-tools VERSION=4.20.3
 ```
 
+2. Mirror content to AirGapped Registry:
 
+```bash
+./bin/oc-mirror -c imageset-config.yaml --v2 --workspace file://hub-demo/  docker://infra.5g-deployment.lab:8443/hub-demo  --max-nested-paths 10 --parallel-images 10 --parallel-layers 10 --dest-tls-verify=false --log-level debug
+```
+
+3. `hub-demo/` directory content
+
+This section aims to document the content after the mirroring process has finished using the ImageSetConfigurationv2 CR.
+
+```bash
+tree hub-demo/working-dir/
+
+hub-demo/working-dir/cluster-resources/
+├── cc-redhat-operator-index-v4-18.yaml
+├── cs-redhat-operator-index-v4-18.yaml
+├── idms-oc-mirror.yaml
+├── itms-oc-mirror.yaml
+├── signature-configmap.json
+├── signature-configmap.yaml
+└── updateService.yaml
+
+0 directories, 7 files
+
+```
+
+4. [working-dir](./workingdir/) 
+
+
+
+
+5. Generating the `openshift-install`:
+
+```bash
+make generate-openshift-install RELEASE_IMAGE=infra.5g-deployment.lab:8443/hub-demo/openshift/release-images:4.18.27-x86_64
+```
+
+The above command will generate the `openshift-install` binary under the ./bin/ direcotry
+
+
+6. 

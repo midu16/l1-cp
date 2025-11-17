@@ -5,5 +5,5 @@ metadata:
   name: cs-redhat-operator-index
   namespace: openshift-marketplace
 spec:
-  image: quay-2.l1pz-espoo.example.com/unbox/redhat/redhat-operator-index:v4.16
+  image: infra.5g-deployment.lab:8443/hub-demo/redhat/redhat-operator-index:v4.18
   sourceType: grpc

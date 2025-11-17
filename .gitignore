@@ -10,6 +10,12 @@ catalog/index.json
 catalog/opm-*
 catalog/opm-linux-*
 catalog/opm-rhel*
+oc*
+oc-mirror*
+kubectl*
+bin/
+openshift-client-linux-*
+openshift-install-linux-*
 
 # Temporary working directories
 abi-templater/workingdir/
@@ -25,6 +31,7 @@ __pycache__/
 venv/
 env/
 ENV/
+.docker/
 
 # IDE specific files
 .vscode/

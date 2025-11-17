@@ -1,43 +1,42 @@
 apiVersion: v1
-baseDomain: dyn.onebts.espoo.nsn-rdnet.net
+baseDomain: 5g-deployment.lab
 compute:
 - architecture: amd64 
   hyperthreading: Enabled
   name: worker
-  replicas: 1
+  replicas: 0
 controlPlane:
   architecture: amd64
   hyperthreading: Enabled
   name: master
   replicas: 3
 metadata:
-  name: b11oe21mno  
+  name: hub  
 networking:
   clusterNetwork:
   - cidr: 172.21.0.0/16
     hostPrefix: 23
   machineNetwork:
-  - cidr: 10.17.113.96/28
+  - cidr: 172.16.30.0/24
   networkType: OVNKubernetes 
   serviceNetwork:
   - 172.22.0.0/16
 platform: 
   baremetal:
     apiVIPs:
-    - 10.17.113.99
+    - 172.16.30.10
     ingressVIPs:
-    - 10.17.113.98
-pullSecret: '{"auths":{"10.16.33.251:30050":{"auth":"<redacted>"},"registry.example.com:443":{"auth":"<redacted>"},"quay-1.l1pz-espoo.example.com":{"auth":"<redacted>"},"quay-2.l1pz-espoo.example.com":{"auth":"<redacted>"}}}' 
-sshKey: 'ssh-rsa AAAA<redacted> user@work'
+    - 172.16.30.11
+pullSecret: '{"auths":{"infra.5g-deployment.lab:8443":{"auth":"cGk6cmFzcGJlcnJ5"}}}'
+sshKey: 'ssh-ed25519 <redacted>'
 imageContentSources:
   - mirrors:
-    - quay-2.l1pz-espoo.example.com/unbox/openshift/release
+    - infra.5g-deployment.lab:8443/hub-demo/openshift/release
     source: quay.io/openshift-release-dev/ocp-v4.0-art-dev
   - mirrors:
-    - quay-2.l1pz-espoo.example.com/unbox/openshift/release-images
+    - infra.5g-deployment.lab:8443/hub-demo/openshift/release-images
     source: quay.io/openshift-release-dev/ocp-release
 additionalTrustBundle: |
   -----BEGIN CERTIFICATE-----
   <redacted>
   -----END CERTIFICATE-----
-

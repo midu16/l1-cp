@@ -1,4 +1,4 @@
-.PHONY: help pdf clean install-deps check-deps pdf-readme pdf-management pdf-all all list-markdown
+.PHONY: help pdf clean install-deps check-deps pdf-readme pdf-management pdf-all all list-markdown fetch-certificate update-certificate registry-pull-secret update-pull-secret download-oc-tools generate-openshift-install create-agent-iso
 
 # Default target
 .DEFAULT_GOAL := help
@@ -454,6 +454,436 @@ view-management-pdf: ## Open the generated Management PDF
 	else \
 		echo "$(RED)$(MANAGEMENT_PDF) not found. Run 'make pdf-management' first.$(NC)"; \
 	fi
+
+fetch-certificate: ## Fetch registry certificate and update install-config.yaml
+	@echo "$(GREEN)Fetching certificate from registry...$(NC)"
+	@if [ -z "$(REGISTRY_URL)" ]; then \
+		REGISTRY_URL="infra.5g-deployment.lab:8443"; \
+	fi; \
+	echo "$(BLUE)Registry URL: $$REGISTRY_URL$(NC)"; \
+	REGISTRY_HOST=$$(echo $$REGISTRY_URL | cut -d: -f1); \
+	REGISTRY_PORT=$$(echo $$REGISTRY_URL | cut -d: -f2); \
+	if [ -z "$$REGISTRY_PORT" ]; then \
+		REGISTRY_PORT="443"; \
+	fi; \
+	echo "$(BLUE)Fetching certificate from $$REGISTRY_HOST:$$REGISTRY_PORT$(NC)"; \
+	CERT=$$(openssl s_client -connect $$REGISTRY_HOST:$$REGISTRY_PORT -servername $$REGISTRY_HOST \
+		</dev/null 2>/dev/null \
+		| sed -n '/-----BEGIN CERTIFICATE-----/,/-----END CERTIFICATE-----/p'); \
+	if [ -z "$$CERT" ]; then \
+		echo "$(RED)✗ Failed to fetch certificate from $$REGISTRY_HOST:$$REGISTRY_PORT$(NC)"; \
+		exit 1; \
+	fi; \
+	echo "$(GREEN)✓ Certificate fetched successfully$(NC)"; \
+	echo "$$CERT" | head -3; \
+	echo "  ..."; \
+	echo "$$CERT" | tail -1; \
+	if [ -f workingdir/install-config.yaml ]; then \
+		echo "$(BLUE)Updating workingdir/install-config.yaml...$(NC)"; \
+		sed -i.bak '/additionalTrustBundle:/,/-----END CERTIFICATE-----/d' workingdir/install-config.yaml; \
+		echo "additionalTrustBundle: |" >> workingdir/install-config.yaml; \
+		echo "$$CERT" | sed 's/^/  /' >> workingdir/install-config.yaml; \
+		echo "$(GREEN)✓ Updated workingdir/install-config.yaml$(NC)"; \
+		echo "$(YELLOW)Backup saved as: workingdir/install-config.yaml.bak$(NC)"; \
+	else \
+		echo "$(YELLOW)Warning: workingdir/install-config.yaml not found$(NC)"; \
+		echo "$(BLUE)Saving certificate to: workingdir/registry-ca.crt$(NC)"; \
+		mkdir -p workingdir; \
+		echo "$$CERT" > workingdir/registry-ca.crt; \
+		echo "$(GREEN)✓ Certificate saved to workingdir/registry-ca.crt$(NC)"; \
+	fi
+
+update-certificate: fetch-certificate ## Alias for fetch-certificate
+
+registry-pull-secret: ## Generate base64 pull secret and update .docker/config.json and install-config.yaml (USERNAME=user PASSWORD=pass)
+	@echo "$(GREEN)Generating registry pull secret...$(NC)"
+	@if [ -z "$(USERNAME)" ] || [ -z "$(PASSWORD)" ]; then \
+		echo "$(RED)✗ Error: USERNAME and PASSWORD are required$(NC)"; \
+		echo "$(YELLOW)Usage: make registry-pull-secret USERNAME=myuser PASSWORD=mypass$(NC)"; \
+		echo "$(YELLOW)Optional: REGISTRY_URL=infra.5g-deployment.lab:8443$(NC)"; \
+		exit 1; \
+	fi; \
+	if [ -z "$(REGISTRY_URL)" ]; then \
+		REGISTRY_URL="infra.5g-deployment.lab:8443"; \
+	fi; \
+	echo "$(BLUE)Registry URL: $$REGISTRY_URL$(NC)"; \
+	echo "$(BLUE)Username: $(USERNAME)$(NC)"; \
+	echo "$(BLUE)Encoding credentials...$(NC)"; \
+	AUTH_ENCODED=$$(echo -n '$(USERNAME):$(PASSWORD)' | base64 -w 0); \
+	if [ -z "$$AUTH_ENCODED" ]; then \
+		echo "$(RED)✗ Failed to encode credentials$(NC)"; \
+		exit 1; \
+	fi; \
+	echo "$(GREEN)✓ Credentials encoded successfully$(NC)"; \
+	echo "$(BLUE)Encoded auth: $$AUTH_ENCODED$(NC)"; \
+	PULL_SECRET="{\"auths\":{\"$$REGISTRY_URL\":{\"auth\":\"$$AUTH_ENCODED\"}}}"; \
+	echo "$(BLUE)Generated pull secret:$(NC)"; \
+	echo "$$PULL_SECRET" | sed 's/.\{60\}/&\n/g' | sed 's/^/  /'; \
+	mkdir -p .docker; \
+	if [ -f .docker/config.json ]; then \
+		echo "$(BLUE)Updating existing .docker/config.json...$(NC)"; \
+		cp .docker/config.json .docker/config.json.bak; \
+		if command -v jq >/dev/null 2>&1; then \
+			jq --arg registry "$$REGISTRY_URL" --arg auth "$$AUTH_ENCODED" '.auths[$registry] = {"auth": $auth}' .docker/config.json.bak > .docker/config.json || { \
+				echo "$(YELLOW)Warning: jq merge failed, trying Python fallback$(NC)"; \
+				python3 -c "import json, sys; \
+					data = json.load(open('.docker/config.json.bak')); \
+					data.setdefault('auths', {})['$$REGISTRY_URL'] = {'auth': '$$AUTH_ENCODED'}; \
+					json.dump(data, sys.stdout, indent=2)" > .docker/config.json || { \
+					echo "$(RED)✗ Failed to merge config.json, creating new one$(NC)"; \
+					echo "$$PULL_SECRET" > .docker/config.json; \
+				}; \
+			}; \
+		else \
+			echo "$(BLUE)Merging with Python...$(NC)"; \
+			python3 -c "import json, sys; \
+				data = json.load(open('.docker/config.json.bak')); \
+				data.setdefault('auths', {})['$$REGISTRY_URL'] = {'auth': '$$AUTH_ENCODED'}; \
+				json.dump(data, sys.stdout, indent=2)" > .docker/config.json || { \
+				echo "$(RED)✗ Failed to merge config.json, creating new one$(NC)"; \
+				echo "$$PULL_SECRET" > .docker/config.json; \
+			}; \
+		fi; \
+		echo "$(GREEN)✓ Updated .docker/config.json$(NC)"; \
+		echo "$(YELLOW)Backup saved as: .docker/config.json.bak$(NC)"; \
+	else \
+		echo "$(BLUE)Creating new .docker/config.json...$(NC)"; \
+		echo "$$PULL_SECRET" > .docker/config.json; \
+		echo "$(GREEN)✓ Created .docker/config.json$(NC)"; \
+	fi; \
+	if [ -f workingdir/install-config.yaml ]; then \
+		echo "$(BLUE)Updating workingdir/install-config.yaml...$(NC)"; \
+		cp workingdir/install-config.yaml workingdir/install-config.yaml.bak; \
+		sed -i "s|^pullSecret:.*|pullSecret: '$$PULL_SECRET'|" workingdir/install-config.yaml; \
+		echo "$(GREEN)✓ Updated workingdir/install-config.yaml$(NC)"; \
+		echo "$(YELLOW)Backup saved as: workingdir/install-config.yaml.bak$(NC)"; \
+		echo "$(BLUE)Verifying update...$(NC)"; \
+		grep "pullSecret:" workingdir/install-config.yaml; \
+	else \
+		echo "$(YELLOW)Warning: workingdir/install-config.yaml not found$(NC)"; \
+		echo "$(BLUE)Saving pull secret to: workingdir/pull-secret.json$(NC)"; \
+		mkdir -p workingdir; \
+		echo "$$PULL_SECRET" > workingdir/pull-secret.json; \
+		echo "$(GREEN)✓ Pull secret saved to workingdir/pull-secret.json$(NC)"; \
+	fi
+
+update-pull-secret: registry-pull-secret ## Alias for registry-pull-secret
+
+update-sshkey: ## Update SSH key in install-config.yaml from file (SSHKEY_FILE=/path/to/id_rsa.pub)
+	@echo "$(GREEN)Updating SSH key in install-config.yaml...$(NC)"
+	@if [ -z "$(SSHKEY_FILE)" ]; then \
+		echo "$(RED)✗ Error: SSHKEY_FILE parameter is required$(NC)"; \
+		echo "$(YELLOW)Usage: make update-sshkey SSHKEY_FILE=/path/to/id_rsa.pub$(NC)"; \
+		echo "$(YELLOW)Example: make update-sshkey SSHKEY_FILE=~/.ssh/id_rsa.pub$(NC)"; \
+		exit 1; \
+	fi; \
+	SSHKEY_PATH=$$(eval echo $(SSHKEY_FILE)); \
+	echo "$(BLUE)SSH Key File: $$SSHKEY_PATH$(NC)"; \
+	if [ ! -f "$$SSHKEY_PATH" ]; then \
+		echo "$(RED)✗ Error: SSH key file not found: $$SSHKEY_PATH$(NC)"; \
+		exit 1; \
+	fi; \
+	echo "$(BLUE)Reading SSH key from file...$(NC)"; \
+	SSHKEY=$$(cat "$$SSHKEY_PATH"); \
+	if [ -z "$$SSHKEY" ]; then \
+		echo "$(RED)✗ Error: SSH key file is empty$(NC)"; \
+		exit 1; \
+	fi; \
+	echo "$(GREEN)✓ SSH key read successfully$(NC)"; \
+	KEY_TYPE=$$(echo "$$SSHKEY" | awk '{print $$1}'); \
+	KEY_FINGERPRINT=$$(echo "$$SSHKEY" | awk '{print $$2}' | head -c 40); \
+	KEY_COMMENT=$$(echo "$$SSHKEY" | awk '{print $$3}'); \
+	echo "$(BLUE)Key Type: $$KEY_TYPE$(NC)"; \
+	echo "$(BLUE)Fingerprint: $$KEY_FINGERPRINT...$(NC)"; \
+	echo "$(BLUE)Comment: $$KEY_COMMENT$(NC)"; \
+	if [ -f workingdir/install-config.yaml ]; then \
+		echo "$(BLUE)Updating workingdir/install-config.yaml...$(NC)"; \
+		cp workingdir/install-config.yaml workingdir/install-config.yaml.bak; \
+		sed -i "s|^sshKey:.*|sshKey: '$$SSHKEY'|" workingdir/install-config.yaml; \
+		echo "$(GREEN)✓ Updated workingdir/install-config.yaml$(NC)"; \
+		echo "$(YELLOW)Backup saved as: workingdir/install-config.yaml.bak$(NC)"; \
+		echo "$(BLUE)Verifying update...$(NC)"; \
+		grep "sshKey:" workingdir/install-config.yaml | head -c 80; \
+		echo "..."; \
+	else \
+		echo "$(YELLOW)Warning: workingdir/install-config.yaml not found$(NC)"; \
+		echo "$(BLUE)Saving SSH key to: workingdir/sshkey.txt$(NC)"; \
+		mkdir -p workingdir; \
+		echo "$$SSHKEY" > workingdir/sshkey.txt; \
+		echo "$(GREEN)✓ SSH key saved to workingdir/sshkey.txt$(NC)"; \
+	fi
+
+download-oc-tools: ## Download OpenShift client tools (oc-mirror and openshift-client) - requires VERSION (e.g., VERSION=4.20.4)
+	@echo "$(GREEN)Downloading OpenShift client tools...$(NC)"
+	@if [ -z "$(VERSION)" ]; then \
+		echo "$(RED)✗ Error: VERSION variable is not set.$(NC)"; \
+		echo "$(YELLOW)Usage: make download-oc-tools VERSION=4.20.4$(NC)"; \
+		echo "$(YELLOW)Or export VERSION before running: export VERSION=4.20.4 && make download-oc-tools$(NC)"; \
+		exit 1; \
+	fi; \
+	mkdir -p ./bin; \
+	BASE_URL="https://mirror.openshift.com/pub/openshift-v4/clients/ocp/$(VERSION)"; \
+	echo "$(BLUE)Version: $(VERSION)$(NC)"; \
+	echo "$(BLUE)Base URL: $$BASE_URL$(NC)"; \
+	echo "$(BLUE)Downloading oc-mirror.tar.gz...$(NC)"; \
+	curl -L -f -o ./oc-mirror.tar.gz "$$BASE_URL/oc-mirror.tar.gz" || { \
+		echo "$(RED)✗ Failed to download oc-mirror.tar.gz$(NC)"; \
+		exit 1; \
+	}; \
+	echo "$(GREEN)✓ Downloaded oc-mirror.tar.gz$(NC)"; \
+	echo "$(BLUE)Extracting oc-mirror.tar.gz to ./bin/...$(NC)"; \
+	tar -xzf ./oc-mirror.tar.gz -C ./bin/ || { \
+		echo "$(RED)✗ Failed to extract oc-mirror.tar.gz$(NC)"; \
+		exit 1; \
+	}; \
+	OC_MIRROR_PATH=$$(find ./bin -name "oc-mirror" -type f 2>/dev/null | head -1); \
+	if [ -n "$$OC_MIRROR_PATH" ]; then \
+		chmod +x "$$OC_MIRROR_PATH"; \
+		if [ "$$OC_MIRROR_PATH" != "./bin/oc-mirror" ]; then \
+			mv "$$OC_MIRROR_PATH" ./bin/oc-mirror; \
+		fi; \
+		echo "$(GREEN)✓ Extracted and made executable: ./bin/oc-mirror$(NC)"; \
+	else \
+		echo "$(YELLOW)Warning: oc-mirror binary not found in archive$(NC)"; \
+	fi; \
+	echo "$(BLUE)Downloading openshift-client-linux-$(VERSION).tar.gz...$(NC)"; \
+	curl -L -f -o ./openshift-client-linux-$(VERSION).tar.gz "$$BASE_URL/openshift-client-linux-$(VERSION).tar.gz" || { \
+		echo "$(RED)✗ Failed to download openshift-client-linux-$(VERSION).tar.gz$(NC)"; \
+		exit 1; \
+	}; \
+	echo "$(GREEN)✓ Downloaded openshift-client-linux-$(VERSION).tar.gz$(NC)"; \
+	echo "$(BLUE)Extracting openshift-client-linux-$(VERSION).tar.gz to ./bin/...$(NC)"; \
+	tar -xzf ./openshift-client-linux-$(VERSION).tar.gz -C ./bin/ || { \
+		echo "$(RED)✗ Failed to extract openshift-client-linux-$(VERSION).tar.gz$(NC)"; \
+		exit 1; \
+	}; \
+	OC_PATH=$$(find ./bin -name "oc" -type f 2>/dev/null | head -1); \
+	if [ -n "$$OC_PATH" ]; then \
+		chmod +x "$$OC_PATH"; \
+		if [ "$$OC_PATH" != "./bin/oc" ]; then \
+			mv "$$OC_PATH" ./bin/oc; \
+		fi; \
+		echo "$(GREEN)✓ Extracted and made executable: ./bin/oc$(NC)"; \
+	fi; \
+	KUBECTL_PATH=$$(find ./bin -name "kubectl" -type f 2>/dev/null | head -1); \
+	if [ -n "$$KUBECTL_PATH" ]; then \
+		chmod +x "$$KUBECTL_PATH"; \
+		if [ "$$KUBECTL_PATH" != "./bin/kubectl" ]; then \
+			mv "$$KUBECTL_PATH" ./bin/kubectl; \
+		fi; \
+		echo "$(GREEN)✓ Extracted and made executable: ./bin/kubectl$(NC)"; \
+	fi; \
+	echo "$(GREEN)✓ Done. Files extracted to $$(pwd)/bin$(NC)"
+
+generate-openshift-install: ## Generate openshift-install from CatalogSource or release image - requires CATALOGSOURCE_FILE or RELEASE_IMAGE
+	@echo "$(GREEN)Generating openshift-install...$(NC)"
+	@if [ -z "$(CATALOGSOURCE_FILE)" ] && [ -z "$(RELEASE_IMAGE)" ]; then \
+		echo "$(RED)✗ Error: Either CATALOGSOURCE_FILE or RELEASE_IMAGE must be set.$(NC)"; \
+		echo "$(YELLOW)Usage options:$(NC)"; \
+		echo "$(YELLOW)  1. make generate-openshift-install CATALOGSOURCE_FILE=path/to/catalogsource.yaml$(NC)"; \
+		echo "$(YELLOW)  2. make generate-openshift-install RELEASE_IMAGE=registry/release-image:tag$(NC)"; \
+		echo "$(YELLOW)  3. make generate-openshift-install CATALOGSOURCE_FILE=path/to/catalogsource.yaml RELEASE_IMAGE=registry/release-image:tag$(NC)"; \
+		exit 1; \
+	fi; \
+	if [ ! -f ./bin/oc ]; then \
+		echo "$(RED)✗ Error: ./bin/oc not found. Run 'make download-oc-tools VERSION=<version>' first$(NC)"; \
+		exit 1; \
+	fi; \
+	if [ ! -f .docker/config.json ]; then \
+		echo "$(RED)✗ Error: .docker/config.json not found. Docker authentication file is required$(NC)"; \
+		echo "$(YELLOW)Create the file or run 'make registry-pull-secret USERNAME=user PASSWORD=pass'$(NC)"; \
+		exit 1; \
+	fi; \
+	RELEASE_IMAGE_URL=""; \
+	if [ -n "$(RELEASE_IMAGE)" ]; then \
+		RELEASE_IMAGE_URL="$(RELEASE_IMAGE)"; \
+		echo "$(BLUE)Using provided RELEASE_IMAGE: $$RELEASE_IMAGE_URL$(NC)"; \
+	elif [ -n "$(CATALOGSOURCE_FILE)" ]; then \
+		CATALOGSOURCE_PATH=$$(eval echo $(CATALOGSOURCE_FILE)); \
+		echo "$(BLUE)CatalogSource file: $$CATALOGSOURCE_PATH$(NC)"; \
+		if [ ! -f "$$CATALOGSOURCE_PATH" ]; then \
+			echo "$(RED)✗ Error: CatalogSource file not found: $$CATALOGSOURCE_PATH$(NC)"; \
+			exit 1; \
+		fi; \
+		echo "$(BLUE)Extracting image from CatalogSource...$(NC)"; \
+		CATALOG_IMAGE=$$(grep -A 1 "^spec:" "$$CATALOGSOURCE_PATH" | grep "image:" | sed 's/.*image:[[:space:]]*//' | tr -d '"' | tr -d "'" | xargs); \
+		if [ -z "$$CATALOG_IMAGE" ]; then \
+			echo "$(RED)✗ Error: Could not extract image from CatalogSource file$(NC)"; \
+			echo "$(YELLOW)Expected format: spec.image: <image-url>$(NC)"; \
+			exit 1; \
+		fi; \
+		echo "$(GREEN)✓ Extracted CatalogSource image: $$CATALOG_IMAGE$(NC)"; \
+		echo "$(BLUE)Extracting version and registry from CatalogSource image...$(NC)"; \
+		VERSION_TAG=$$(echo "$$CATALOG_IMAGE" | sed 's/.*://'); \
+		REGISTRY_AND_PATH=$$(echo "$$CATALOG_IMAGE" | sed 's|:[^:]*$$||'); \
+		REGISTRY_HOST_PORT=$$(echo "$$REGISTRY_AND_PATH" | cut -d'/' -f1); \
+		FULL_PATH=$$(echo "$$REGISTRY_AND_PATH" | cut -d'/' -f2-); \
+		REPO_BASE=$$(echo "$$FULL_PATH" | cut -d'/' -f1); \
+		VERSION=$$(echo "$$VERSION_TAG" | sed 's/^v//'); \
+		if [ -z "$$VERSION" ]; then \
+			echo "$(RED)✗ Error: Could not extract version from CatalogSource image tag$(NC)"; \
+			echo "$(YELLOW)Please specify RELEASE_IMAGE directly: make generate-openshift-install RELEASE_IMAGE=registry/release-image:tag$(NC)"; \
+			exit 1; \
+		fi; \
+		if [ -z "$$REPO_BASE" ]; then \
+			REPO_BASE="hub-demo"; \
+		fi; \
+		echo "$(BLUE)Detected version: $$VERSION$(NC)"; \
+		echo "$(BLUE)Registry: $$REGISTRY_HOST_PORT$(NC)"; \
+		echo "$(BLUE)Repository base: $$REPO_BASE$(NC)"; \
+		if echo "$$VERSION" | grep -qE "\.[0-9]+-"; then \
+			RELEASE_TAG="$$VERSION"; \
+			echo "$(BLUE)Using provided full version tag: $$RELEASE_TAG$(NC)"; \
+		else \
+			echo "$(BLUE)Querying registry for available tags...$(NC)"; \
+			REGISTRY_USER_VAL="$(REGISTRY_USER)"; \
+			REGISTRY_PASS_VAL="$(REGISTRY_PASS)"; \
+			if [ -z "$$REGISTRY_USER_VAL" ] || [ -z "$$REGISTRY_PASS_VAL" ]; then \
+				echo "$(YELLOW)Warning: REGISTRY_USER and REGISTRY_PASS not set, trying to extract from .docker/config.json$(NC)"; \
+				if [ -f .docker/config.json ]; then \
+					AUTH_DATA=$$(python3 -c "import json, sys, base64; \
+						data = json.load(open('.docker/config.json')); \
+						registry = '$$REGISTRY_HOST_PORT'; \
+						if 'auths' in data and registry in data['auths'] and 'auth' in data['auths'][registry]: \
+							auth = base64.b64decode(data['auths'][registry]['auth']).decode('utf-8'); \
+							print(auth)" 2>/dev/null); \
+					if [ -n "$$AUTH_DATA" ]; then \
+						REGISTRY_USER_VAL=$$(echo "$$AUTH_DATA" | cut -d':' -f1); \
+						REGISTRY_PASS_VAL=$$(echo "$$AUTH_DATA" | cut -d':' -f2); \
+					fi; \
+				fi; \
+			fi; \
+			if [ -z "$$REGISTRY_USER_VAL" ] || [ -z "$$REGISTRY_PASS_VAL" ]; then \
+				echo "$(RED)✗ Error: Cannot determine registry credentials$(NC)"; \
+				echo "$(YELLOW)Please set REGISTRY_USER and REGISTRY_PASS or ensure .docker/config.json contains auth for $$REGISTRY_HOST_PORT$(NC)"; \
+				exit 1; \
+			fi; \
+			REGISTRY_API_URL="https://$$REGISTRY_HOST_PORT/v2/$$REPO_BASE/openshift/release-images/tags/list"; \
+			echo "$(BLUE)Querying: $$REGISTRY_API_URL$(NC)"; \
+			TAGS_JSON=$$(curl -s -u "$$REGISTRY_USER_VAL:$$REGISTRY_PASS_VAL" -k "$$REGISTRY_API_URL" 2>/dev/null); \
+			if [ -z "$$TAGS_JSON" ]; then \
+				echo "$(RED)✗ Error: Failed to query registry tags$(NC)"; \
+				echo "$(YELLOW)Please check credentials and registry URL$(NC)"; \
+				exit 1; \
+			fi; \
+			if command -v jq >/dev/null 2>&1; then \
+				MATCHING_TAG=$$(echo "$$TAGS_JSON" | jq -r --arg version "$$VERSION" '.tags[] | select(startswith($version + ".") and (endswith("-x86_64")))' | sort -V -r | head -1); \
+			else \
+				MATCHING_TAG=$$(echo "$$TAGS_JSON" | python3 -c "import json, sys; \
+					try: \
+						data = json.load(sys.stdin); \
+						version = '$$VERSION'; \
+						tags = data.get('tags', []); \
+						if not tags: \
+							sys.exit(1); \
+						matching = [t for t in tags if t.startswith(version + '.') and t.endswith('-x86_64')]; \
+						if matching: \
+							matching.sort(reverse=True); \
+							print(matching[0]); \
+						else: \
+							sys.exit(1); \
+					except Exception as e: \
+						sys.exit(1)" 2>/dev/null); \
+			fi; \
+			if [ -z "$$MATCHING_TAG" ] || [ "$$MATCHING_TAG" = "null" ]; then \
+				echo "$(RED)✗ Error: No matching tag found for version $$VERSION$(NC)"; \
+				echo "$(BLUE)Registry response:$(NC)"; \
+				if command -v jq >/dev/null 2>&1; then \
+					echo "$$TAGS_JSON" | jq '.'; \
+				else \
+					echo "$$TAGS_JSON"; \
+				fi; \
+				echo "$(YELLOW)Available tags:$(NC)"; \
+				if command -v jq >/dev/null 2>&1; then \
+					echo "$$TAGS_JSON" | jq -r '.tags[]' | head -20; \
+				else \
+					echo "$$TAGS_JSON" | python3 -c "import json, sys; data = json.load(sys.stdin); print('\\n'.join(data.get('tags', [])))" 2>/dev/null | head -20; \
+				fi; \
+				echo "$(YELLOW)Please specify RELEASE_IMAGE directly or check the version pattern$(NC)"; \
+				exit 1; \
+			fi; \
+			RELEASE_TAG="$$MATCHING_TAG"; \
+			echo "$(GREEN)✓ Found matching tag: $$RELEASE_TAG$(NC)"; \
+		fi; \
+		RELEASE_IMAGE_URL="$$REGISTRY_HOST_PORT/$$REPO_BASE/openshift/release-images:$$RELEASE_TAG"; \
+		echo "$(BLUE)Using release image: $$RELEASE_IMAGE_URL$(NC)"; \
+	fi; \
+	mkdir -p ./bin; \
+	mkdir -p ./workingdir/openshift; \
+	if [ ! -f ./workingdir/openshift/idms-oc-mirror.yaml ]; then \
+		echo "$(YELLOW)Warning: ./workingdir/openshift/idms-oc-mirror.yaml not found, creating empty file$(NC)"; \
+		touch ./workingdir/openshift/idms-oc-mirror.yaml; \
+	fi; \
+	echo "$(BLUE)Extracting openshift-install from release image: $$RELEASE_IMAGE_URL$(NC)"; \
+	./bin/oc adm release extract --registry-config=.docker/config.json \
+		--idms-file=./workingdir/openshift/idms-oc-mirror.yaml \
+		--command=openshift-install \
+		--to=./bin \
+		"$$RELEASE_IMAGE_URL" || { \
+		echo "$(RED)✗ Failed to extract openshift-install from release image$(NC)"; \
+		echo "$(YELLOW)Possible reasons:$(NC)"; \
+		echo "$(YELLOW)  1. The release image tag format may be different (e.g., 4.18.27-x86_64 instead of 4.18-x86_64)$(NC)"; \
+		echo "$(YELLOW)  2. The release image URL path is incorrect$(NC)"; \
+		echo "$(YELLOW)  3. Authentication failed - check .docker/config.json$(NC)"; \
+		if [ -n "$$REGISTRY_HOST_PORT" ] && [ -n "$$REPO_BASE" ]; then \
+			echo "$(YELLOW)To find the correct release image tag, you can:$(NC)"; \
+			echo "$(YELLOW)  1. Check your registry for available tags:$(NC)"; \
+			echo "$(YELLOW)     skopeo list-tags docker://$$REGISTRY_HOST_PORT/$$REPO_BASE/openshift/release-images$(NC)"; \
+			echo "$(YELLOW)  2. Or query with oc:$(NC)"; \
+			echo "$(YELLOW)     ./bin/oc adm release info --registry-config=.docker/config.json $$REGISTRY_HOST_PORT/$$REPO_BASE/openshift/release-images:4.18*$(NC)"; \
+			echo "$(YELLOW)Solution: Specify RELEASE_IMAGE directly with the full tag:$(NC)"; \
+			echo "$(YELLOW)  make generate-openshift-install RELEASE_IMAGE=$$REGISTRY_HOST_PORT/$$REPO_BASE/openshift/release-images:4.18.27-x86_64$(NC)"; \
+			echo "$(YELLOW)Note: The command uses --idms-file=./workingdir/openshift/idms-oc-mirror.yaml$(NC)"; \
+		else \
+			echo "$(YELLOW)Solution: Specify RELEASE_IMAGE directly with the full release image path and tag$(NC)"; \
+		fi; \
+		exit 1; \
+	}; \
+	if [ -f ./bin/openshift-install ]; then \
+		chmod +x ./bin/openshift-install; \
+		echo "$(GREEN)✓ Generated and made executable: ./bin/openshift-install$(NC)"; \
+	else \
+		echo "$(YELLOW)Warning: openshift-install binary not found after extraction$(NC)"; \
+	fi; \
+	echo "$(GREEN)✓ Done. openshift-install extracted to $$(pwd)/bin$(NC)"
+
+create-agent-iso: ## Create agent ISO image - copies workingdir to ./hub/ and runs openshift-install agent create image
+	@echo "$(GREEN)Creating agent ISO image...$(NC)"
+	@if [ ! -f ./bin/openshift-install ]; then \
+		echo "$(RED)✗ Error: ./bin/openshift-install not found$(NC)"; \
+		echo "$(YELLOW)Run 'make generate-openshift-install' first to generate openshift-install$(NC)"; \
+		exit 1; \
+	fi; \
+	if [ ! -d ./workingdir ]; then \
+		echo "$(RED)✗ Error: ./workingdir directory not found$(NC)"; \
+		echo "$(YELLOW)Ensure ./workingdir exists with required configuration files$(NC)"; \
+		exit 1; \
+	fi; \
+	echo "$(BLUE)Creating ./hub/ directory...$(NC)"; \
+	rm -rf ./hub; \
+	mkdir -p ./hub; \
+	echo "$(GREEN)✓ Created ./hub/ directory$(NC)"; \
+	echo "$(BLUE)Copying content from ./workingdir/ to ./hub/...$(NC)"; \
+	cp -r ./workingdir/* ./hub/ 2>/dev/null || { \
+		echo "$(YELLOW)Warning: Some files may not have been copied$(NC)"; \
+	}; \
+	if [ -d ./workingdir/. ]; then \
+		cp -r ./workingdir/.[!.]* ./hub/ 2>/dev/null || true; \
+	fi; \
+	echo "$(GREEN)✓ Copied content to ./hub/$(NC)"; \
+	echo "$(BLUE)Running openshift-install agent create image...$(NC)"; \
+	./bin/openshift-install agent create image --dir ./hub/. --log-level debug || { \
+		echo "$(RED)✗ Failed to create agent ISO image$(NC)"; \
+		echo "$(YELLOW)Check the logs above for details$(NC)"; \
+		exit 1; \
+	}; \
+	if [ -f ./hub/agent.iso ]; then \
+		echo "$(GREEN)✓ Agent ISO created successfully: ./hub/agent.iso$(NC)"; \
+	else \
+		echo "$(YELLOW)Warning: agent.iso not found in ./hub/ directory$(NC)"; \
+		echo "$(YELLOW)Check the output above for any errors$(NC)"; \
+	fi; \
+	echo "$(GREEN)✓ Done. Agent ISO generation completed$(NC)"
 
 all: clean pdf ## Clean and generate all PDFs
 	@echo "$(GREEN)✓ Complete PDF generation workflow finished successfully$(NC)"
