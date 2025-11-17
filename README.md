@@ -5,7 +5,7 @@ The purpose of this repo its to document all the steps in deploying a OpenShiftv
 > [!CAUTION]
 > Unless specified otherwise, everything contained in this repository is unsupported by Red Hat.
 
-
+[![Generate PDF Documentation](https://github.com/midu16/l1-cp/actions/workflows/generate-pdf.yml/badge.svg?branch=main)](https://github.com/midu16/l1-cp/actions/workflows/generate-pdf.yml) 
 
 ## Table of Content
 
