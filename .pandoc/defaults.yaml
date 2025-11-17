@@ -1,0 +1,56 @@
+# Pandoc defaults for PDF generation
+# This file provides default settings for generating PDFs from Markdown
+
+reader: markdown
+writer: pdf
+
+# PDF Engine
+pdf-engine: xelatex
+
+# Markdown extensions
+from: markdown+hard_line_breaks+pipe_tables+backtick_code_blocks+fenced_code_attributes+definition_lists+footnotes+inline_notes+superscript+subscript
+
+# Output options
+standalone: true
+toc: true
+toc-depth: 3
+number-sections: true
+
+# Syntax highlighting
+highlight-style: tango
+
+# Variables
+variables:
+  geometry:
+    - margin=1in
+    - paperheight=11in
+    - paperwidth=8.5in
+  fontsize: 11pt
+  linestretch: 1.25
+  linkcolor: blue
+  urlcolor: blue
+  toccolor: blue
+  citecolor: blue
+  colorlinks: true
+  links-as-notes: false
+  mainfont: DejaVu Sans
+  monofont: DejaVu Sans Mono
+  header-includes: |
+    \usepackage{enumitem}
+    \setlistdepth{9}
+    \renewlist{itemize}{itemize}{9}
+    \setlist[itemize,1]{label=$\bullet$}
+    \setlist[itemize,2]{label=$\circ$}
+    \setlist[itemize,3]{label=$\diamond$}
+    \setlist[itemize,4]{label=$\ast$}
+    \setlist[itemize,5]{label=$\cdot$}
+    \setlist[itemize,6]{label=$\triangleright$}
+    \setlist[itemize,7]{label=$\star$}
+    \setlist[itemize,8]{label=$\dagger$}
+    \setlist[itemize,9]{label=$\ddagger$}
+  
+# Metadata
+metadata:
+  date: $date$
+  lang: en-US
+

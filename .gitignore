@@ -1,0 +1,41 @@
+# oc-mirror log files
+.oc-mirror.log
+**/.oc-mirror.log
+
+# Custom operator index directory and all its contents
+catalog/custom-operator-index/
+
+# OPM binaries
+catalog/opm-*
+catalog/opm-linux-*
+catalog/opm-rhel*
+
+# Temporary working directories
+abi-templater/workingdir/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS specific files
+.DS_Store
+Thumbs.db
+*.pdf
+
+# Mermaid generated images
+mermaid-images/

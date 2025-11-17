@@ -8,6 +8,7 @@ The purpose of this repo its to document all the steps in deploying a CloudPlatf
 ## Table of Contents
 - [L1-CloudPlatform](#l1-cloudplatform)
   - [Table of Contents](#table-of-contents)
+  - [Documentation](#documentation)
   - [Method of Procedure](#method-of-procedure)
     - [Prerequisites](#prerequisites)
       - [High Level Diagram of the Hub Set-up:](#high-level-diagram-of-the-hub-set-up)
@@ -49,8 +50,90 @@ _Install a local, minimal single instance deployment of an git-server to aid the
 
 #### High Level Diagram of the Hub Set-up:
 
-![HighLevelDiagram](./media/c__Users_idumi_OneDrive_Documents_GitHub_l1-cp_media_HighLevelDiagram.png)
+```mermaid
+graph TB
+    subgraph Internet["Internet"]
+        RH_Registry["Red Hat Public Registry<br/>quay.io<br/>registry.redhat.io"]
+    end
+    
+    subgraph JumpHost["Jump-Host Environment"]
+        Bastion["Bastion Host"]
+    end
 
+    subgraph Machine Network["Infrastructure Services"]
+        Registry["AirGapped<br/>Registry"]
+        HTTPServer["HTTP(s)-<br/>server"]
+        DNSServer["DNS-server"]
+        GitServer["Git-server"]
+    end
+    
+    subgraph AirGapped["AirGapped Environment"]
+        subgraph HubCluster["Red Hat Hub Cluster"]
+            subgraph Operators["Day-2 Operators"]
+                GitOps["GitOps Operator"]
+                ACM["AdvancedClusterManagement"]
+                MCE["MultiClusterEngine"]
+                ODF["OpenDataFundation"]
+                LSO["LocalStorageOperator"]
+                Kafka["Kafka Operator"]
+                Logging["ClusterLoggingOperator"]
+            end
+            
+            OCP["OpenShift 4.16.15"]
+            
+            subgraph Masters["Control Plane Nodes"]
+                Master0["master0<br/>ens43f0"]
+                Master1["master1<br/>ens43f0"]
+                Master2["master2<br/>ens43f0"]
+            end
+        end
+        
+        Network["Network: 10.17.113.100/24"]
+    end
+    
+    RH_Registry -->|Download Images| Bastion
+    Bastion -.->|Mirror Content| Registry
+    Bastion -.->|Transfer Files| HTTPServer
+    Bastion -.->|Configure| DNSServer
+    Bastion -.->|Push Config| GitServer
+    
+    Registry -->|Pull Images| OCP
+    HTTPServer -->|RHCOS Images| OCP
+    DNSServer -->|DNS Resolution| OCP
+    GitServer -->|GitOps Config| GitOps
+    
+    OCP -->|Platform| Operators
+    Operators -->|Deploy on| Masters
+    
+    Master0 ---|10.17.113.100| Network
+    Master1 ---|10.17.113.101| Network
+    Master2 ---|10.17.113.102| Network
+    
+    Registry ---|Machine Network| Network
+    HTTPServer ---|Machine Network| Network
+    DNSServer ---|Machine Network| Network
+    GitServer ---|Machine Network| Network
+    
+    style Internet fill:#e1f5ff,stroke:#0066cc
+    style JumpHost fill:#fff4e6,stroke:#ff9800
+    style AirGapped fill:#ffe6e6,stroke:#d32f2f
+    style HubCluster fill:#fff9e6,stroke:#ff9800
+    style Operators fill:#e8f5e9,stroke:#4caf50
+    style OCP fill:#ffebee,stroke:#f44336
+    style Masters fill:#f5f5f5,stroke:#757575
+    style Infrastructure fill:#f3e5f5,stroke:#9c27b0
+    style GitOps fill:#c8e6c9,stroke:#4caf50
+    style ACM fill:#c8e6c9,stroke:#4caf50
+    style MCE fill:#c8e6c9,stroke:#4caf50
+    style ODF fill:#c8e6c9,stroke:#4caf50
+    style LSO fill:#c8e6c9,stroke:#4caf50
+    style Kafka fill:#c8e6c9,stroke:#4caf50
+    style Logging fill:#c8e6c9,stroke:#4caf50
+```
+
+<!-- This is a comment 
+![HighLevelDiagram](./media/c__Users_idumi_OneDrive_Documents_GitHub_l1-cp_media_HighLevelDiagram.png)
+-->
 ### Step 0. Download the pre-requisites binaries
 
 > [!WARNING]
@@ -983,3 +1066,4 @@ If you are redeploying the OCP Cluster and the application disks were previously
 ```bash
 # sgdisk --zap-all /dev/sdb && sudo wipefs -a /dev/sdb
 ```
+

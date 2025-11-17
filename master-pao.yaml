@@ -1,0 +1,30 @@
+apiVersion: performance.openshift.io/v2
+kind: PerformanceProfile
+metadata:
+  name: mno-wp-sched-master
+  annotations:
+    kubeletconfig.experimental: |
+      {"systemReserved": {"memory": "8Gi"}, "topologyManagerScope": "pod"}
+spec:
+  cpu:
+    isolated: "4-39"          # Use 36 cores for workload
+    reserved: "0-3"           # Reserve 4 cores for system/kubelet
+  hugepages:
+    defaultHugepagesSize: "1G"
+    pages:
+      - count: 32
+        size: "1G"
+        node: 0
+  nodeSelector:
+    node-role.kubernetes.io/master: ""
+  numa:
+    topologyPolicy: restricted
+  realTimeKernel:
+    enabled: false
+  workloadHints:
+    highPowerConsumption: false
+    realTime: false
+    perPodPowerManagement: true
+  globallyDisableIrqLoadBalancing: false
+  additionalKernelArgs:
+    - "nohz_full=4-39"

@@ -1,0 +1,28 @@
+---
+# This YAML file defines a Namespace for the Pod
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-ns
+---
+# This YAML file defines a Pod that uses the performance runtime class
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test
+  namespace: test-ns
+  annotations:
+    cpu-quota.crio.io: "disable"              # Disable CFS cpu quota accounting
+    cpu-load-balancing.crio.io: "disable"     # Disable CPU balance with CRIO
+    irq-load-balancing.crio.io: "disable"     # Opt-out from interrupt handling
+spec:
+  runtimeClassName: performance-mno-wp-sched-master  # Map to the correct performance class
+  containers:
+    - name: main
+      image: registry.access.redhat.com/ubi8-micro:latest
+      command: ["/bin/sh", "-c", "--"]
+      args: ["while true; do sleep 99999999; done;"]
+      resources:
+        limits:
+          memory: "2Gi"
+          cpu: "4"

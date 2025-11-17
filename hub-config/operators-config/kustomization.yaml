@@ -17,7 +17,7 @@ resources:
   - 99_00_lsoConfig.yaml
   - 99_01_odfConfig.yaml 
   - 99_02_ocsStorageClusterCephfs.yaml
-  - 99_02_observabilityStorage.yaml
+#  - 99_02_observabilityStorage.yaml
   - 99_03_openshiftAmqStreams.yaml
   - 99_03_openshiftClusterLoggingv604.yaml
   - ./s3_bucket/01_ibu-odf-s3-storage.yaml
