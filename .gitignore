@@ -4,6 +4,7 @@
 
 # Custom operator index directory and all its contents
 catalog/custom-operator-index/
+catalog/index.json
 
 # OPM binaries
 catalog/opm-*

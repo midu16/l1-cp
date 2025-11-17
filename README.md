@@ -1,6 +1,6 @@
 # L1-CloudPlatform
 
-The purpose of this repo its to document all the steps in deploying a OpenShift4.Y.Z Hub Cluster wich deploy, manage and monitor a number of Spoke(s) OCP Clusters.
+The purpose of this repo its to document all the steps in deploying a OpenShiftv4.Y.Z Hub Cluster wich deploy, manage and monitor a number of Spoke(s) OCP Clusters.
 
 > [!CAUTION]
 > Unless specified otherwise, everything contained in this repository is unsupported by Red Hat.
