@@ -51,7 +51,6 @@ spec:
     name: kafka-output
     type: kafka
     tls:
-    tls:
       ca:
         secretName: kafka-secret
         key: ca-bundle.crt
