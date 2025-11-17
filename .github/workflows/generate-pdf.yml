@@ -62,45 +62,4 @@ jobs:
           path: '*.pdf'
           retention-days: 90
           if-no-files-found: error
-          
-      - name: Create Release (on main/master branch)
-        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TAG_NAME="docs-$(date +'%Y%m%d-%H%M%S')"
-          
-          # Create release notes
-          cat > release-notes.md <<'RELEASE_EOF'
-          # Documentation PDF Release
-          
-          Generated from commit: `${{ github.sha }}`
-          
-          ## Files
-          - **README.pdf** - Main documentation
-          - **ManagementClusterBP-Generated.pdf** - Management Cluster Best Practices
-          
-          ## Commit Information
-          - **Author**: ${{ github.actor }}
-          - **Branch**: ${{ github.ref_name }}
-          - **Repository**: ${{ github.repository }}
-          
-          ## Generation Details
-          - **Date**: $(date +'%Y-%m-%d %H:%M:%S UTC')
-          - **Workflow**: ${{ github.workflow }}
-          - **Run Number**: ${{ github.run_number }}
-          - **Run ID**: ${{ github.run_id }}
-          
-          ## Download
-          PDFs are attached to this release and also available in [workflow artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}).
-          RELEASE_EOF
-          
-          # Create release
-          gh release create "$TAG_NAME" \
-            *.pdf \
-            --repo ${{ github.repository }} \
-            --title "Documentation PDFs - $(date +'%Y-%m-%d')" \
-            --notes-file release-notes.md \
-            --latest=false
 
