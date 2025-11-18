@@ -125,19 +125,34 @@ graph TB
 
 This section aims to document the 
 
-1. Download the `oc-mirror` client:
+1. clone the `l1-cp` repo locally:
 
 ```bash
-make download-oc-tools VERSION=4.20.3
+git clone git@github.com:midu16/l1-cp.git
+cd l1-cp/
 ```
+> [!NOTE]
+> All the configurations and changes are going to be referenced to the directory and content structure of the `l1-cp` repository.
 
-2. Mirror content to AirGapped Registry:
+2. Download the `oc-mirror` client:
 
 ```bash
-./bin/oc-mirror -c imageset-config.yaml --v2 --workspace file://hub-demo/  docker://infra.5g-deployment.lab:8443/hub-demo  --max-nested-paths 10 --parallel-images 10 --parallel-layers 10 --dest-tls-verify=false --log-level debug
+make download-oc-tools VERSION=4.18.27
 ```
 
-3. `hub-demo/` directory content
+2. Render the `imageset-config.yml` content:
+
+```bash
+make imageset-config.yml OCP_VERSION=4.18.27
+```
+
+3. Mirror content to AirGapped Registry:
+
+```bash
+./bin/oc-mirror -c imageset-config.yml --v2 --workspace file://hub-demo/  docker://infra.5g-deployment.lab:8443/hub-demo  --max-nested-paths 10 --parallel-images 10 --parallel-layers 10 --dest-tls-verify=false --log-level debug
+```
+
+4. `hub-demo/` directory content
 
 This section aims to document the content after the mirroring process has finished using the ImageSetConfigurationv2 CR.
 
@@ -169,7 +184,6 @@ tree workingdir/
 workingdir/
 ├── agent-config.yaml
 ├── install-config.yaml
-├── install-config.yaml.bak
 └── openshift
     ├── 98-var-lib-etcd.yaml
     ├── 99_01_argo.yaml
@@ -178,12 +192,20 @@ workingdir/
     ├── disable-operatorhub.yaml
     └── idms-oc-mirror.yaml
 
-2 directories, 9 files
+2 directories, 8 files
 ```
 
 > [!NOTE]
 > The [catalogSource-cs-redhat-operator-index.yaml](./workingdir/openshift/catalogSource-cs-redhat-operator-index.yaml) content should be the same with the one obtain under `hub-demo/working-dir/cluster-resources/cs-redhat-operator-index-v4-18.yaml`
 > 
+
+Custom the `install-config.yaml` file with the secrets:
+
+```bash
+make fetch-certificate
+make registry-pull-secret USERNAME=pi PASSWORD=raspberry
+make update-sshkey SSHKEY_FILE=${HOME}/.ssh/id_rsa.pub
+```
 
 2. Generating the `openshift-install`:
 
@@ -193,8 +215,13 @@ make generate-openshift-install RELEASE_IMAGE=infra.5g-deployment.lab:8443/hub-d
 
 The above command will generate the `openshift-install` binary under the ./bin/ direcotry
 
+3. Geberate the `agent.iso` file:
 
-3. Create the Hub VMs:
+```bash
+cp -r hub/agent.x86_64.iso /opt/webcache/data/agent.x86_64.iso
+```
+
+4. Create the Hub VMs:
 
 ```bash
 kcli create vm -P start=True -P uefi_legacy=true -P plan=hub -P memory=71680 -P numcpus=40 -P disks=[300,100,50] -P nets=['{"name": "br0", "mac": "aa:aa:aa:aa:01:01"}'] -P uuid=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa0101 -P name=hub-ctlplane-0 -P iso=/opt/webcache/data/agent.x86_64.iso

@@ -1,4 +1,4 @@
-.PHONY: help pdf clean install-deps check-deps pdf-readme pdf-management pdf-all all list-markdown fetch-certificate update-certificate registry-pull-secret update-pull-secret download-oc-tools generate-openshift-install create-agent-iso
+.PHONY: help pdf clean install-deps check-deps pdf-readme pdf-management pdf-all all list-markdown fetch-certificate update-certificate registry-pull-secret update-pull-secret download-oc-tools generate-openshift-install create-agent-iso imageset-config.yml
 
 # Default target
 .DEFAULT_GOAL := help
@@ -884,6 +884,25 @@ create-agent-iso: ## Create agent ISO image - copies workingdir to ./hub/ and ru
 		echo "$(YELLOW)Check the output above for any errors$(NC)"; \
 	fi; \
 	echo "$(GREEN)✓ Done. Agent ISO generation completed$(NC)"
+
+imageset-config.yml: ## Generate templated imageset-config.yml (requires OCP_VERSION, e.g., OCP_VERSION=4.18.27)
+	@echo "$(GREEN)Generating imageset-config.yml...$(NC)"
+	@if [ -z "$(OCP_VERSION)" ]; then \
+		echo "$(RED)✗ Error: OCP_VERSION variable is not set.$(NC)"; \
+		echo "$(YELLOW)Usage: make imageset-config.yml OCP_VERSION=4.18.27$(NC)"; \
+		echo "$(YELLOW)Or export OCP_VERSION before running: export OCP_VERSION=4.18.27 && make imageset-config.yml$(NC)"; \
+		exit 1; \
+	fi; \
+	if [ ! -f ./imageset-config.sh ]; then \
+		echo "$(RED)✗ Error: ./imageset-config.sh not found$(NC)"; \
+		exit 1; \
+	fi; \
+	chmod +x ./imageset-config.sh; \
+	OCP_VERSION="$(OCP_VERSION)" IMAGESET_OUTPUT_FILE="imageset-config.yml" ./imageset-config.sh -g || { \
+		echo "$(RED)✗ Failed to generate imageset-config.yml$(NC)"; \
+		exit 1; \
+	}; \
+	echo "$(GREEN)✓ Generated imageset-config.yml with OCP_VERSION=$(OCP_VERSION)$(NC)"
 
 all: clean pdf ## Clean and generate all PDFs
 	@echo "$(GREEN)✓ Complete PDF generation workflow finished successfully$(NC)"
