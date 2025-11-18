@@ -10,6 +10,12 @@ The purpose of this repo its to document all the steps in deploying a OpenShiftv
 
 
 ## Table of Content
+- [L1-CloudPlatform](#l1-cloudplatform)
+  - [Table of Content](#table-of-content)
+    - [High Level Architecture](#high-level-architecture)
+    - [Mirror to AirGapped Registry](#mirror-to-airgapped-registry)
+    - [Preparing the Installation](#preparing-the-installation)
+    - [Start the Installation](#start-the-installation)
 
 ### High Level Architecture 
 
@@ -151,7 +157,9 @@ hub-demo/working-dir/cluster-resources/
 
 ```
 
-4. [working-dir](./workingdir/) 
+### Preparing the Installation
+
+1. [working-dir](./workingdir/) 
 
 This section aims to document the content of the `workingdir/` as a minimal base for deploying and configuring the RH OpenShift Hub Cluster:
 
@@ -177,7 +185,7 @@ workingdir/
 > The [catalogSource-cs-redhat-operator-index.yaml](./workingdir/openshift/catalogSource-cs-redhat-operator-index.yaml) content should be the same with the one obtain under `hub-demo/working-dir/cluster-resources/cs-redhat-operator-index-v4-18.yaml`
 > 
 
-5. Generating the `openshift-install`:
+2. Generating the `openshift-install`:
 
 ```bash
 make generate-openshift-install RELEASE_IMAGE=infra.5g-deployment.lab:8443/hub-demo/openshift/release-images:4.18.27-x86_64
@@ -186,10 +194,39 @@ make generate-openshift-install RELEASE_IMAGE=infra.5g-deployment.lab:8443/hub-d
 The above command will generate the `openshift-install` binary under the ./bin/ direcotry
 
 
-6. Create the Hub VMs:
+3. Create the Hub VMs:
 
 ```bash
 kcli create vm -P start=True -P uefi_legacy=true -P plan=hub -P memory=71680 -P numcpus=40 -P disks=[300,100,50] -P nets=['{"name": "br0", "mac": "aa:aa:aa:aa:01:01"}'] -P uuid=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa0101 -P name=hub-ctlplane-0 -P iso=/opt/webcache/data/agent.x86_64.iso
+
 kcli create vm -P start=True -P uefi_legacy=true -P plan=hub -P memory=71680 -P numcpus=40 -P disks=[300,100,50] -P nets=['{"name": "br0", "mac": "aa:aa:aa:aa:01:02"}'] -P uuid=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa0102 -P name=hub-ctlplane-1 -P iso=/opt/webcache/data/agent.x86_64.iso
+
 kcli create vm -P start=True -P uefi_legacy=true -P plan=hub -P memory=71680 -P numcpus=40 -P disks=[300,100,50] -P nets=['{"name": "br0", "mac": "aa:aa:aa:aa:01:03"}'] -P uuid=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa0103 -P name=hub-ctlplane-2 -P iso=/opt/webcache/data/agent.x86_64.iso
+```
+
+
+> [!NOTE]
+> The cleaning of the HUB VMs, can be achieved through the following command:
+
+```bash
+kcli delete plan hub -y
+
+hub-ctlplane-0 deleted on local!
+hub-ctlplane-1 deleted on local!
+hub-ctlplane-2 deleted on local!
+Plan hub deleted!
+```
+
+### Start the Installation
+
+1. Monitoring the installation progress
+
+```bash
+./bin/openshift-install --dir ./hub/. agent wait-for install-complete --log-level=info
+
+INFO Waiting for cluster install to initialize. Sleeping for 30 seconds 
+INFO Waiting for cluster install to initialize. Sleeping for 30 seconds 
+INFO Cannot access Rendezvous Host. There may be a network configuration problem, check console for additional info 
+INFO Bootstrap Kube API Initialized               
+...
 ```
