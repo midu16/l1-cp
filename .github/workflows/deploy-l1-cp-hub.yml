@@ -132,7 +132,7 @@ jobs:
 
       - name: 📦 Mirror images to AirGapped registry
         run: |
-          DOCKER_CONFIG=/root/.docker ./bin/oc-mirror -c imageset-config.yml --v2 \
+          sudo DOCKER_CONFIG=/root/.docker ./bin/oc-mirror -c imageset-config.yml --v2 \
             --workspace file://hub-demo/ \
             docker://"${REGISTRY_URL}"/hub-demo \
             --max-nested-paths 10 --parallel-images 10 --parallel-layers 10 \
