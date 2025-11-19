@@ -1,185 +1,182 @@
 name: deploy-l1-cp-hub
 
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-l1-cp-hub
+  cancel-in-progress: false
+
 on:
   workflow_dispatch:
     inputs:
       ocp_version:
-        description: 'OpenShift version (e.g., 4.18.27)'
+        description: "OpenShift version (e.g., 4.18.27)"
         required: true
-        default: '4.18.27'
+        default: "4.18.27"
       registry_url:
-        description: 'AirGapped Registry URL'
+        description: "AirGapped Registry URL"
         required: true
-        default: 'infra.5g-deployment.lab:8443'
-      registry_username:
-        description: 'Registry username'
-        required: true
-        default: 'pi'
-      registry_password:
-        description: 'Registry password'
-        required: true
-        type: password
+        default: "infra.5g-deployment.lab:8443"
       remote_host:
-        description: 'Remote host for seed VM (optional)'
+        description: "Remote host for seed VM (optional)"
         required: false
-        default: ''
+        default: ""
       vm_name:
-        description: 'Seed VM name (optional)'
+        description: "Seed VM name (optional)"
         required: false
-        default: 'sno1'
+        default: "sno1"
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  OCP_VERSION: ${{ github.event.inputs.ocp_version }}
+  REGISTRY_URL: ${{ github.event.inputs.registry_url }}
+  REMOTE_HOST: ${{ github.event.inputs.remote_host }}
+  VM_NAME: ${{ github.event.inputs.vm_name }}
+  KUBECONFIG_PATH: ${{ github.workspace }}/hub/auth/kubeconfig
 
 jobs:
+
   clean-hub:
     runs-on: [self-hosted, linux, x64]
     timeout-minutes: 30
+
+    env:
+      REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+      REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+
     steps:
-    - name: Fix permissions
-      run: |
-        sudo chmod -R u+rwX ${RUNNER_WORKSPACE}/l1-cp/ || true
-    - name: Ensure that older artefacts are removed 
-      run: 'sudo rm -rf ${RUNNER_WORKSPACE}/l1-cp/*' || true
     - uses: actions/checkout@v4
-    - name: Set up environment variables
+
+    - name: 🔧 Fix workspace permissions
       run: |
-        echo "OCP_VERSION=${{ github.event.inputs.ocp_version }}" >> $GITHUB_ENV
-        echo "REGISTRY_URL=${{ github.event.inputs.registry_url }}" >> $GITHUB_ENV
-        echo "REGISTRY_USERNAME=${{ github.event.inputs.registry_username }}" >> $GITHUB_ENV
-        echo "REGISTRY_PASSWORD=${{ github.event.inputs.registry_password }}" >> $GITHUB_ENV
-        echo "REMOTE_HOST=${{ github.event.inputs.remote_host }}" >> $GITHUB_ENV
-        echo "VM_NAME=${{ github.event.inputs.vm_name }}" >> $GITHUB_ENV
-        echo "KUBECONFIG_PATH=$(pwd)/hub/auth/kubeconfig" >> $GITHUB_ENV
-    - name: Clean up previous RHACM Virtual Hub
-      run: "sudo kcli delete cluster --yes hub || true"
-    - name: Clean up the previous AirGapped Registry content
-      run: "sudo rm -rf /home/registry/data/docker || true"
-    - name: Restart the podman-registry.service
-      run: "sudo systemctl restart podman-registry.service; sudo systemctl status podman-registry.service || true"
-    - name: Remove the seed cluster VM (if remote host provided)
+        sudo chmod -R u+rwX "${RUNNER_WORKSPACE}/l1-cp/" || true
+
+    - name: 🧹 Remove older artifacts
+      run: |
+        sudo rm -rf ${RUNNER_WORKSPACE}/l1-cp/*
+        echo "Cleanup done"
+
+    - name: 🗑️ Clean up previous RHACM Virtual Hub
+      run: sudo kcli delete cluster --yes hub || true
+
+    - name: 🗑️ Clean up old registry content
+      run: sudo rm -rf /home/registry/data/docker || true
+
+    - name: 🔄 Restart podman-registry
+      run: |
+        sudo systemctl restart podman-registry.service
+        sudo systemctl status podman-registry.service || true
+
+    - name: 🧹 Remove remote Seed VM (if provided)
       if: env.REMOTE_HOST != ''
       run: |
-        REMOTE_HOST="${{ env.REMOTE_HOST }}"
-        VM_NAME="${{ env.VM_NAME }}"
+        REMOTE="${REMOTE_HOST}"
+        VM="${VM_NAME}"
         SSH_TIMEOUT=30
         
-        echo "🧹 Cleaning up $VM_NAME Seed cluster VM..."
-        echo "Remote host: $REMOTE_HOST"
-        echo "VM name: $VM_NAME"
-        echo ""
-        
-        # Test SSH connectivity first
-        echo "Testing SSH connectivity to $REMOTE_HOST..."
-        if ! timeout $SSH_TIMEOUT sudo ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=yes "$REMOTE_HOST" echo "SSH connection successful" 2>/dev/null; then
-          echo "⚠️  Warning: Could not establish SSH connection to $REMOTE_HOST"
-          echo "Skipping VM deletion - this may be expected if the host is unreachable"
+        echo "🧹 Cleaning Seed VM: $VM on $REMOTE"
+
+        if ! timeout $SSH_TIMEOUT sudo ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$REMOTE" true 2>/dev/null; then
+          echo "⚠️ Could not SSH to $REMOTE — skipping VM cleanup"
           exit 0
         fi
-        
-        # Check if VM exists before attempting deletion
-        echo "Checking if VM $VM_NAME exists on $REMOTE_HOST..."
-        VM_EXISTS=$(timeout $SSH_TIMEOUT sudo ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$REMOTE_HOST" "kcli list vm 2>/dev/null | grep -q '^$VM_NAME' && echo 'yes' || echo 'no'" 2>/dev/null || echo "no")
-        
-        if [ "$VM_EXISTS" = "no" ]; then
-          echo "ℹ️  VM $VM_NAME does not exist on $REMOTE_HOST - nothing to delete"
-          echo "✅ Cleanup step completed (no action needed)"
-          exit 0
-        fi
-        
-        echo "VM $VM_NAME found. Proceeding with deletion..."
-        
-        # Delete the VM with proper error handling
-        DELETE_OUTPUT=$(timeout $SSH_TIMEOUT sudo ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$REMOTE_HOST" "kcli delete vm $VM_NAME -y" 2>&1)
-        DELETE_EXIT_CODE=$?
-        
-        if [ $DELETE_EXIT_CODE -eq 0 ]; then
-          echo "✅ Successfully initiated deletion of VM $VM_NAME"
-          echo "$DELETE_OUTPUT"
-          
-          # Wait a moment and verify deletion
-          echo ""
-          echo "Verifying VM deletion..."
-          sleep 5
-          VM_STILL_EXISTS=$(timeout $SSH_TIMEOUT sudo ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$REMOTE_HOST" "kcli list vm 2>/dev/null | grep -q '^$VM_NAME' && echo 'yes' || echo 'no'" 2>/dev/null || echo "no")
-          
-          if [ "$VM_STILL_EXISTS" = "no" ]; then
-            echo "✅ VM $VM_NAME successfully deleted and verified"
-          else
-            echo "⚠️  Warning: VM $VM_NAME may still exist (deletion in progress or failed)"
-            echo "This is non-fatal - continuing with workflow"
-          fi
+
+        if timeout $SSH_TIMEOUT sudo ssh "$REMOTE" "kcli list vm | grep -q '^$VM'"; then
+          echo "Deleting VM $VM ..."
+          sudo ssh "$REMOTE" "kcli delete vm $VM -y" || true
         else
-          echo "⚠️  Warning: Failed to delete VM $VM_NAME (exit code: $DELETE_EXIT_CODE)"
-          echo "Command output: $DELETE_OUTPUT"
-          echo "This is non-fatal - continuing with workflow"
-          exit 0
+          echo "ℹ️ VM $VM not found on remote host"
         fi
 
   build-hub:
     runs-on: [self-hosted, linux, x64]
     timeout-minutes: 180
     needs: clean-hub
+
+    env:
+      REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+      REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+      REPO_PATH: ${{ github.workspace }}
+
     steps:
-    - name: Set up environment variables
-      run: | 
-        echo "KUBECONFIG_PATH=$(pwd)/hub/auth/kubeconfig" >> $GITHUB_ENV
-        echo "OCP_VERSION=${{ github.event.inputs.ocp_version }}" >> $GITHUB_ENV
-        echo "REGISTRY_URL=${{ github.event.inputs.registry_url }}" >> $GITHUB_ENV
-        echo "REGISTRY_USERNAME=${{ github.event.inputs.registry_username }}" >> $GITHUB_ENV
-        echo "REGISTRY_PASSWORD=${{ github.event.inputs.registry_password }}" >> $GITHUB_ENV
-        echo "REMOTE_HOST=${{ github.event.inputs.remote_host }}" >> $GITHUB_ENV
-        echo "VM_NAME=${{ github.event.inputs.vm_name }}" >> $GITHUB_ENV
-        echo "REPO_PATH=$(pwd)" >> $GITHUB_ENV
+
     - uses: actions/checkout@v4
-    - name: Download the OCP version bound clients
+
+    - name: 📥 Download OCP tools
+      run: sudo make download-oc-tools VERSION="${OCP_VERSION}"
+
+    - name: 📝 Render imageset-config.yml
+      run: sudo make imageset-config.yml OCP_VERSION="${OCP_VERSION}"
+
+    - name: 🔍 Validate AirGapped registry catalog
       run: |
-        sudo make download-oc-tools VERSION=${{ env.OCP_VERSION }}
-    - name: Render the imageset-config.yml file content
+        sudo curl -sk -u "${REGISTRY_USERNAME}:${REGISTRY_PASSWORD}" \
+          "https://${REGISTRY_URL}/v2/_catalog" | jq . || \
+          echo "⚠️ Registry check failed (non-fatal)"
+
+    - name: 📦 Mirror images to AirGapped registry
       run: |
-        sudo make imageset-config.yml OCP_VERSION=${{ env.OCP_VERSION }}
-    - name: Check the AirGapped Registry Content
+        ./bin/oc-mirror -c imageset-config.yml --v2 \
+          --workspace file://hub-demo/ \
+          docker://"${REGISTRY_URL}"/hub-demo \
+          --max-nested-paths 10 --parallel-images 10 --parallel-layers 10 \
+          --dest-tls-verify=false --log-level debug
+
+    - name: ⚙️ Prepare install-config
       run: |
-        sudo curl -k -u ${{ env.REGISTRY_USERNAME }}:${{ env.REGISTRY_PASSWORD }} https://${{ env.REGISTRY_URL }}/v2/_catalog | jq . || echo "Registry check failed, continuing..."
-    - name: Mirror the imageset-config.yml to the AirGapped Registry
+        sudo make fetch-certificate REGISTRY_URL="${REGISTRY_URL}"
+        sudo make registry-pull-secret USERNAME="${REGISTRY_USERNAME}" PASSWORD="${REGISTRY_PASSWORD}" REGISTRY_URL="${REGISTRY_URL}"
+        sudo make update-sshkey SSHKEY_FILE="$HOME/.ssh/id_rsa.pub"
+
+    - name: 🔧 Generate openshift-install binary
       run: |
-        ./bin/oc-mirror -c imageset-config.yml --v2 --workspace file://hub-demo/ docker://${{ env.REGISTRY_URL }}/hub-demo --max-nested-paths 10 --parallel-images 10 --parallel-layers 10 --dest-tls-verify=false --log-level debug
-    - name: Custom the install-config.yaml file 
+        sudo make generate-openshift-install \
+          RELEASE_IMAGE="${REGISTRY_URL}/hub-demo/openshift/release-images:${OCP_VERSION}-x86_64"
+
+    - name: 💿 Generate agent ISO
+      run: sudo make create-agent-iso
+
+    - name: 📤 Copy agent ISO to webcache
       run: |
-        sudo make fetch-certificate REGISTRY_URL=${{ env.REGISTRY_URL }}
-        sudo make registry-pull-secret USERNAME=${{ env.REGISTRY_USERNAME }} PASSWORD=${{ env.REGISTRY_PASSWORD }} REGISTRY_URL=${{ env.REGISTRY_URL }}
-        sudo make update-sshkey SSHKEY_FILE=${HOME}/.ssh/id_rsa.pub
-    - name: Generating the openshift-install cli
+        SRC=$(ls hub/agent*.iso | head -n1 || true)
+        if [[ -z "$SRC" ]]; then
+          echo "❌ No agent ISO found"; exit 1
+        fi
+        sudo cp "$SRC" /opt/webcache/data/agent.x86_64.iso
+        echo "✅ Copied $SRC to /opt/webcache/data/"
+
+    - name: 🖥️ Create Hub VMs
       run: |
-        sudo make generate-openshift-install RELEASE_IMAGE=${{ env.REGISTRY_URL }}/hub-demo/openshift/release-images:${{ env.OCP_VERSION }}-x86_64
-    - name: Generate agent ISO
+        for i in 0 1 2; do
+          MAC="aa:aa:aa:aa:01:0$((i+1))"
+          UUID="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa010$((i+1))"
+          sudo kcli create vm \
+            -P start=True -P uefi_legacy=true -P plan=hub \
+            -P memory=71680 -P numcpus=40 -P disks=[300,100,50] \
+            -P nets="[{'name': 'br0', 'mac': '$MAC'}]" \
+            -P uuid="$UUID" \
+            -P name="hub-ctlplane-$i" \
+            -P iso=/opt/webcache/data/agent.x86_64.iso
+        done
+
+    - name: ⏱️ Wait for installation to complete
+      run: sudo ./bin/openshift-install --dir ./hub/ agent wait-for install-complete --log-level=info
+
+    - name: ⏱️ Wait for Cluster Operators
+      run: sudo oc --kubeconfig="${KUBECONFIG_PATH}" wait --for=condition=Available clusteroperators --all --timeout=1800s
+
+    - name: 🚨 Validate no degraded operators
       run: |
-        sudo make create-agent-iso
-    - name: Copy agent ISO to webcache directory
-      run: |
-        sudo mkdir -p /opt/webcache/data || true
-        if [ -f hub/agent.x86_64.iso ]; then
-          sudo cp hub/agent.x86_64.iso /opt/webcache/data/agent.x86_64.iso
-          echo "✅ Copied hub/agent.x86_64.iso to /opt/webcache/data/"
-        elif [ -f hub/agent.iso ]; then
-          sudo cp hub/agent.iso /opt/webcache/data/agent.x86_64.iso
-          echo "✅ Copied hub/agent.iso to /opt/webcache/data/agent.x86_64.iso"
-        else
-          echo "⚠️  Warning: No agent ISO found. Checking hub directory..."
-          ls -la hub/*.iso 2>/dev/null || echo "No ISO files found in hub directory"
+        degraded=$(sudo oc --kubeconfig="${KUBECONFIG_PATH}" get clusteroperators -o json | jq -r '.items[] | select(.status.conditions[] | select(.type=="Degraded" and .status=="True")) | .metadata.name')
+        if [[ -n "$degraded" ]]; then
+          echo "❌ Degraded operators detected: $degraded"
           exit 1
         fi
-    - name: Creating the hub VMs 
-      run: |
-        sudo kcli create vm -P start=True -P uefi_legacy=true -P plan=hub -P memory=71680 -P numcpus=40 -P disks=[300,100,50] -P nets=['{"name": "br0", "mac": "aa:aa:aa:aa:01:01"}'] -P uuid=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa0101 -P name=hub-ctlplane-0 -P iso=/opt/webcache/data/agent.x86_64.iso
-        sudo kcli create vm -P start=True -P uefi_legacy=true -P plan=hub -P memory=71680 -P numcpus=40 -P disks=[300,100,50] -P nets=['{"name": "br0", "mac": "aa:aa:aa:aa:01:02"}'] -P uuid=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa0102 -P name=hub-ctlplane-1 -P iso=/opt/webcache/data/agent.x86_64.iso
-        sudo kcli create vm -P start=True -P uefi_legacy=true -P plan=hub -P memory=71680 -P numcpus=40 -P disks=[300,100,50] -P nets=['{"name": "br0", "mac": "aa:aa:aa:aa:01:03"}'] -P uuid=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa0103 -P name=hub-ctlplane-2 -P iso=/opt/webcache/data/agent.x86_64.iso
-    - name: Monitoring the hub installation
-      run: |
-        sudo ./bin/openshift-install --dir ./hub/. agent wait-for install-complete --log-level=info
-    - name: Wait for all Cluster Operators to be Available
-      run: "sudo oc --kubeconfig=${{ env.KUBECONFIG_PATH }} wait --for=condition=Available clusteroperators --all --timeout=1800s"
-    - name: Verify no Cluster Operators are Degraded
-      run: |
-        sudo oc --kubeconfig=${{ env.KUBECONFIG_PATH }} get clusteroperators -o json | \
-        jq -r '.items[] | select(.status.conditions[] | select(.type=="Degraded" and .status=="True")) | .metadata.name' | \
-        if read -r degraded; then echo "Degraded operators found: $degraded"; exit 1; else echo "No degraded operators found"; fi
-    - name: Display Cluster Operators status
-      run: "sudo oc --kubeconfig=${{ env.KUBECONFIG_PATH }} get clusteroperators"
+        echo "✅ No degraded Operators"
+
+    - name: 📋 Print final Operator status
+      run: sudo oc --kubeconfig="${KUBECONFIG_PATH}" get clusteroperators
