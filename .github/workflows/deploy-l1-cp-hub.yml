@@ -50,7 +50,7 @@ jobs:
     steps:
       - name: 🧹 Fix workspace ownership (prevents EACCES)
         run: |
-          sudo chown -R $(whoami):$(whoami) "${GITHUB_WORKSPACE}/l1-cp"
+          sudo chown -R $(whoami):$(whoami) "${GITHUB_WORKSPACE}/"
 
       - uses: actions/checkout@v4
         with:
