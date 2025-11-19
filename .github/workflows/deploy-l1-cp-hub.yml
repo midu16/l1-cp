@@ -70,7 +70,7 @@ jobs:
           git -C "${GITHUB_WORKSPACE}/l1-cp" clean -fdx || true
 
       - name: 🗑️ Clean up previous RHACM Virtual Hub
-        run: sudo kcli delete cluster --yes hub || true
+        run: sudo kcli delete plan hub -y
 
       - name: 🗑️ Clean up old registry content
         run: sudo rm -rf /home/registry/data/docker || true
