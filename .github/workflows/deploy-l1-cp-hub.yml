@@ -1,4 +1,4 @@
-name: deploy-l1-cp-hub
+name: Deploy Hub Cluster
 
 permissions:
   contents: read
@@ -185,3 +185,7 @@ jobs:
 
       - name: 📋 Print final Operator status
         run: sudo oc --kubeconfig="${KUBECONFIG_PATH}" get clusteroperators
+      - name: 📋 Moke kubeconfig to /root/.kcli/clusters/hub/auth/ path
+        run: |
+          sudo mkdir -p /root/.kcli/clusters/hub/auth/
+          sudo cp "${KUBECONFIG_PATH}" /root/.kcli/clusters/hub/auth/kubeconfig

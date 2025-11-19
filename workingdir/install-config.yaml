@@ -27,7 +27,7 @@ platform:
     - 172.16.30.10
     ingressVIPs:
     - 172.16.30.11
-pullSecret: '{"auths":{"infra.5g-deployment.lab:8443":{"auth":"cGk6cmFzcGJlcnJ5"}}}'
+pullSecret: '{"auths":{"infra.5g-deployment.lab:8443":{"auth":"<redacted>"}}}'
 sshKey: 'ssh-ed25519 <redacted>'
 imageContentSources:
   - mirrors:

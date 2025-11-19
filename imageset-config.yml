@@ -81,6 +81,10 @@ mirror:
           minVersion: 'v1.3.6'
           maxVersion: 'v1.3.6'
     - name: 'compliance-operator'
+      channels:
+        - name: 'stable'
+          minVersion: 'v1.7.1'
+          maxVersion: 'v1.7.1'
     - name: 'kernel-module-management'
       channels:
         - name: 'stable'
@@ -107,8 +111,20 @@ mirror:
           minVersion: 'v3.15.2'
           maxVersion: 'v3.15.2'
     - name: 'redhat-oadp-operator'
+      channels:
+        - name: 'stable-1.4'
+          minVersion: 'v1.4.7'
+          maxVersion: 'v1.4.7'
     - name: 'servicemeshoperator'
+      channels:
+        - name: 'stable'
+          minVersion: 'v2.6.11'
+          maxVersion: 'v2.6.11'
     - name: 'rhbk-operator'
+      channels:
+        - name: 'stable-v26.4'
+          minVersion: 'v26.4.4-opr.1'
+          maxVersion: 'v26.4.4-opr.1'
     - name: 'lifecycle-agent'
       channels:
         - name: 'stable'
