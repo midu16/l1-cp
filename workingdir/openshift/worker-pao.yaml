@@ -7,18 +7,21 @@ metadata:
       {"systemReserved": {"memory": "8Gi"}, "topologyManagerScope": "pod"}
 spec:
   cpu:
-    isolated: "4-39"          # Use 36 cores for workload
-    reserved: "0-3"           # Reserve 4 cores for system/kubelet
+    isolated: 2-19,22-39       # Use 36 cores for workload
+    reserved: 0-1,20-21       # Reserve 4 cores for system/kubelet
   hugepages:
     defaultHugepagesSize: "1G"
     pages:
       - count: 32
         size: "1G"
         node: 0
+  kernelPageSize: 4k
+  net:
+    userLevelNetworking: true
   nodeSelector:
     node-role.kubernetes.io/worker: ""
   numa:
-    topologyPolicy: restricted
+    topologyPolicy: single-numa-node
   realTimeKernel:
     enabled: false
   workloadHints:
@@ -27,4 +30,4 @@ spec:
     perPodPowerManagement: true
   globallyDisableIrqLoadBalancing: false
   additionalKernelArgs:
-    - "nohz_full=4-39"
+    - "nohz_full=2-19,22-39"

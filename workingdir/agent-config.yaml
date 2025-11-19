@@ -100,3 +100,65 @@ hosts:
             next-hop-address: 172.16.30.1
             next-hop-interface: enp1s0
             table-id: 254
+  - hostname: hub-worker-0.hub.5g-deployment.lab
+    role: master
+    interfaces:
+      - name: enp1s0
+        macAddress: aa:aa:aa:aa:01:04
+    rootDeviceHints:
+      deviceName: "/dev/vda"
+    networkConfig:
+      interfaces:
+        - name: enp1s0
+          type: ethernet
+          state: up
+          mac-address: aa:aa:aa:aa:01:04
+          ipv4:
+            enabled: true
+            address:
+              - ip: 172.16.30.23
+                prefix-length: 24
+            dhcp: false
+          ipv6:
+            enabled: false
+      dns-resolver:
+        config:
+          server:
+            - 172.16.30.1
+      routes:
+        config:
+          - destination: 0.0.0.0/0
+            next-hop-address: 172.16.30.1
+            next-hop-interface: enp1s0
+            table-id: 254
+  - hostname: hub-worker-1.hub.5g-deployment.lab
+    role: master
+    interfaces:
+      - name: enp1s0
+        macAddress: aa:aa:aa:aa:01:05
+    rootDeviceHints:
+      deviceName: "/dev/vda"
+    networkConfig:
+      interfaces:
+        - name: enp1s0
+          type: ethernet
+          state: up
+          mac-address: aa:aa:aa:aa:01:05
+          ipv4:
+            enabled: true
+            address:
+              - ip: 172.16.30.24
+                prefix-length: 24
+            dhcp: false
+          ipv6:
+            enabled: false
+      dns-resolver:
+        config:
+          server:
+            - 172.16.30.1
+      routes:
+        config:
+          - destination: 0.0.0.0/0
+            next-hop-address: 172.16.30.1
+            next-hop-interface: enp1s0
+            table-id: 254
