@@ -51,15 +51,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: 🔧 Fix workspace permissions
-      run: |
-        sudo chmod -R u+rwX "${RUNNER_WORKSPACE}/l1-cp/" || true
-
-    - name: 🧹 Remove older artifacts
-      run: |
-        sudo rm -rf ${RUNNER_WORKSPACE}/l1-cp/*
-        echo "Cleanup done"
-
     - name: 🗑️ Clean up previous RHACM Virtual Hub
       run: sudo kcli delete cluster --yes hub || true
 
