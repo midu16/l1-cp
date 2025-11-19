@@ -48,11 +48,24 @@ jobs:
       REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
 
     steps:
-      - uses: actions/checkout@v4
-
-      - name: 🧹 Reset repository safely
+      - name: 🧹 Fix workspace ownership (prevents EACCES)
         run: |
           sudo chown -R $(whoami):$(whoami) "${GITHUB_WORKSPACE}/l1-cp"
+
+      - uses: actions/checkout@v4
+        with:
+          repository: midu16/l1-cp
+          token: ${{ secrets.GITHUB_TOKEN }}
+          clean: true
+          persist-credentials: true
+          fetch-depth: 1
+          fetch-tags: false
+          submodules: false
+          lfs: false
+          set-safe-directory: true
+
+      - name: 🧹 Safe workspace cleanup (extra precaution)
+        run: |
           git -C "${GITHUB_WORKSPACE}/l1-cp" reset --hard || true
           git -C "${GITHUB_WORKSPACE}/l1-cp" clean -fdx || true
 
