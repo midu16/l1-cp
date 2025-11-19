@@ -524,7 +524,6 @@ generate_imageset_config() {
     'amq-streams'
     'quay-operator'
     'redhat-oadp-operator'
-    'servicemeshoperator'
     'rhbk-operator'
     'lifecycle-agent'
   )
