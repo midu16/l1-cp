@@ -117,20 +117,19 @@ jobs:
         sudo curl -sk -u "${REGISTRY_USERNAME}:${REGISTRY_PASSWORD}" \
           "https://${REGISTRY_URL}/v2/_catalog" | jq . || \
           echo "⚠️ Registry check failed (non-fatal)"
-
-    - name: 📦 Mirror images to AirGapped registry
-      run: |
-        ./bin/oc-mirror -c imageset-config.yml --v2 \
-          --workspace file://hub-demo/ \
-          docker://"${REGISTRY_URL}"/hub-demo \
-          --max-nested-paths 10 --parallel-images 10 --parallel-layers 10 \
-          --dest-tls-verify=false --log-level debug
-
     - name: ⚙️ Prepare install-config
       run: |
         sudo make fetch-certificate REGISTRY_URL="${REGISTRY_URL}"
         sudo make registry-pull-secret USERNAME="${REGISTRY_USERNAME}" PASSWORD="${REGISTRY_PASSWORD}" REGISTRY_URL="${REGISTRY_URL}"
-        sudo make update-sshkey SSHKEY_FILE="$HOME/.ssh/id_rsa.pub"
+        sudo make update-sshkey SSHKEY_FILE="/root/.ssh/id_rsa.pub"
+
+    - name: 📦 Mirror images to AirGapped registry
+      run: |
+        DOCKER_CONFIG=/root/.docker/ ./bin/oc-mirror -c imageset-config.yml --v2 \
+          --workspace file://hub-demo/ \
+          docker://"${REGISTRY_URL}"/hub-demo \
+          --max-nested-paths 10 --parallel-images 10 --parallel-layers 10 \
+          --dest-tls-verify=false --log-level debug
 
     - name: 🔧 Generate openshift-install binary
       run: |
