@@ -101,7 +101,7 @@ hosts:
             next-hop-interface: enp1s0
             table-id: 254
   - hostname: hub-worker-0.hub.5g-deployment.lab
-    role: master
+    role: worker
     interfaces:
       - name: enp1s0
         macAddress: aa:aa:aa:aa:01:04
@@ -132,7 +132,7 @@ hosts:
             next-hop-interface: enp1s0
             table-id: 254
   - hostname: hub-worker-1.hub.5g-deployment.lab
-    role: master
+    role: worker
     interfaces:
       - name: enp1s0
         macAddress: aa:aa:aa:aa:01:05
