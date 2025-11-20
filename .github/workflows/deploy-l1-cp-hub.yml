@@ -70,7 +70,12 @@ jobs:
           git -C "${GITHUB_WORKSPACE}/l1-cp" clean -fdx || true
 
       - name: 🗑️ Clean up previous RHACM Virtual Hub
-        run: sudo kcli delete plan hub -y
+        run: |
+          if sudo kcli list plan | grep -q "^hub "; then
+            sudo kcli delete plan hub -y
+          else
+            echo "Plan hub does not exist — skipping deletion."
+          fi
 
       - name: 🗑️ Clean up old registry content
         run: sudo rm -rf /home/registry/data/docker || true
