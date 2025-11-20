@@ -172,17 +172,6 @@ jobs:
               -P name="hub-ctlplane-$i" \
               -P iso=/opt/webcache/data/agent.x86_64.iso
           done
-          for i in 0 1; do
-            MAC="aa:aa:aa:aa:01:0$((i+4))"
-            UUID="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa010$((i+4))"
-            sudo kcli create vm \
-              -P start=True -P uefi_legacy=true -P plan=hub \
-              -P memory=71680 -P numcpus=40 -P disks=[300,100,50] \
-              -P nets="[{'name': 'br0', 'mac': '$MAC'}]" \
-              -P uuid="$UUID" \
-              -P name="hub-worker-$i" \
-              -P iso=/opt/webcache/data/agent.x86_64.iso
-          done
 
       - name: ⏱️ Wait for installation to complete
         run: sudo ./bin/openshift-install --dir ./hub/ agent wait-for install-complete --log-level=info
