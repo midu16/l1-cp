@@ -11,9 +11,9 @@ spec:
     server: 'https://kubernetes.default.svc'
   source:
     path: hub-config/operators-deployment
-    repoURL: 'git@10.23.223.72:/home/git/acm.git'
+    repoURL: 'https://github.com/midu16/l1-cp.git'
     targetRevision: master
-  project: default
+  project: hub-config
   syncPolicy:
     automated:
       prune: false
@@ -37,9 +37,9 @@ spec:
     server: 'https://kubernetes.default.svc'
   source:
     path: hub-config/operators-config
-    repoURL: 'git@10.23.223.72:/home/git/acm.git'
+    repoURL: 'https://github.com/midu16/l1-cp.git'
     targetRevision: master
-  project: default
+  project: hub-config
   syncPolicy:
     automated:
       prune: false

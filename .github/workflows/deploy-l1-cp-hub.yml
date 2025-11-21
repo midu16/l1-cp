@@ -166,7 +166,7 @@ jobs:
             UUID="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa010$((i+1))"
             sudo kcli create vm \
               -P start=True -P uefi_legacy=true -P plan=hub \
-              -P memory=71680 -P numcpus=40 -P disks=[300,100,50] \
+              -P memory=71680 -P numcpus=40 -P disks=[200,50,250] \
               -P nets="[{'name': 'br0', 'mac': '$MAC'}]" \
               -P uuid="$UUID" \
               -P name="hub-ctlplane-$i" \
@@ -177,7 +177,7 @@ jobs:
         run: sudo ./bin/openshift-install --dir ./hub/ agent wait-for install-complete --log-level=info
 
       - name: ⏱️ Wait for Cluster Operators
-        run: sudo oc --kubeconfig="${KUBECONFIG_PATH}" wait --for=condition=Available clusteroperators --all --timeout=1800s
+        run: sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" wait --for=condition=Available clusteroperators --all --timeout=1800s
 
       - name: 🚨 Validate no degraded operators
         run: |
@@ -194,3 +194,8 @@ jobs:
         run: |
           sudo mkdir -p /root/.kcli/clusters/hub/auth/
           sudo rsync -a --inplace "${KUBECONFIG_PATH}" /root/.kcli/clusters/hub/auth/kubeconfig
+      - name: 📋 Hub Argo Application
+        run: |
+          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" apply -f "${REPO_PATH}/hub-config/hub-operators-argoapps.yaml"
+          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" -n openshift-gitops wait apps/hub-operators-deployment --for=jsonpath="{.status.sync.status}"=Synced --timeout=900s
+          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" -n openshift-gitops wait apps/hub-operators-config --for=jsonpath="{.status.sync.status}"=Synced --timeout=900s 
