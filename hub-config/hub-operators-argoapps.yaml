@@ -12,8 +12,8 @@ spec:
   source:
     path: hub-config/operators-deployment
     repoURL: 'https://github.com/midu16/l1-cp.git'
-    targetRevision: master
-  project: hub-config
+    targetRevision: main
+  project: default
   syncPolicy:
     automated:
       prune: false
@@ -38,8 +38,8 @@ spec:
   source:
     path: hub-config/operators-config
     repoURL: 'https://github.com/midu16/l1-cp.git'
-    targetRevision: master
-  project: hub-config
+    targetRevision: main
+  project: default
   syncPolicy:
     automated:
       prune: false
