@@ -193,4 +193,4 @@ jobs:
       - name: 📋 Move kubeconfig to /root/.kcli/clusters/hub/auth/ path
         run: |
           sudo mkdir -p /root/.kcli/clusters/hub/auth/
-          sudo cp "${KUBECONFIG_PATH}" /root/.kcli/clusters/hub/auth/kubeconfig
+          sudo rsync -a --inplace "${KUBECONFIG_PATH}" /root/.kcli/clusters/hub/auth/kubeconfig
