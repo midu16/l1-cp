@@ -510,6 +510,15 @@ generate_imageset_config() {
     'openshift-gitops-operator'
     'lvms-operator'
     'odf-operator'
+    'ocs-operator'
+    'rook-ceph-operator'
+    'ocs-operator'
+    'mcg-operator'
+    'odf-prometheus-operator'
+    'cephcsi-operator'
+    'odf-csi-addons-operator'
+    'ocs-client-operator'
+    'recipe'
     'odf-csi-addons-operator'
     'local-storage-operator'
     'mcg-operator'
@@ -609,6 +618,7 @@ EOF
   cat >> "$output_file" <<EOF
   additionalImages:
   - name: registry.redhat.io/openshift4/ztp-site-generate-rhel8:v${major_minor}.0
+  - name: registry.redhat.io/rhel9/support-tools:latest
   helm: {}
 EOF
   
