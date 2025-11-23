@@ -30,6 +30,7 @@ metadata:
   name: odf-operator
   namespace: openshift-storage
 spec:
+  channel: stable-4.18
   installPlanApproval: Automatic
   name: odf-operator
   source: cs-redhat-operator-index
