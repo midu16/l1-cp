@@ -163,9 +163,6 @@ spec:
           limits:
             memory: "2Gi"
             cpu: "1"
-        # Set maximum time for init container (4 hours should be enough for large ISO downloads)
-        # This prevents the pod from hanging indefinitely if downloads fail
-        activeDeadlineSeconds: 14400
         volumeMounts:
         - name: webcache-storage
           mountPath: /data
