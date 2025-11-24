@@ -1,13 +1,4 @@
 ---
-apiVersion: v1
-kind: Namespace
-metadata:
-  annotations:
-    argocd.argoproj.io/sync-wave: "20"
-  labels:
-    kubernetes.io/metadata.name: open-cluster-management-observability
-  name: open-cluster-management-observability
----
 apiVersion: observability.open-cluster-management.io/v1beta2
 kind: MultiClusterObservability
 metadata:
