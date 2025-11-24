@@ -53,10 +53,10 @@ spec:
       name: managedserviceaccount
     - configOverrides: {}
       enabled: false
-      name: cluster-api-preview
+      name: cluster-api
     - configOverrides: {}
       enabled: false
-      name: cluster-api-provider-aws-preview
+      name: cluster-api-provider-aws
     - configOverrides: {}
       enabled: true
       name: console-mce
