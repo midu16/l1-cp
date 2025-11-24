@@ -60,3 +60,10 @@ spec:
     - configOverrides: {}
       enabled: true
       name: console-mce
+    - configOverrides: {}
+      enabled: false
+      name: cluster-api-provider-metal3-preview
+    - configOverrides: {}
+      enabled: false
+      name: cluster-api-provider-openshift-assisted-preview
+
