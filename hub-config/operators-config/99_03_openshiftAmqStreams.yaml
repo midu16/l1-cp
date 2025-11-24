@@ -20,7 +20,7 @@ spec:
       transaction.state.log.replication.factor: 1
     storage:
       volumes:
-        - class: lvms-vg1 #ocs-storagecluster-ceph-rbd
+        - class: ocs-storagecluster-ceph-rbd
           deleteClaim: true
           id: 0
           size: '50Gi'
@@ -46,8 +46,7 @@ spec:
     userOperator: {}
   zookeeper:
     storage:
-      #class: ocs-storagecluster-ceph-rbd
-      class: lvms-vg1
+      class: ocs-storagecluster-ceph-rbd
       deleteClaim: true
       size: '40Gi'
       type: persistent-claim
