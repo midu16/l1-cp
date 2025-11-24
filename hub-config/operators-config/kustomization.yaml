@@ -14,6 +14,7 @@ resources:
   - 04_observabilityConfig.yaml
   - 05_gitopsServiceClusterConfig.yaml
   - 06_acmPerfSearch.yaml
+  - 07_label_nodes.yaml
   - 99_00_lsoConfig.yaml
   - 99_01_odfConfig.yaml 
   - 99_02_ocsStorageClusterCephfs.yaml

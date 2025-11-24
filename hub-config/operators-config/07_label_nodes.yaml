@@ -1,0 +1,30 @@
+---
+apiVersion: v1
+kind: Node
+metadata:
+  annotations:
+    csi.volume.kubernetes.io/nodeid: '{"openshift-storage.cephfs.csi.ceph.com":"hub-ctlplane-0.hub.5g-deployment.lab","openshift-storage.rbd.csi.ceph.com":"hub-ctlplane-0.hub.5g-deployment.lab"}'
+  labels:
+    cluster.ocs.openshift.io/openshift-storage: ""
+    kubernetes.io/hostname: hub-ctlplane-0.hub.5g-deployment.lab
+  name: hub-ctlplane-0.hub.5g-deployment.lab
+---
+apiVersion: v1
+kind: Node
+metadata:
+  annotations:
+    csi.volume.kubernetes.io/nodeid: '{"openshift-storage.cephfs.csi.ceph.com":"hub-ctlplane-1.hub.5g-deployment.lab","openshift-storage.rbd.csi.ceph.com":"hub-ctlplane-1.hub.5g-deployment.lab"}'
+  labels:
+    cluster.ocs.openshift.io/openshift-storage: ""
+    kubernetes.io/hostname: hub-ctlplane-1.hub.5g-deployment.lab
+  name: hub-ctlplane-1.hub.5g-deployment.lab
+---
+apiVersion: v1
+kind: Node
+metadata:
+  annotations:
+    csi.volume.kubernetes.io/nodeid: '{"openshift-storage.cephfs.csi.ceph.com":"hub-ctlplane-2.hub.5g-deployment.lab","openshift-storage.rbd.csi.ceph.com":"hub-ctlplane-2.hub.5g-deployment.lab"}'
+  labels:
+    cluster.ocs.openshift.io/openshift-storage: ""
+    kubernetes.io/hostname: hub-ctlplane-2.hub.5g-deployment.lab
+  name: hub-ctlplane-2.hub.5g-deployment.lab
