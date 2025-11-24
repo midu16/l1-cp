@@ -46,7 +46,3 @@ spec:
         requests:
           cpu: 25m
           memory: 1Gi
-  tolerations:
-  - effect: NoSchedule
-    key: node-role.kubernetes.io/infra
-    operator: Exists

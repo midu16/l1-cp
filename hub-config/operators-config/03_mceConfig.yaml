@@ -12,36 +12,51 @@ metadata:
     multiclusterhubs.operator.open-cluster-management.io/managed-by: "true"
 spec:
   availabilityConfig: High
+  targetNamespace: multicluster-engine
   overrides:
     components:
-    - enabled: true
-      name: local-cluster
-    - enabled: true
-      name: assisted-service
-    - enabled: true
-      name: cluster-lifecycle
-    - enabled: true
-      name: cluster-manager
-    - enabled: true
-      name: discovery
-    - enabled: true
-      name: hive
-    - enabled: true
-      name: server-foundation
-    - enabled: true
-      name: cluster-proxy-addon
-    - enabled: true
-      name: hypershift-local-hosting
-    - enabled: true
+    - configOverrides: {}
+      enabled: true
+      name: image-based-install-operator
+    - configOverrides: {}
+      enabled: false
       name: hypershift
-    - enabled: true
+    - configOverrides: {}
+      enabled: false
+      name: hypershift-local-hosting
+    - configOverrides: {}
+      enabled: true
+      name: assisted-service
+    - configOverrides: {}
+      enabled: true
+      name: cluster-lifecycle
+    - configOverrides: {}
+      enabled: true
+      name: cluster-manager
+    - configOverrides: {}
+      enabled: true
+      name: discovery
+    - configOverrides: {}
+      enabled: true
+      name: hive
+    - configOverrides: {}
+      enabled: true
+      name: server-foundation
+    - configOverrides: {}
+      enabled: true
+      name: cluster-proxy-addon
+    - configOverrides: {}
+      enabled: true
+      name: local-cluster
+    - configOverrides: {}
+      enabled: true
       name: managedserviceaccount
-    - enabled: false
-      name: image-based-install-operator-preview
-    - enabled: true
+    - configOverrides: {}
+      enabled: false
+      name: cluster-api-preview
+    - configOverrides: {}
+      enabled: false
+      name: cluster-api-provider-aws-preview
+    - configOverrides: {}
+      enabled: true
       name: console-mce
-  targetNamespace: multicluster-engine
-  tolerations:
-  - effect: NoSchedule
-    key: node-role.kubernetes.io/infra
-    operator: Exists
