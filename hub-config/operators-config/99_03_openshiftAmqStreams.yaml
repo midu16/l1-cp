@@ -40,8 +40,6 @@ metadata:
     argocd.argoproj.io/sync-wave: "2"
   namespace: openshift-amq-streams
 spec:
-  nodePools:
-    - name: kafla
   kafka:
     version: 3.7.0
     config:
