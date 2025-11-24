@@ -85,7 +85,7 @@ metadata:
   name: logs-topic
   namespace: openshift-amq-streams
   annotations:
-    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-wave: "10"
     argocd.argoproj.io/healthcheck: "None"
   labels:
     strimzi.io/cluster: my-kafka-cluster
