@@ -56,6 +56,8 @@ spec:
 apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaTopic
 metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
   name: logs-topic
   namespace: openshift-amq-streams
   labels:
