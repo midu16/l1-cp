@@ -41,7 +41,7 @@
             }
           ],
           "terminationMessagePolicy": "File",
-	  "image": "registry.example:443/ocp4-release/openshift4/ztp-site-generate-rhel8:v4.16"
+	  "image": "registry.example:443/ocp4-release/openshift4/ztp-site-generate-rhel8:v4.18"
         }
       ],
       "volumeMounts": [
