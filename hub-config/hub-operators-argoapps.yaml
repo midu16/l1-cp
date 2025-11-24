@@ -24,29 +24,29 @@ spec:
         factor: 1
         maxDuration: 3m0s
       limit: 1000
-#---
-#apiVersion: argoproj.io/v1alpha1
-#kind: Application
-#metadata:
-#  name: hub-operators-config
-#  namespace: openshift-gitops
-#spec:
-#  destination:
-#    name: ''
-#    namespace: ''
-#    server: 'https://kubernetes.default.svc'
-#  source:
-#    path: hub-config/operators-config
-#    repoURL: 'https://github.com/midu16/l1-cp.git'
-#    targetRevision: main
-#  project: default
-#  syncPolicy:
-#    automated:
-#      prune: false
-#      selfHeal: true
-#    retry:
-#      backoff:
-#        duration: 5s
-#        factor: 1
-#        maxDuration: 3m0s
-#      limit: 1000
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hub-operators-config
+  namespace: openshift-gitops
+spec:
+  destination:
+    name: ''
+    namespace: ''
+    server: 'https://kubernetes.default.svc'
+  source:
+    path: hub-config/operators-config
+    repoURL: 'https://github.com/midu16/l1-cp.git'
+    targetRevision: main
+  project: default
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    retry:
+      backoff:
+        duration: 5s
+        factor: 1
+        maxDuration: 3m0s
+      limit: 1000

@@ -1,4 +1,3 @@
----
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -11,65 +10,69 @@ metadata:
 data:
   ca-bundle.crt: |
     -----BEGIN CERTIFICATE-----
-    MIIF6zCCA9OgAwIBAgIUTy1sggOk1oAKZBvwlKbVFjId/30wDQYJKoZIhvcNAQEN
-    BQAwgYQxCzAJBgNVBAYTAkNOMREwDwYDVQQIDAhIZWxzaW5raTERMA8GA1UEBwwI
-    SGVsc2lua2kxEDAOBgNVBAoMB2V4YW1wbGUxETAPBgNVBAsMCFBlcnNvbmFsMSow
-    KAYDVQQDDCFoYXJib3IyLmpvaW50bGFiLmZ4Lm5zbi1yZG5ldC5uZXQwHhcNMjQw
-    NzIzMDQyODQ3WhcNMzQwNzIxMDQyODQ3WjCBhDELMAkGA1UEBhMCQ04xETAPBgNV
-    BAgMCEhlbHNpbmtpMREwDwYDVQQHDAhIZWxzaW5raTEQMA4GA1UECgwHZXhhbXBs
-    ZTERMA8GA1UECwwIUGVyc29uYWwxKjAoBgNVBAMMIWhhcmJvcjIuam9pbnRsYWIu
-    ZngubnNuLXJkbmV0Lm5ldDCCAiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIB
-    AMj6Y0z8S9f9Fn/ESAK6Q7SkcCN+TKaC1AfqZjgVy7eR9L6K/7KKwzd02sUcHwDy
-    ALCO9rkFxW/Pix2whuIovtPXO2CnbVoHiBHC/A5fe7w0mahXC3kPI5AeHIyqeVVu
-    mif8f+y8vmZV7VujhpCb3sYaA4Z9hfXHuXAhaPoGjGLcZRRLtSbr1V129BO7DVV7
-    KVkyrLByBf/nXW9DoYVrFWYercsicCx7j8XKGz/bEClNFNXxSgphpETJO4LEG+tp
-    bG3lsBkI0pd6HJVccbuRSKVr09W+L2KfPX+m4p+9wSdGZgDhh6wrC5iohe32R4n3
-    9ItGWm4YmbRU+phftF8FnMc4VD6Tmc4SDMvC14ARhd7nzKw8bp/+tMSZXspU9sIR
-    qYONmrcGeRZhotKZYMSlxz+0ey5FVNy/epqmFgh0tmvN6BorQbjgWPsFGAfI3B+o
-    NT8lGwgvF7Vzewtjyjr9sB2F3t28hVv1TwpgIVb1Fb3HpiLBnNYEirHjyWRC4Bc1
-    eZk3+yYAd3SyMZIiIu9dWJ/e3GqQej2nInq5vUPriFzKx5BvZ9o72WFyh9TrqU+F
-    YAuhkaMluv8hOgb07/d7Hs1vuacjeCeWcrpazO1hHEJiQhyYOOwS8pqSdS61il19
-    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
+    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
+    /fp7Z8v3m9S2+TmGjDVC
+    -----END CERTIFICATE-----
+    -----BEGIN CERTIFICATE-----
+    MIIFSzCCAzOgAwIBAgIUftZTEgOzThmcDJZdqdU7HyTqdYswDQYJKoZIhvcNAQEL
+    BQAwIjEgMB4GA1UEAwwXaW5mcmEuNWctZGVwbG95bWVudC5sYWIwIBcNMjIxMTIx
+    MTMwNzMzWhgPMjA1MDA0MDcxMzA3MzNaMCIxIDAeBgNVBAMMF2luZnJhLjVnLWRl
+    cGxveW1lbnQubGFiMIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAzJ1t
+    TNULAmWUrX9/u8m0vXFipvO/ZmlWjl2CuUN+Ip8Tv6ifmrLntW1AFb80FxWogoQr
+    I6arzHfa22WNfXMkrdUjGJdJ8W4Iyua1WYIfQENcMq4H0kiNbhBF3PdX22Cyvi4h
+    DIRTE97Zy+s73F1i+sh9TT6CXZ8SwN8+tQAIimxRWB6qChV4iAkDPwHXweQifmz2
+    mWNfCkbd4DBWL9n8D3HJBJnhcJESK9Rlr9CEvzvB9KGiq7gIM1z00klJYTZcmzZ8
+    YLn+qHYPe361E+HyJzpP4dvlKAV8pqjWObfIZUWMfXarH8W/Vi79dbawKxFqKEu0
+    0cNkurXsoqVbYP9Nu6QVd9zFwXVoJUpFJuwHuIGnpsoHIgj5qAj38QUfTttWsKCz
+    Q5gcwe7pqO/+ot6cMdlBqZBelTLeP+o5+wV7Y4zH5cedjvsCcTuvjRYt5PR2xOGj
+    zpa2/r+xfPVBBRR82Sz8csbPmvf7zOY3PcitcFBJDQVyojKIMZZ8tdgveKaCrXNJ
+    om/R4arnGkNKq6/Zv7m/eBcet/TmaP4C0KTylcGIe1uN0UFgMqlai0G0cf5EAFjE
+    L1UeXmtM7U826ZMRQH/wYeMU3sf1qs+Parc1zXcQXaFXs0Toygy9JmHAOT6OvbvU
+    e9d7wLRcfzHtQVqQM+cDbvMkaCDHTc3ll4yP6YsCAwEAAaN3MHUwHQYDVR0OBBYE
+    FPe7k7yHMrDW+rJfVEoVuOroKKVtMB8GA1UdIwQYMBaAFPe7k7yHMrDW+rJfVEoV
+    uOroKKVtMA8GA1UdEwEB/wQFMAMBAf8wIgYDVR0RBBswGYIXaW5mcmEuNWctZGVw
+    bG95bWVudC5sYWIwDQYJKoZIhvcNAQELBQADggIBADwIGsOscekLD2qOEIn4jfry
+    ERvW0C3yFxOZ3xcGNgJ4Hvnk5eS4TsCqXApM7Qk3GKeF6JykjLF5QdPYgxrRJQ2Q
+    HnSnqNHf/fuCPMnXVTIQjNUoDtztLt1cbTY8Vs7QDoqI0W3ozdy5Brmbnq74oIlm
+    lDsPtzw3FUhAcDZqctwX/PGYYUYUHK6hSwplaWOB28coQgF6Z5dpj2Hg0wgd9mK4
+    6IinGjRxkiw3CIiDaQuMrcaOKcLjeKBJmrhXko+V3aWq0O9ZOunA7149el49TFRK
+    m1OgsC+JfhqdkR934KuFasUQDtdt9m6QofU2N3GNKhd59nITw3+C2rzsqcOY0nPe
+    BfVMaIKt+ZQdfX7CpVhFZdhnrhxA6s0xlUqebb4M4kRr2B9J8zk2kz6aG1YuEqDt
+    mXDAG364/gjDiX/7YU1PT5naCR2tLgcdEoJ81tU0IPcWUF1ouYklQDXJ5o8quVqj
+    HbUSr9ktUlkafKxHfNB+t3HeqmiRTa2uK0kmTYvbx8Y2lzlZHnaTKCY4KDrTCfcr
+    wUA47qj/3i3lRmmIYfl/G8a+Q2ojADs+3Ul3zH/ow/61PcBMa3G3xm0wyiH/rhMx
+    F8TXNVRAgVx6QzHdKz9fqY6V4XP3TwmBNHeKzvUGMH5hhxuUXEQQ9xw7cycACmT2
+    5csXfh2Bl6a+jyUANR8M
     -----END CERTIFICATE-----
   registries.conf: |
     unqualified-search-registries = ["registry.access.redhat.com", "docker.io"]
-
-    [[registry]]
-    prefix = ""
-    location = "registry.redhat.io/rhel8"
-    mirror-by-digest-only = true
-
-    [[registry.mirror]]
-      location = "registry.example:443/ocp4-release/rhel8"
-
-    [[registry]]
-    prefix = ""
-    location = "registry.redhat.io/rh-sso-7"
-    mirror-by-digest-only = true
-
-    [[registry.mirror]]
-      location = "registry.example:443/ocp4-release/rh-sso-7"
-
-    [[registry]]
-    prefix = ""
-    location = "registry.redhat.io/rhacm2"
-    mirror-by-digest-only = true
-
-    [[registry.mirror]]
-      location = "registry.example:443/ocp4-release/rhacm2"
 
     [[registry]]
     prefix = ""
@@ -77,39 +80,15 @@ data:
     mirror-by-digest-only = true
 
     [[registry.mirror]]
-      location = "registry.example:443/ocp4-release/openshift4"
+      location = "infra.5g-deployment.lab:8443/openshift4"
 
     [[registry]]
     prefix = ""
-    location = "registry.redhat.io/odf4"
+    location = "registry.redhat.io/rhacm2"
     mirror-by-digest-only = true
 
     [[registry.mirror]]
-      location = "registry.example:443/ocp4-release/odf4"
-
-    [[registry]]
-    prefix = ""
-    location = "registry.redhat.io/multicluster-engine"
-    mirror-by-digest-only = true
-
-    [[registry.mirror]]
-      location = "registry.example:443/ocp4-release/multicluster-engine"
-
-    [[registry]]
-    prefix = ""
-    location = "registry.redhat.io/openshift-gitops-1"
-    mirror-by-digest-only = true
-
-    [[registry.mirror]]
-      location = "registry.example:443/ocp4-release/openshift-gitops-1"
-
-    [[registry]]
-    prefix = ""
-    location = "registry.redhat.io/openshift-logging"
-    mirror-by-digest-only = true
-
-    [[registry.mirror]]
-      location = "registry.example:443/ocp4-release/openshift-logging"
+      location = "infra.5g-deployment.lab:8443/rhacm2"
 
     [[registry]]
     prefix = ""
@@ -117,15 +96,55 @@ data:
     mirror-by-digest-only = true
 
     [[registry.mirror]]
-      location = "registry.example:443/ocp4-release/rhceph"
+      location = "infra.5g-deployment.lab:8443/rhceph"
 
     [[registry]]
     prefix = ""
-    location = "quay.io/openshift-release-dev/ocp-release"
+    location = "registry.redhat.io/rhel8"
     mirror-by-digest-only = true
 
     [[registry.mirror]]
-      location = "registry.example:443/ocp4-release/openshift/release-images"
+      location = "infra.5g-deployment.lab:8443/rhel8"
+
+    [[registry]]
+    prefix = ""
+    location = "registry.redhat.io/rh-sso-7"
+    mirror-by-digest-only = true
+
+    [[registry.mirror]]
+      location = "infra.5g-deployment.lab:8443/rh-sso-7"
+
+    [[registry]]
+    prefix = ""
+    location = "registry.redhat.io/odf4"
+    mirror-by-digest-only = true
+
+    [[registry.mirror]]
+      location = "infra.5g-deployment.lab:8443/odf4"
+
+    [[registry]]
+    prefix = ""
+    location = "registry.redhat.io/multicluster-engine"
+    mirror-by-digest-only = true
+
+    [[registry.mirror]]
+      location = "infra.5g-deployment.lab:8443/multicluster-engine"
+
+    [[registry]]
+    prefix = ""
+    location = "registry.redhat.io/openshift-gitops-1"
+    mirror-by-digest-only = true
+
+    [[registry.mirror]]
+      location = "infra.5g-deployment.lab:8443/openshift-gitops-1"
+
+    [[registry]]
+    prefix = ""
+    location = "registry.redhat.io/lvms4"
+    mirror-by-digest-only = true
+
+    [[registry.mirror]]
+      location = "infra.5g-deployment.lab:8443/lvms4"
 
     [[registry]]
     prefix = ""
@@ -133,10 +152,15 @@ data:
     mirror-by-digest-only = true
 
     [[registry.mirror]]
-      location = "registry.example:443/ocp4-release/openshift"
-    [[registry.mirror]]
-      location = "registry.example:443/ocp4-release/openshift/release"
+      location = "infra.5g-deployment.lab:8443/openshift/release"
 
+    [[registry]]
+    prefix = ""
+    location = "quay.io/openshift-release-dev/ocp-release"
+    mirror-by-digest-only = true
+
+    [[registry.mirror]]
+      location = "infra.5g-deployment.lab:8443/openshift/release-images"
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -160,37 +184,53 @@ metadata:
   name: agent
   namespace: multicluster-engine
 spec:
+  mirrorRegistryRef:
+    name: custom-registries
   databaseStorage:
-    accessModes:
-    - ReadWriteOnce
-    resources:
-      requests:
-        storage: 20Gi
     storageClassName: ocs-storagecluster-cephfs
-  filesystemStorage:
     accessModes:
     - ReadWriteOnce
     resources:
       requests:
         storage: 10Gi
+  filesystemStorage:
     storageClassName: ocs-storagecluster-cephfs
-  imageStorage:
     accessModes:
     - ReadWriteOnce
     resources:
       requests:
         storage: 20Gi
-    storageClassName: ocs-storagecluster-cephfs
-  mirrorRegistryRef:
-    name: custom-registries
   osImages:
   - cpuArchitecture: x86_64
     openshiftVersion: "4.14"
-    rootFSUrl: http://10.23.223.72:88/rhcos-4.14.0-x86_64-live-rootfs.x86_64.img
-    url: http://10.23.223.72:88/rhcos-4.14.0-x86_64-live.x86_64.iso
-    version: 414.92.202310170514-0
+    rootFSUrl: http://infra.5g-deployment.lab:8080/rhcos-4.14.0-x86_64-live-rootfs.x86_64.img
+    url: http://infra.5g-deployment.lab:8080/rhcos-4.14.0-x86_64-live.x86_64.iso
+    version: 414.92.202310210434-0
   - cpuArchitecture: x86_64
     openshiftVersion: "4.16"
-    rootFSUrl: http://10.23.223.72:88/rhcos-4.16.0-x86_64-live-rootfs.x86_64.img
-    url: http://10.23.223.72:88/rhcos-4.16.0-x86_64-live.x86_64.iso
-    version: 416.92.202410170514-0
+    rootFSUrl: http://infra.5g-deployment.lab:8080/rhcos-4.16.0-x86_64-live-rootfs.x86_64.img
+    url: http://infra.5g-deployment.lab:8080/rhcos-4.16.0-x86_64-live.x86_64.iso
+    version: 416.94.202406172220-0
+  - cpuArchitecture: x86_64
+    openshiftVersion: "4.18"
+    rootFSUrl: http://infra.5g-deployment.lab:8080/rhcos-4.18.1-x86_64-live-rootfs.x86_64.img
+    url: http://infra.5g-deployment.lab:8080/rhcos-4.18.1-x86_64-live.x86_64.iso
+    version: 418.94.202511041748-0
+---
+apiVersion: hive.openshift.io/v1
+kind: ClusterImageSet
+metadata:
+  annotations:
+        argocd.argoproj.io/sync-wave: "4"
+  name: openshift-v4.18.28-disconnected
+spec:
+  releaseImage: infra.5g-deployment.lab:8443/openshift/release-images:4.18.28-x86_64
+---
+apiVersion: hive.openshift.io/v1
+kind: ClusterImageSet
+metadata:
+  annotations:
+        argocd.argoproj.io/sync-wave: "4"
+  name: openshift-v4.16.40-disconnected
+spec:
+  releaseImage: infra.5g-deployment.lab:8443/openshift/release-images:4.16.40-x86_64
