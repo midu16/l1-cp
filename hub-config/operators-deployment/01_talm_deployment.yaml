@@ -1,13 +1,42 @@
 ---
+apiVersion: v1
+kind: Namespace
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    workload.openshift.io/allowed: management
+  name: openshift-operators
+  labels:
+    openshift.io/cluster-monitoring: "true"
+    argocd.argoproj.io/managed-by: openshift-gitops
+---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    capability.openshift.io/name: OperatorLifecycleManager
+    include.release.openshift.io/hypershift: "true"
+    include.release.openshift.io/ibm-cloud-managed: "true"
+    include.release.openshift.io/self-managed-high-availability: "true"
+    olm.providedAPIs: ClusterGroupUpgrade.v1alpha1.ran.openshift.io,ImageBasedGroupUpgrade.v1alpha1.lcm.openshift.io,PreCachingConfig.v1alpha1.ran.openshift.io
+  name: global-operators
+  namespace: openshift-operators
+spec:
+  upgradeStrategy: Default
+---
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
-  name: openshift-topology-aware-lifecycle-manager-subscription
+  labels:
+    operators.coreos.com/topology-aware-lifecycle-manager.openshift-operators: ""
+  name: topology-aware-lifecycle-manager
   namespace: openshift-operators
 spec:
-  channel: "stable"
+  channel: stable
+  installPlanApproval: Automatic
   name: topology-aware-lifecycle-manager
   source: cs-redhat-operator-index
   sourceNamespace: openshift-marketplace
