@@ -1,0 +1,22 @@
+# Alternative Service using LoadBalancer type
+# Use this if you have a LoadBalancer provider (like MetalLB) in your cluster
+# Comment out the NodePort service (04_service.yaml) if using this
+apiVersion: v1
+kind: Service
+metadata:
+  name: webcache-lb
+  namespace: webcache
+  labels:
+    app: webcache
+  annotations:
+    # For MetalLB, you can specify an IP address
+    # metallb.universe.tf/loadBalancerIPs: "192.168.125.1"
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: webcache

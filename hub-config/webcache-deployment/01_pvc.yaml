@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: webcache-storage
+  namespace: webcache
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+  # Update storageClassName based on your cluster's available storage classes
+  # For example: lvms-vg1, gp3, etc.
+  storageClassName: ocs-storagecluster-ceph-rbd

@@ -11,16 +11,16 @@ resources:
 #  - 02_ai_config.yaml # this is required for the https RHCOS cache server use-case
   - 02_patchProvisioning.yaml
   - 03_mceConfig.yaml
-  - 04_observabilityConfig.yaml
+##  - 04_observabilityConfig.yaml
   - 05_gitopsServiceClusterConfig.yaml
-  - 06_acmPerfSearch.yaml
+##  - 06_acmPerfSearch.yaml
   - 07_label_nodes.yaml
   - 99_00_lsoConfig.yaml
   - 99_01_odfConfig.yaml 
   - 99_02_ocsStorageClusterCephfs.yaml
 #  - 99_02_observabilityStorage.yaml
-  - 99_03_openshiftAmqStreams.yaml
-  - 99_03_openshiftClusterLoggingv604.yaml
+##  - 99_03_openshiftAmqStreams.yaml
+##  - 99_03_openshiftClusterLoggingv604.yaml
   - ./s3_bucket/01_ibu-odf-s3-storage.yaml
   - ./s3_bucket/01_backup-odf-s3-storage.yaml
   - ./s3_bucket/04_thanos_objectbucketclaim.yaml

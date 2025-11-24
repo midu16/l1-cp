@@ -1,0 +1,209 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webcache
+  namespace: webcache
+  labels:
+    app: webcache
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: webcache
+  template:
+    metadata:
+      labels:
+        app: webcache
+    spec:
+      initContainers:
+      - name: download-iso
+        image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Starting ISO download process..."
+          
+          # Install curl if not available
+          microdnf install -y curl || dnf install -y curl || yum install -y curl || true
+          
+          # Create web root directory
+          mkdir -p /data/htdocs
+          cd /data/htdocs
+          
+          # Download RHCOS ISO files
+          # Update these URLs based on the OpenShift version you need
+          # For 4.18.1 (as mentioned in your query)
+          RHCOS_ISO_URL="https://mirror.openshift.com/pub/openshift-v4/x86_64/dependencies/rhcos/4.18/4.18.1/rhcos-4.18.1-x86_64-live.x86_64.iso"
+          RHCOS_ROOTFS_URL="https://mirror.openshift.com/pub/openshift-v4/x86_64/dependencies/rhcos/4.18/4.18.1/rhcos-4.18.1-x86_64-live-rootfs.x86_64.img"
+          
+          # Also download 4.14 and 4.16 versions referenced in your config
+          RHCOS_414_ISO_URL="https://mirror.openshift.com/pub/openshift-v4/x86_64/dependencies/rhcos/4.14/4.14.0/rhcos-4.14.0-x86_64-live.x86_64.iso"
+          RHCOS_414_ROOTFS_URL="https://mirror.openshift.com/pub/openshift-v4/x86_64/dependencies/rhcos/4.14/4.14.0/rhcos-4.14.0-x86_64-live-rootfs.x86_64.img"
+          
+          RHCOS_416_ISO_URL="https://mirror.openshift.com/pub/openshift-v4/x86_64/dependencies/rhcos/4.16/4.16.0/rhcos-4.16.0-x86_64-live.x86_64.iso"
+          RHCOS_416_ROOTFS_URL="https://mirror.openshift.com/pub/openshift-v4/x86_64/dependencies/rhcos/4.16/4.16.0/rhcos-4.16.0-x86_64-live-rootfs.x86_64.img"
+          
+          # Function to download file if it doesn't exist
+          # Downloads are non-blocking - failures won't prevent the pod from starting
+          download_file() {
+            local url=$1
+            local filename=$(basename $url)
+            local max_retries=3
+            local retry_delay=10
+            local curl_timeout=3600  # 1 hour timeout per file
+            
+            if [ ! -f "$filename" ]; then
+              echo "Downloading $filename from $url..."
+              local attempt=1
+              local current_retry_delay=$retry_delay
+              while [ $attempt -le $max_retries ]; do
+                # Use curl's built-in timeout options (no external timeout command needed)
+                if curl -L -f --progress-bar --max-time $curl_timeout --connect-timeout 30 --retry 2 --retry-delay 5 -o "$filename" "$url" 2>&1; then
+                  if [ -f "$filename" ] && [ -s "$filename" ]; then
+                    echo "Successfully downloaded $filename ($(du -h "$filename" | cut -f1))"
+                    ls -lh "$filename"
+                    return 0
+                  else
+                    echo "Warning: Download completed but file is empty or missing"
+                    rm -f "$filename"  # Remove empty file
+                  fi
+                else
+                  echo "Warning: Failed to download $filename (attempt $attempt/$max_retries)"
+                  rm -f "$filename"  # Remove partial file if exists
+                fi
+                
+                if [ $attempt -lt $max_retries ]; then
+                  echo "Retrying in ${current_retry_delay}s..."
+                  sleep $current_retry_delay
+                  current_retry_delay=$((current_retry_delay * 2))  # Exponential backoff
+                fi
+                attempt=$((attempt + 1))
+              done
+              
+              echo "Error: Failed to download $filename after $max_retries attempts. Continuing with other downloads..."
+              return 1
+            else
+              echo "$filename already exists ($(du -h "$filename" | cut -f1)), skipping download"
+              return 0
+            fi
+          }
+          
+          # Track download results
+          failed_downloads=0
+          successful_downloads=0
+          
+          # Download all required files (non-blocking)
+          echo "=== Starting downloads ==="
+          download_file "$RHCOS_ISO_URL" && successful_downloads=$((successful_downloads + 1)) || failed_downloads=$((failed_downloads + 1))
+          download_file "$RHCOS_ROOTFS_URL" && successful_downloads=$((successful_downloads + 1)) || failed_downloads=$((failed_downloads + 1))
+          download_file "$RHCOS_414_ISO_URL" && successful_downloads=$((successful_downloads + 1)) || failed_downloads=$((failed_downloads + 1))
+          download_file "$RHCOS_414_ROOTFS_URL" && successful_downloads=$((successful_downloads + 1)) || failed_downloads=$((failed_downloads + 1))
+          download_file "$RHCOS_416_ISO_URL" && successful_downloads=$((successful_downloads + 1)) || failed_downloads=$((failed_downloads + 1))
+          download_file "$RHCOS_416_ROOTFS_URL" && successful_downloads=$((successful_downloads + 1)) || failed_downloads=$((failed_downloads + 1))
+          
+          echo "=== Download Summary ==="
+          echo "Successful: $successful_downloads"
+          echo "Failed: $failed_downloads"
+          
+          # Create index.html even if some downloads failed
+          cat > index.html <<'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>RHCOS ISO Cache</title>
+            <style>
+              body { font-family: Arial, sans-serif; margin: 40px; }
+              h1 { color: #333; }
+              ul { list-style-type: none; padding: 0; }
+              li { margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 4px; }
+              a { color: #0066cc; text-decoration: none; font-weight: bold; }
+              a:hover { text-decoration: underline; }
+            </style>
+          </head>
+          <body>
+            <h1>RHCOS ISO Cache</h1>
+            <p>Available RHCOS images:</p>
+            <ul>
+          EOF
+          
+          # Count files for index
+          file_count=0
+          for file in *.iso *.img; do
+            if [ -f "$file" ] && [ -s "$file" ]; then
+              filename="$file"
+              size=$(du -h "$file" | cut -f1)
+              echo "              <li><a href=\"$filename\">$filename</a> ($size)</li>" >> index.html
+              file_count=$((file_count + 1))
+            fi
+          done
+          
+          if [ $file_count -eq 0 ]; then
+            echo "              <li>No files available yet. Downloads may still be in progress or failed.</li>" >> index.html
+          fi
+          
+          cat >> index.html <<'EOF'
+            </ul>
+          </body>
+          </html>
+          EOF
+          
+          echo "Download process completed!"
+          echo "Files available: $file_count"
+          echo "Files in /data/htdocs:"
+          ls -lh /data/htdocs/ || true
+          
+          # Exit successfully even if some downloads failed
+          # This allows the main container to start serving whatever files are available
+          exit 0
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "200m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        # Set maximum time for init container (4 hours should be enough for large ISO downloads)
+        # This prevents the pod from hanging indefinitely if downloads fail
+        activeDeadlineSeconds: 14400
+        volumeMounts:
+        - name: webcache-storage
+          mountPath: /data
+      containers:
+      - name: httpd
+        image: quay.io/alosadag/httpd:p8080
+        ports:
+        - containerPort: 8080
+          name: http
+        volumeMounts:
+        - name: webcache-storage
+          mountPath: /usr/local/apache2/htdocs
+        - name: httpd-config
+          mountPath: /usr/local/apache2/conf/httpd.conf
+          subPath: httpd.conf
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+      volumes:
+      - name: webcache-storage
+        persistentVolumeClaim:
+          claimName: webcache-storage
+      - name: httpd-config
+        configMap:
+          name: webcache-config

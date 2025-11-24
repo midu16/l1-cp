@@ -535,6 +535,7 @@ generate_imageset_config() {
     'redhat-oadp-operator'
     'rhbk-operator'
     'lifecycle-agent'
+    'metallb-operator'
   )
   
   echo "Fetching operator information and determining version ranges..."

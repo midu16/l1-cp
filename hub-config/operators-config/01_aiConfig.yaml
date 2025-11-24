@@ -203,18 +203,18 @@ spec:
   osImages:
   - cpuArchitecture: x86_64
     openshiftVersion: "4.14"
-    rootFSUrl: http://infra.5g-deployment.lab:8080/rhcos-4.14.0-x86_64-live-rootfs.x86_64.img
-    url: http://infra.5g-deployment.lab:8080/rhcos-4.14.0-x86_64-live.x86_64.iso
+    rootFSUrl: http://172.16.30.22:31415/rhcos-4.14.0-x86_64-live-rootfs.x86_64.img
+    url: http://172.16.30.22:31415/rhcos-4.14.0-x86_64-live.x86_64.iso
     version: 414.92.202310210434-0
   - cpuArchitecture: x86_64
     openshiftVersion: "4.16"
-    rootFSUrl: http://infra.5g-deployment.lab:8080/rhcos-4.16.0-x86_64-live-rootfs.x86_64.img
-    url: http://infra.5g-deployment.lab:8080/rhcos-4.16.0-x86_64-live.x86_64.iso
+    rootFSUrl: http://172.16.30.22:31415/rhcos-4.16.0-x86_64-live-rootfs.x86_64.img
+    url: http://172.16.30.22:31415/rhcos-4.16.0-x86_64-live.x86_64.iso
     version: 416.94.202406172220-0
   - cpuArchitecture: x86_64
     openshiftVersion: "4.18"
-    rootFSUrl: http://infra.5g-deployment.lab:8080/rhcos-4.18.1-x86_64-live-rootfs.x86_64.img
-    url: http://infra.5g-deployment.lab:8080/rhcos-4.18.1-x86_64-live.x86_64.iso
+    rootFSUrl: http://172.16.30.22:31415/rhcos-4.18.1-x86_64-live-rootfs.x86_64.img
+    url: http://172.16.30.22:31415/rhcos-4.18.1-x86_64-live.x86_64.iso
     version: 418.94.202511041748-0
 ---
 apiVersion: hive.openshift.io/v1
@@ -224,7 +224,7 @@ metadata:
         argocd.argoproj.io/sync-wave: "4"
   name: openshift-v4.18.28-disconnected
 spec:
-  releaseImage: infra.5g-deployment.lab:8443/openshift/release-images:4.18.28-x86_64
+  releaseImage: infra.5g-deployment.lab:8443/openshift/release-images:4.18.27-x86_64
 ---
 apiVersion: hive.openshift.io/v1
 kind: ClusterImageSet

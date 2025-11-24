@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: webcache-config
+  namespace: webcache
+data:
+  httpd.conf: |
+    ServerRoot "/usr/local/apache2"
+    Listen 8080
+    PidFile /tmp/httpd.pid
+    
+    LoadModule mpm_event_module modules/mod_mpm_event.so
+    LoadModule unixd_module modules/mod_unixd.so
+    LoadModule authz_core_module modules/mod_authz_core.so
+    LoadModule dir_module modules/mod_dir.so
+    LoadModule mime_module modules/mod_mime.so
+    LoadModule rewrite_module modules/mod_rewrite.so
+    LoadModule log_config_module modules/mod_log_config.so
+    
+    <IfModule unixd_module>
+    User daemon
+    Group daemon
+    </IfModule>
+    
+    ServerAdmin you@example.com
+    ServerName infra.5g-deployment.lab
+    
+    DocumentRoot "/usr/local/apache2/htdocs/htdocs"
+    
+    <Directory "/usr/local/apache2/htdocs/htdocs">
+        Options Indexes FollowSymLinks
+        AllowOverride None
+        Require all granted
+    </Directory>
+    
+    TypesConfig conf/mime.types
+    
+    <IfModule mime_module>
+        AddType application/x-compress .Z
+        AddType application/x-gzip .gz .tgz
+    </IfModule>
+    
+    LogFormat "%h %l %u %t \"%r\" %>s %b" common
+    CustomLog /proc/self/fd/1 common
+    ErrorLog /proc/self/fd/2
+    
+    <IfModule dir_module>
+        DirectoryIndex index.html
+    </IfModule>
