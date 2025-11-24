@@ -510,6 +510,7 @@ generate_imageset_config() {
     'openshift-gitops-operator'
     'lvms-operator'
     'odf-operator'
+    'odf-dependencies'
     'rook-ceph-operator'
     'ocs-operator'
     'mcg-operator'
