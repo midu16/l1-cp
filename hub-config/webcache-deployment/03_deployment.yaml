@@ -162,7 +162,7 @@ spec:
             cpu: "200m"
           limits:
             memory: "2Gi"
-            cpu: "1000m"
+            cpu: "1"
         # Set maximum time for init container (4 hours should be enough for large ISO downloads)
         # This prevents the pod from hanging indefinitely if downloads fail
         activeDeadlineSeconds: 14400
