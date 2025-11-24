@@ -77,8 +77,6 @@ spec:
   entityOperator:
     topicOperator: {}
     userOperator: {}
-  nodePools:
-    - name: kafka
 ---
 # Kafka Topics
 apiVersion: kafka.strimzi.io/v1beta2
