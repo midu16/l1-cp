@@ -1,4 +1,36 @@
 ---
+# KafkaNodePool for Kafka brokers (KRaft mode)
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaNodePool
+metadata:
+  name: kafka
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  namespace: openshift-amq-streams
+  labels:
+    strimzi.io/cluster: my-kafka-cluster
+spec:
+  replicas: 3
+  roles:
+    - broker
+    - controller
+  storage:
+    type: jbod
+    volumes:
+      - id: 0
+        type: persistent-claim
+        size: 50Gi
+        class: ocs-storagecluster-ceph-rbd
+        deleteClaim: true
+  resources:
+    requests:
+      memory: 2Gi
+      cpu: 1
+    limits:
+      memory: 2Gi
+      cpu: 2
+---
+# Kafka cluster (KRaft mode - no ZooKeeper)
 apiVersion: kafka.strimzi.io/v1beta2
 kind: Kafka
 metadata:
@@ -9,23 +41,12 @@ metadata:
   namespace: openshift-amq-streams
 spec:
   kafka:
+    version: 3.7.0
     config:
       auto.create.topics.enable: false
       default.replication.factor: 1
-      inter.broker.protocol.version: '3.7'
       message.max.bytes: 369295618
       min.insync.replicas: 1
-      offsets.topic.replication.factor: 1
-      transaction.state.log.min.isr: 1
-      transaction.state.log.replication.factor: 1
-    storage:
-      volumes:
-        - class: ocs-storagecluster-ceph-rbd
-          deleteClaim: true
-          id: 0
-          size: '50Gi'
-          type: persistent-claim
-      type: jbod
     listeners:
       - name: plain
         port: 9092
@@ -39,27 +60,35 @@ spec:
         port: 9094
         tls: true
         type: route
-    replicas: 3
-    version: 3.7.0
+    template:
+      pod:
+        affinity:
+          podAntiAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+              - weight: 100
+                podAffinityTerm:
+                  labelSelector:
+                    matchExpressions:
+                      - key: strimzi.io/kind
+                        operator: In
+                        values:
+                          - Kafka
+                  topologyKey: kubernetes.io/hostname
   entityOperator:
     topicOperator: {}
     userOperator: {}
-  zookeeper:
-    storage:
-      class: ocs-storagecluster-ceph-rbd
-      deleteClaim: true
-      size: '40Gi'
-      type: persistent-claim
-    replicas: 3
+  nodePools:
+    - name: kafka
 ---
-# Verify Kafka Topics
+# Kafka Topics
 apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaTopic
 metadata:
-  annotations:
-    argocd.argoproj.io/sync-wave: "10"
   name: logs-topic
   namespace: openshift-amq-streams
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/healthcheck: "None"
   labels:
     strimzi.io/cluster: my-kafka-cluster
 spec:
