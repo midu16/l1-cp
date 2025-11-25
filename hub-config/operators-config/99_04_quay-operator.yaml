@@ -1,0 +1,46 @@
+---
+apiVersion: v1
+data:
+  config.yaml: QUxMT1dfUFVMTFNfV0lUSE9VVF9TVFJJQ1RfTE9HR0lORzogZmFsc2UKQVVUSEVOVElDQVRJT05fVFlQRTogRGF0YWJhc2UKREVGQVVMVF9UQUdfRVhQSVJBVElPTjogMncKRU5URVJQUklTRV9MT0dPX1VSTDogL3N0YXRpYy9pbWcvUkhfTG9nb19RdWF5X0JsYWNrX1VYLWhvcml6b250YWwuc3ZnCkZFQVRVUkVfQlVJTERfU1VQUE9SVDogZmFsc2UKRkVBVFVSRV9ESVJFQ1RfTE9HSU46IHRydWUKRkVBVFVSRV9NQUlMSU5HOiBmYWxzZQpSRUdJU1RSWV9USVRMRTogUmVkIEhhdCBRdWF5ClJFR0lTVFJZX1RJVExFX1NIT1JUOiBSZWQgSGF0IFF1YXkKU0VUVVBfQ09NUExFVEU6IHRydWUKVEFHX0VYUElSQVRJT05fT1BUSU9OUzoKLSAydwpURUFNX1JFU1lOQ19TVEFMRV9USU1FOiA2MG0KVEVTVElORzogZmFsc2UK
+kind: Secret
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "11"
+  name: quay-registry-config-bundle-5xhl5
+  namespace: quay-operator
+---
+apiVersion: quay.redhat.com/v1
+kind: QuayRegistry
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "11"
+  name: quay-registry
+  namespace: quay-operator
+spec:
+  configBundleSecret: quay-registry-config-bundle-5xhl5
+  components:
+  - kind: clair
+    managed: true
+  - kind: postgres
+    managed: true
+  - kind: objectstorage
+    managed: true
+  - kind: redis
+    managed: true
+  - kind: horizontalpodautoscaler
+    managed: true
+  - kind: route
+    managed: true
+  - kind: mirror
+    managed: true
+# monitoring is only supported in AllNamespaces mode. We are not using it.
+  - kind: monitoring
+    managed: false
+  - kind: tls
+    managed: true
+  - kind: quay
+    managed: true
+  - kind: clairpostgres
+    managed: true
+---
+

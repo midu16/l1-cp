@@ -1,0 +1,61 @@
+---
+# Complete example: Set default StorageClass and remove default from others
+# This ensures only ONE StorageClass is marked as default
+
+# Step 1: Remove default annotation from all other StorageClasses (if any)
+# Note: You would need to apply these separately for each StorageClass that has the default annotation
+
+---
+# Example: Remove default from localblock (if it was previously default)
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: localblock
+  annotations:
+    argocd.argoproj.io/sync-wave: "8"
+    storageclass.kubernetes.io/is-default-class: "false"  # or remove annotation entirely
+---
+# Example: Remove default from ocs-storagecluster-cephfs (if it was previously default)
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ocs-storagecluster-cephfs
+  annotations:
+    argocd.argoproj.io/sync-wave: "8"
+    storageclass.kubernetes.io/is-default-class: "false"
+---
+# Example: Remove default from ocs-storagecluster-ceph-rgw (if it was previously default)
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ocs-storagecluster-ceph-rgw
+  annotations:
+    argocd.argoproj.io/sync-wave: "8"
+    storageclass.kubernetes.io/is-default-class: "false"
+---
+# Step 2: Set ocs-storagecluster-ceph-rbd as the default StorageClass
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ocs-storagecluster-ceph-rbd
+  annotations:
+    argocd.argoproj.io/sync-wave: "8"
+    storageclass.kubernetes.io/is-default-class: "true"
+    description: Provides RWO Filesystem volumes, and RWO and RWX Block volumes
+    reclaimspace.csiaddons.openshift.io/schedule: '@weekly'
+parameters:
+  clusterID: openshift-storage
+  csi.storage.k8s.io/controller-expand-secret-name: rook-csi-rbd-provisioner
+  csi.storage.k8s.io/controller-expand-secret-namespace: openshift-storage
+  csi.storage.k8s.io/fstype: ext4
+  csi.storage.k8s.io/node-stage-secret-name: rook-csi-rbd-node
+  csi.storage.k8s.io/node-stage-secret-namespace: openshift-storage
+  csi.storage.k8s.io/provisioner-secret-name: rook-csi-rbd-provisioner
+  csi.storage.k8s.io/provisioner-secret-namespace: openshift-storage
+  imageFeatures: layering,deep-flatten,exclusive-lock,object-map,fast-diff
+  imageFormat: "2"
+  pool: ocs-storagecluster-cephblockpool
+provisioner: openshift-storage.rbd.csi.ceph.com
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+allowVolumeExpansion: true
