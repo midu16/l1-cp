@@ -7,7 +7,7 @@ The purpose of this repo its to document all the steps in deploying a OpenShiftv
 
 [![Generate PDF Documentation](https://github.com/midu16/l1-cp/actions/workflows/generate-pdf.yml/badge.svg?branch=main)](https://github.com/midu16/l1-cp/actions/workflows/generate-pdf.yml)
 
-
+[![Deploy Hub Cluster](https://github.com/midu16/l1-cp/actions/workflows/deploy-l1-cp-hub.yml/badge.svg?branch=main)](https://github.com/midu16/l1-cp/actions/workflows/deploy-l1-cp-hub.yml)
 
 ## Table of Content
 - [L1-CloudPlatform](#l1-cloudplatform)
