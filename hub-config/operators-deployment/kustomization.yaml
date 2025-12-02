@@ -11,4 +11,5 @@ resources:
   - 99_02_openshift-amq-streams.yaml
   - 99_02_openshift-cluster-logging.yaml
   - 99_02_openshift-oadp-operator.yaml
+  - 99_03_openshift-lifecycle_agent.yaml
   - 99_02_openshift-quay-operator.yaml

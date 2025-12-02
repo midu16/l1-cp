@@ -6,7 +6,7 @@ metadata:
   annotations:
     openshift.io/node-selector: ''
     workload.openshift.io/allowed: management
-    ran.openshift.io/ztp-deploy-wave: "2"
+    argocd.argoproj.io/sync-wave: "2"
   labels:
     openshift.io/cluster-monitoring: "true"
 ---
@@ -16,7 +16,7 @@ metadata:
   name: logcollector
   namespace: openshift-logging
   annotations:
-    ran.openshift.io/ztp-deploy-wave: "2"
+    argocd.argoproj.io/sync-wave: "2"
 ---
 apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
@@ -25,7 +25,7 @@ metadata:
   namespace: openshift-logging
   annotations:
     operatorframework.io/bundle-unpack-min-retry-interval: 5m
-    ran.openshift.io/ztp-deploy-wave: "2"
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   targetNamespaces:
     - openshift-logging
@@ -36,7 +36,7 @@ metadata:
   name: cluster-logging
   namespace: openshift-logging
   annotations:
-    ran.openshift.io/ztp-deploy-wave: "2"
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   name: cluster-logging
   source: cs-redhat-operator-index

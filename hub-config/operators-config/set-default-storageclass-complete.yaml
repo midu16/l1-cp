@@ -12,7 +12,7 @@ kind: StorageClass
 metadata:
   name: localblock
   annotations:
-    argocd.argoproj.io/sync-wave: "8"
+    argocd.argoproj.io/sync-wave: "40"
     storageclass.kubernetes.io/is-default-class: "false"  # or remove annotation entirely
 ---
 # Example: Remove default from ocs-storagecluster-cephfs (if it was previously default)
@@ -21,7 +21,7 @@ kind: StorageClass
 metadata:
   name: ocs-storagecluster-cephfs
   annotations:
-    argocd.argoproj.io/sync-wave: "8"
+    argocd.argoproj.io/sync-wave: "40"
     storageclass.kubernetes.io/is-default-class: "false"
 ---
 # Example: Remove default from ocs-storagecluster-ceph-rgw (if it was previously default)
@@ -30,7 +30,7 @@ kind: StorageClass
 metadata:
   name: ocs-storagecluster-ceph-rgw
   annotations:
-    argocd.argoproj.io/sync-wave: "8"
+    argocd.argoproj.io/sync-wave: "40"
     storageclass.kubernetes.io/is-default-class: "false"
 ---
 # Step 2: Set ocs-storagecluster-ceph-rbd as the default StorageClass
@@ -39,7 +39,7 @@ kind: StorageClass
 metadata:
   name: ocs-storagecluster-ceph-rbd
   annotations:
-    argocd.argoproj.io/sync-wave: "8"
+    argocd.argoproj.io/sync-wave: "40"
     storageclass.kubernetes.io/is-default-class: "true"
     description: Provides RWO Filesystem volumes, and RWO and RWX Block volumes
     reclaimspace.csiaddons.openshift.io/schedule: '@weekly'

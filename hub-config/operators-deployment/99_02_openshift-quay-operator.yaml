@@ -6,7 +6,7 @@ metadata:
   annotations:
     openshift.io/node-selector: ''
     workload.openshift.io/allowed: management
-    ran.openshift.io/ztp-deploy-wave: "2"
+    argocd.argoproj.io/sync-wave: "2"
   labels:
     openshift.io/cluster-monitoring: "true"
 ---
@@ -17,7 +17,7 @@ metadata:
   namespace: quay-operator
   annotations:
     operatorframework.io/bundle-unpack-min-retry-interval: 5m
-    ran.openshift.io/ztp-deploy-wave: "2"
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   targetNamespaces:
     - quay-operator
@@ -28,7 +28,7 @@ metadata:
   name: quay-operator
   namespace: quay-operator
   annotations:
-    ran.openshift.io/ztp-deploy-wave: "2"
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   name: quay-operator
   source: cs-redhat-operator-index
