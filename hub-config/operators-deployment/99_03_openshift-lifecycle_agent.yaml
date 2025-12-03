@@ -3,7 +3,7 @@ apiVersion: v1
 kind: Namespace
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: "0"
+    argocd.argoproj.io/sync-wave: "5"
     workload.openshift.io/allowed: management
   labels:
     kubernetes.io/metadata.name: openshift-lifecycle-agent
@@ -18,7 +18,7 @@ apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: "0"
+    argocd.argoproj.io/sync-wave: "5"
   name: openshift-lifecycle-agent-pzmfl
   namespace: openshift-lifecycle-agent
 spec:
@@ -32,7 +32,7 @@ metadata:
   name: openshift-lifecycle-agent
   namespace: openshift-lifecycle-agent
   annotations:
-    argocd.argoproj.io/sync-wave: "0"
+    argocd.argoproj.io/sync-wave: "5"
 spec:
   installPlanApproval: Automatic
   name: openshift-lifecycle-agent
