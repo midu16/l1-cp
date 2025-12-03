@@ -7,7 +7,6 @@ metadata:
     workload.openshift.io/allowed: management
   labels:
     openshift.io/cluster-monitoring: "true"
-    argocd.argoproj.io/managed-by: openshift-gitops
   name: multicluster-engine
 ---
 apiVersion: operators.coreos.com/v1
@@ -15,7 +14,7 @@ kind: OperatorGroup
 metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "0"
-  name: default
+  name: multicluster-engine-operatorgroup
   namespace: multicluster-engine
 spec:
   targetNamespaces:
@@ -29,6 +28,7 @@ metadata:
   name: multicluster-engine
   namespace: multicluster-engine
 spec:
+  channel: "stable-2.10"
   name: multicluster-engine
   source: cs-redhat-operator-index
   sourceNamespace: openshift-marketplace
