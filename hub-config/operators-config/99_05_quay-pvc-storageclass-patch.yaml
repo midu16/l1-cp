@@ -1,0 +1,34 @@
+---
+# Patch file to ensure Quay registry PVCs use the correct storage class
+# This patches the PVCs created by the Quay operator to use ocs-storagecluster-ceph-rbd storage class
+# 
+# Note: PVC names may change (e.g., quay-registry-clair-postgres-15, quay-registry-quay-postgres-13)
+# The version numbers (-15, -13) may differ. Use the script below or patch manually after PVCs are created.
+#
+# To apply this patch manually:
+#   oc patch pvc quay-registry-clair-postgres-15 -n quay-operator -p '{"spec":{"storageClassName":"ocs-storagecluster-ceph-rbd"}}'
+#   oc patch pvc quay-registry-quay-postgres-13 -n quay-operator -p '{"spec":{"storageClassName":"ocs-storagecluster-ceph-rbd"}}'
+#
+# Or use the script: ./patch-quay-pvcs.sh
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: quay-registry-clair-postgres-15
+  namespace: quay-operator
+  labels:
+    quay-component: clair-postgres
+    quay-operator/quayregistry: quay-registry
+spec:
+  storageClassName: ocs-storagecluster-ceph-rbd
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: quay-registry-quay-postgres-13
+  namespace: quay-operator
+  labels:
+    quay-component: postgres
+    quay-operator/quayregistry: quay-registry
+spec:
+  storageClassName: ocs-storagecluster-ceph-rbd
