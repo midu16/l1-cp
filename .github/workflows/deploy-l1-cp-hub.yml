@@ -80,6 +80,12 @@ jobs:
       - name: 🗑️ Clean up old registry content
         run: sudo rm -rf /home/registry/data/docker || true
 
+      - name: 🗑️ Clean oc-mirror cache
+        run: sudo rm -rf /root/.oc-mirror/.cache || true
+
+      - name: 🗑️ Clean podman unused images
+        run: sudo podman system prune -a || true
+
       - name: 🔄 Restart podman-registry
         run: |
           sudo systemctl restart podman-registry.service
