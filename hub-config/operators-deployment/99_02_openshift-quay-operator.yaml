@@ -27,15 +27,8 @@ metadata:
   name: quay-operator
   namespace: quay-operator
   annotations:
-<<<<<<< HEAD
     argocd.argoproj.io/sync-wave: "3"
-=======
-    ran.openshift.io/ztp-deploy-wave: "2"
     argocd.argoproj.io/healthcheck: None
-<<<<<<< HEAD
->>>>>>> d807d61 (update oadp and quay)
-=======
->>>>>>> d807d61 (update oadp and quay)
 spec:
   name: quay-operator
   source: cs-redhat-operator-index
