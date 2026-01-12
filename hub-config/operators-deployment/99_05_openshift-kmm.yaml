@@ -33,6 +33,12 @@ metadata:
   namespace: openshift-kmm
 spec:
   channel: stable
+# This is required in the HUB-Spoke aproach
+#where the driver gets build on the HUB.
+#  config:
+#    env:
+#    - name: KMM_MANAGED
+#      value: "1"
   installPlanApproval: Automatic
   name: kernel-module-management
   source: cs-redhat-operator-index

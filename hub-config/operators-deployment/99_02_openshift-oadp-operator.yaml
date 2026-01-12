@@ -29,7 +29,7 @@ metadata:
   name: redhat-oadp-operator
   namespace: openshift-adp
   annotations:
-    ran.openshift.io/ztp-deploy-wave: "2"
+    argocd.argoproj.io/sync-wave: "2"
     argocd.argoproj.io/healthcheck: None
 spec:
   name: redhat-oadp-operator
