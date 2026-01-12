@@ -95,15 +95,7 @@ metadata:
   name: logs-topic
   namespace: openshift-amq-streams
   annotations:
-<<<<<<< HEAD
-<<<<<<< HEAD
     argocd.argoproj.io/sync-wave: "10"
-=======
-    argocd.argoproj.io/sync-wave: "3"
->>>>>>> d807d61 (update oadp and quay)
-=======
-    argocd.argoproj.io/sync-wave: "3"
->>>>>>> d807d61 (update oadp and quay)
     argocd.argoproj.io/healthcheck: "None"
   labels:
     strimzi.io/cluster: my-kafka-cluster
