@@ -29,7 +29,12 @@ metadata:
   name: redhat-oadp-operator
   namespace: openshift-adp
   annotations:
+<<<<<<< HEAD
     argocd.argoproj.io/sync-wave: "2"
+=======
+    ran.openshift.io/ztp-deploy-wave: "2"
+    argocd.argoproj.io/healthcheck: None
+>>>>>>> d807d61 (update oadp and quay)
 spec:
   name: redhat-oadp-operator
   source: cs-redhat-operator-index

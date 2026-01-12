@@ -77,6 +77,11 @@ spec:
   entityOperator:
     topicOperator: {}
     userOperator: {}
+<<<<<<< HEAD
+=======
+  nodePools:
+    - name: kafka
+>>>>>>> d807d61 (update oadp and quay)
 ---
 # Kafka Topics
 apiVersion: kafka.strimzi.io/v1beta2
@@ -85,7 +90,11 @@ metadata:
   name: logs-topic
   namespace: openshift-amq-streams
   annotations:
+<<<<<<< HEAD
     argocd.argoproj.io/sync-wave: "10"
+=======
+    argocd.argoproj.io/sync-wave: "3"
+>>>>>>> d807d61 (update oadp and quay)
     argocd.argoproj.io/healthcheck: "None"
   labels:
     strimzi.io/cluster: my-kafka-cluster
