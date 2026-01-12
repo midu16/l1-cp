@@ -2,6 +2,7 @@
 apiVersion: v1
 kind: Namespace
 metadata:
+  annotations:
     argocd.argoproj.io/sync-wave: "6"
     workload.openshift.io/allowed: management
   name: openshift-kmm-hub
@@ -15,7 +16,6 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "6"
     olm.providedAPIs: ManagedClusterModule.v1beta1.hub.kmm.sigs.x-k8s.io,ModuleBuildSignConfig.v1beta1.kmm.sigs.x-k8s.io,ModuleImagesConfig.v1beta1.kmm.sigs.x-k8s.io
-  generateName: openshift-kmm-hub
   name: openshift-kmm-hub-group
   namespace: openshift-kmm-hub
 spec:

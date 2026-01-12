@@ -32,6 +32,9 @@ metadata:
 =======
     ran.openshift.io/ztp-deploy-wave: "2"
     argocd.argoproj.io/healthcheck: None
+<<<<<<< HEAD
+>>>>>>> d807d61 (update oadp and quay)
+=======
 >>>>>>> d807d61 (update oadp and quay)
 spec:
   name: quay-operator
