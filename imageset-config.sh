@@ -27,6 +27,12 @@ REDHAT_REGISTRY_OPERATORS=(
   "ansible-cloud-addons-operator"
 )
 
+# Operators that should NOT have channel, minVersion, or maxVersion constraints
+OPERATORS_WITHOUT_VERSION_CONSTRAINTS=(
+  "advanced-cluster-management"
+  "multicluster-engine"
+)
+
 # Debug helper function
 debug_log() {
   if [[ "$DEBUG" == "true" ]]; then
@@ -43,6 +49,17 @@ is_redhat_registry_operator() {
     fi
   done
   return 1  # Not found in list
+}
+
+# Helper function to check if operator should skip channel and version constraints
+should_skip_channel_and_versions() {
+  local operator="$1"
+  for op in "${OPERATORS_WITHOUT_VERSION_CONSTRAINTS[@]}"; do
+    if [[ "$operator" == "$op" ]]; then
+      return 0  # Found in list
+    fi
+  done
+  return 1  # Not found
 }
 
 # Retry helper function
@@ -599,8 +616,12 @@ EOF
     
     debug_log "Package: $pkg, Min version: $min_version, Max version: $max_version"
     
-    # Check if this operator should skip version constraints
-    if is_redhat_registry_operator "$pkg"; then
+    # Check if this operator should skip channel and version constraints
+    if should_skip_channel_and_versions "$pkg"; then
+      debug_log "Skipping channel and version constraints for operator: $pkg"
+      echo "    - name: '${pkg}'" >> "$output_file"
+    # Check if this operator should skip version constraints (but keep channel)
+    elif is_redhat_registry_operator "$pkg"; then
       debug_log "Skipping version constraints for Red Hat registry operator: $pkg"
       echo "    - name: '${pkg}'" >> "$output_file"
     else
@@ -1133,15 +1154,21 @@ if [[ "$USE_VERSION_RANGE" == "true" ]]; then
   {
     for i in "${!OPERATORS[@]}"; do
       echo "- name: '${OPERATORS[$i]}'"
-      echo "  channels:"
-      echo "    - name: '${DEF_CHANNELS[$i]}'"
       
-      # Skip version constraints for Red Hat registry operators
-      if is_redhat_registry_operator "${OPERATORS[$i]}"; then
-        debug_log "Skipping version constraints for Red Hat registry operator: ${OPERATORS[$i]}"
+      # Check if this operator should skip channel and version constraints
+      if should_skip_channel_and_versions "${OPERATORS[$i]}"; then
+        debug_log "Skipping channel and version constraints for operator: ${OPERATORS[$i]}"
       else
-        echo "      minVersion: '${MIN_VERSIONS[$i]}'"
-        echo "      maxVersion: '${MAX_VERSIONS[$i]}'"
+        echo "  channels:"
+        echo "    - name: '${DEF_CHANNELS[$i]}'"
+        
+        # Skip version constraints for Red Hat registry operators
+        if is_redhat_registry_operator "${OPERATORS[$i]}"; then
+          debug_log "Skipping version constraints for Red Hat registry operator: ${OPERATORS[$i]}"
+        else
+          echo "      minVersion: '${MIN_VERSIONS[$i]}'"
+          echo "      maxVersion: '${MAX_VERSIONS[$i]}'"
+        fi
       fi
     done
   } > "$TMPDIR/packages.yaml"
@@ -1150,15 +1177,21 @@ else
   {
     for i in "${!OPERATORS[@]}"; do
       echo "- name: '${OPERATORS[$i]}'"
-      echo "  channels:"
-      echo "    - name: '${DEF_CHANNELS[$i]}'"
       
-      # Skip version constraints for Red Hat registry operators
-      if is_redhat_registry_operator "${OPERATORS[$i]}"; then
-        debug_log "Skipping version constraints for Red Hat registry operator: ${OPERATORS[$i]}"
+      # Check if this operator should skip channel and version constraints
+      if should_skip_channel_and_versions "${OPERATORS[$i]}"; then
+        debug_log "Skipping channel and version constraints for operator: ${OPERATORS[$i]}"
       else
-        echo "      minVersion: '${DEF_PACKAGES[$i]}'"
-        echo "      maxVersion: '${DEF_PACKAGES[$i]}'"
+        echo "  channels:"
+        echo "    - name: '${DEF_CHANNELS[$i]}'"
+        
+        # Skip version constraints for Red Hat registry operators
+        if is_redhat_registry_operator "${OPERATORS[$i]}"; then
+          debug_log "Skipping version constraints for Red Hat registry operator: ${OPERATORS[$i]}"
+        else
+          echo "      minVersion: '${DEF_PACKAGES[$i]}'"
+          echo "      maxVersion: '${DEF_PACKAGES[$i]}'"
+        fi
       fi
     done
   } > "$TMPDIR/packages.yaml"
