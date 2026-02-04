@@ -54,15 +54,16 @@ spec:
     - configOverrides: {}
       enabled: false
       name: cluster-api
-    - configOverrides: {}
-      enabled: false
-      name: cluster-api-provider-aws
+# remove for MCE 2.8.x
+#    - configOverrides: {}
+#      enabled: false
+#      name: cluster-api-provider-aws
     - configOverrides: {}
       enabled: true
       name: console-mce
-    - configOverrides: {}
-      enabled: false
-      name: cluster-api-provider-metal3
-    - configOverrides: {}
-      enabled: false
-      name: cluster-api-provider-openshift-assisted
+#    - configOverrides: {}
+#      enabled: false
+#      name: cluster-api-provider-metal3
+#    - configOverrides: {}
+#      enabled: false
+#      name: cluster-api-provider-openshift-assisted
