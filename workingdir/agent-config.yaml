@@ -42,10 +42,6 @@ hosts:
             next-hop-address: 172.16.30.1
             next-hop-interface: enp1s0
             table-id: 254
-          - destination: 172.16.30.0/24
-            next-hop-address: 172.16.30.1
-            next-hop-interface: br-ex
-            table-id: 254
   - hostname: hub-ctlplane-1.hub.5g-deployment.lab
     role: master
     interfaces:
@@ -81,10 +77,6 @@ hosts:
             next-hop-address: 172.16.30.1
             next-hop-interface: enp1s0
             table-id: 254
-          - destination: 172.16.30.0/24
-            next-hop-address: 172.16.30.1
-            next-hop-interface: br-ex
-            table-id: 254
   - hostname: hub-ctlplane-2.hub.5g-deployment.lab
     role: master
     interfaces:
@@ -119,10 +111,6 @@ hosts:
           - destination: 0.0.0.0/0
             next-hop-address: 172.16.30.1
             next-hop-interface: enp1s0
-            table-id: 254
-          - destination: 172.16.30.0/24
-            next-hop-address: 172.16.30.1
-            next-hop-interface: br-ex
             table-id: 254
 #  - hostname: hub-worker-0.hub.5g-deployment.lab
 #    role: worker
