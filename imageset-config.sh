@@ -25,7 +25,6 @@ REDHAT_REGISTRY_OPERATORS=(
   "self-node-remediation"
   "ansible-automation-platform-operator"
   "ansible-cloud-addons-operator"
-  "kubernetes-nmstate-operator"
 )
 
 # Operators that should NOT have channel, minVersion, or maxVersion constraints
@@ -554,6 +553,7 @@ generate_imageset_config() {
     'rhbk-operator'
     'lifecycle-agent'
     'metallb-operator'
+    'kubernetes-nmstate-operator'
   )
   
   echo "Fetching operator information and determining version ranges..."
