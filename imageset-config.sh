@@ -25,7 +25,7 @@ REDHAT_REGISTRY_OPERATORS=(
   "self-node-remediation"
   "ansible-automation-platform-operator"
   "ansible-cloud-addons-operator"
-  "skubernetes-nmstate-operator"
+  "kubernetes-nmstate-operator"
 )
 
 # Operators that should NOT have channel, minVersion, or maxVersion constraints
