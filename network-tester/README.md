@@ -236,3 +236,7 @@ spec:
       prune: true
       selfHeal: true
 ```
+
+## Future development
+
+- [ ] **SRIOV** - Enhance the network-tester:latest with validating the connectivity through a given sriov (netdev, dpdk) interface.
