@@ -590,6 +590,7 @@ mirror:
     graph: true
   operators:
   - catalog: registry.redhat.io/redhat/redhat-operator-index:v${major_minor}
+    targetCatalog: openshift-marketplace/redhat-operators-disconnected
     full: false
     packages:
 EOF
@@ -640,8 +641,10 @@ EOF
   # Add additional images and helm sections
   cat >> "$output_file" <<EOF
   additionalImages:
+  - name: registry.redhat.io/ubi8/ubi:latest
   - name: registry.redhat.io/openshift4/ztp-site-generate-rhel8:v${major_minor}.0
   - name: registry.redhat.io/rhel9/support-tools:latest
+  - name: registry.redhat.io/rhacm2/multicluster-operators-subscription-rhel9:v2.15.0-1
   helm: {}
 EOF
   
