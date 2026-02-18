@@ -153,6 +153,11 @@ jobs:
             --max-nested-paths 10 --parallel-images 10 --parallel-layers 10 \
             --dest-tls-verify=false --log-level debug
 
+      - name: 🔍 Verify AirGapped registry content after mirroring
+        run: |
+          curl -sk -u "${REGISTRY_USERNAME}:${REGISTRY_PASSWORD}" \
+              "https://${REGISTRY_URL}/v2/_catalog" | jq . || echo "⚠️ Registry check failed"
+
       - name: 🔧 Generate openshift-install binary
         run: sudo make generate-openshift-install \
           RELEASE_IMAGE="${REGISTRY_URL}/hub-demo/openshift/release-images:${OCP_VERSION}-x86_64"
