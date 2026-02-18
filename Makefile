@@ -898,7 +898,7 @@ imageset-config.yml: ## Generate templated imageset-config.yml (requires OCP_VER
 		exit 1; \
 	fi; \
 	chmod +x ./imageset-config.sh; \
-	OCP_VERSION="$(OCP_VERSION)" IMAGESET_OUTPUT_FILE="imageset-config.yml" ./imageset-config.sh -g || { \
+	OCP_VERSION="$(OCP_VERSION)" SOURCE_INDEX="$${SOURCE_INDEX:-registry.redhat.io/redhat/redhat-operator-index:v$$(echo $(OCP_VERSION) | cut -d. -f1,2)}" IMAGESET_OUTPUT_FILE="imageset-config.yml" ./imageset-config.sh -g || { \
 		echo "$(RED)✗ Failed to generate imageset-config.yml$(NC)"; \
 		exit 1; \
 	}; \
