@@ -41,7 +41,7 @@ env:
   VM_NAME: ${{ github.event.inputs.vm_name }}
   KUBECONFIG_PATH: ${{ github.workspace }}/hub/auth/kubeconfig
   ARGOCD_APP: ${{ github.event.inputs.argocd_app }}
-
+  
 jobs:
 
   clean-hub:
@@ -132,7 +132,12 @@ jobs:
         run: sudo make download-oc-tools VERSION="${OCP_VERSION}"
 
       - name: 📝 Render imageset-config.yml
-        run: sudo make imageset-config.yml OCP_VERSION="${OCP_VERSION}"
+        run: |
+          # Extract major.minor from OCP_VERSION (e.g., 4.18.27 -> 4.18)
+          OCP_MAJOR_MINOR="${OCP_VERSION%.*}"
+          export SOURCE_INDEX="registry.redhat.io/redhat/redhat-operator-index:v${OCP_MAJOR_MINOR}"
+          echo "Using SOURCE_INDEX: ${SOURCE_INDEX}"
+          sudo -E make imageset-config.yml OCP_VERSION="${OCP_VERSION}" SOURCE_INDEX="${SOURCE_INDEX}"
 
       - name: 🔍 Validate AirGapped registry catalog
         run: |
