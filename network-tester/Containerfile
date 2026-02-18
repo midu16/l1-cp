@@ -1,0 +1,60 @@
+# ============================================
+# Network Connectivity Tester Container
+# ============================================
+# A lightweight container for testing network connectivity
+# on OpenShift Hub clusters via DaemonSet deployment.
+#
+# Build:
+#   podman build -t network-tester:latest -f Containerfile .
+#
+# Push to registry:
+#   podman push network-tester:latest <registry>/network-tester:latest
+# ============================================
+
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+
+LABEL name="network-tester" \
+      version="1.0" \
+      description="Network connectivity tester for OpenShift Hub clusters" \
+      maintainer="Platform Team"
+
+# Install required network tools
+RUN microdnf install -y \
+    bash \
+    iputils \
+    iproute \
+    bind-utils \
+    nc \
+    procps-ng \
+    net-tools \
+    && microdnf clean all \
+    && rm -rf /var/cache/yum
+
+# Create non-root user
+RUN useradd -u 1001 -r -g 0 -s /sbin/nologin \
+    -c "Network Tester User" nettest
+
+# Copy the connectivity test script
+COPY --chmod=755 connectivity-test.sh /usr/local/bin/connectivity-test.sh
+
+# Set working directory
+WORKDIR /home/nettest
+
+# Switch to non-root user
+USER 1001
+
+# Default environment variables
+ENV GATEWAY_IP="192.168.1.1" \
+    TEST_INTERVAL="10" \
+    PING_COUNT="3" \
+    PING_TIMEOUT="2" \
+    TCP_PORTS="22,80,443" \
+    DNS_TEST_HOST="kubernetes.default.svc.cluster.local" \
+    LOG_LEVEL="INFO"
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD ping -c 1 -W 2 ${GATEWAY_IP} || exit 1
+
+# Run the connectivity test script
+ENTRYPOINT ["/usr/local/bin/connectivity-test.sh"]

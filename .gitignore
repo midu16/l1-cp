@@ -49,3 +49,8 @@ Thumbs.db
 
 # Mermaid generated images
 mermaid-images/
+
+
+# Kubeconfig files
+*.kubeconfig
+*/network-tester/kubeconfig

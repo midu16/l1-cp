@@ -1,0 +1,26 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: network-tester
+
+resources:
+  - deployment.yaml
+
+commonLabels:
+  app.kubernetes.io/part-of: network-tester
+  app.kubernetes.io/managed-by: kustomize
+
+# Customize the gateway IP using a patch
+patches:
+  - target:
+      kind: DaemonSet
+      name: network-tester
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/env/0/value
+        value: "192.168.1.1"  # UPDATE: Your gateway IP
+
+images:
+  - name: quay.io/your-org/network-tester
+    newName: quay.io/your-org/network-tester  # UPDATE: Your registry
+    newTag: latest

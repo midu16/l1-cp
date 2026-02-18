@@ -1,0 +1,229 @@
+---
+# ============================================
+# Network Connectivity Tester - DaemonSet
+# ============================================
+# Deploys a network connectivity tester pod on every node
+# in the cluster. Each pod continuously tests connectivity
+# to the specified gateway and logs the results.
+#
+# Usage:
+#   1. Update the GATEWAY_IP environment variable
+#   2. Update the image registry path
+#   3. Apply: oc apply -f deployment.yaml
+#   4. View logs: oc logs -l app=network-tester -f --all-containers
+# ============================================
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: network-tester
+  labels:
+    app: network-tester
+    openshift.io/cluster-monitoring: "true"
+    # Allow privileged workloads for NET_RAW capability
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/warn: privileged
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: network-tester
+  namespace: network-tester
+---
+# SCC to allow NET_RAW capability for ping
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: network-tester-scc
+allowHostDirVolumePlugin: false
+allowHostIPC: false
+allowHostNetwork: false
+allowHostPID: false
+allowHostPorts: false
+allowPrivilegeEscalation: false
+allowPrivilegedContainer: false
+allowedCapabilities:
+  - NET_RAW
+defaultAddCapabilities: []
+fsGroup:
+  type: RunAsAny
+groups: []
+priority: 10
+readOnlyRootFilesystem: false
+requiredDropCapabilities:
+  - KILL
+  - MKNOD
+  - SETUID
+  - SETGID
+runAsUser:
+  type: MustRunAsRange
+seLinuxContext:
+  type: MustRunAs
+seccompProfiles:
+  - runtime/default
+supplementalGroups:
+  type: RunAsAny
+users:
+  - system:serviceaccount:network-tester:network-tester
+volumes:
+  - emptyDir
+  - projected
+  - secret
+  - downwardAPI
+  - configMap
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: network-tester
+  namespace: network-tester
+  labels:
+    app: network-tester
+    app.kubernetes.io/name: network-tester
+    app.kubernetes.io/component: connectivity-test
+spec:
+  selector:
+    matchLabels:
+      app: network-tester
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: network-tester
+        app.kubernetes.io/name: network-tester
+      annotations:
+        prometheus.io/scrape: "false"
+    spec:
+      serviceAccountName: network-tester
+      terminationGracePeriodSeconds: 30
+      
+      # Run on all nodes including control plane
+      tolerations:
+        - operator: Exists
+      
+      # Prefer to schedule on different nodes (already guaranteed by DaemonSet)
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/os
+                    operator: In
+                    values:
+                      - linux
+      
+      containers:
+        - name: network-tester
+          # UPDATE THIS: Change to your registry
+          image: quay.io/midu/network-tester:latest
+          imagePullPolicy: Always
+          
+          # Resource limits
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          
+          # Environment variables for connectivity test configuration
+          env:
+            # REQUIRED: Set this to your machine network gateway
+            - name: GATEWAY_IP
+              value: "172.16.30.1"
+            
+            # Test interval in seconds
+            - name: TEST_INTERVAL
+              value: "30"
+            
+            # Number of ICMP pings per test
+            - name: PING_COUNT
+              value: "3"
+            
+            # ICMP ping timeout in seconds
+            - name: PING_TIMEOUT
+              value: "2"
+            
+            # Comma-separated list of TCP ports to test
+            - name: TCP_PORTS
+              value: "22,80,443"
+            
+            # DNS hostname to test resolution
+            - name: DNS_TEST_HOST
+              value: "kubernetes.default.svc.cluster.local"
+            
+            # Node name (from downward API)
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            
+            # Pod name (from downward API)
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            
+            # Pod IP (from downward API)
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          
+          # Security context
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - KILL
+                - MKNOD
+                - SETUID
+                - SETGID
+              add:
+                - NET_RAW  # Required for ping
+          
+          # Volume mounts for temp files
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+# Optional: ConfigMap for additional configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: network-tester-config
+  namespace: network-tester
+data:
+  # Additional gateways to test (comma-separated)
+  additional-gateways: ""
+  
+  # Additional TCP ports to test
+  additional-ports: ""
+  
+  # Custom DNS servers to test
+  dns-servers: ""
+---
+# Optional: NetworkPolicy to allow egress to gateway
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: network-tester-egress
+  namespace: network-tester
+spec:
+  podSelector:
+    matchLabels:
+      app: network-tester
+  policyTypes:
+    - Egress
+  egress:
+    # Allow all egress (needed for connectivity testing)
+    - {}
