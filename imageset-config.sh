@@ -1,35 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ============================================
-# Enhanced ImageSet Configuration Generator
-# ============================================
-#
-# PERFORMANCE OPTIMIZATIONS IMPLEMENTED:
-# --------------------------------------
-# 1. CACHING: All catalog data fetched once upfront instead of per-operator calls
-#    - Original: ~34 oc-mirror calls (1 per operator)
-#    - Optimized: 1-2 oc-mirror calls total
-#    - Speedup: ~10-20x faster
-#
-# 2. PARALLEL PROCESSING: Operators processed in parallel using background jobs
-#    - Configurable parallelism via PARALLEL_JOBS variable (default: 8)
-#    - Uses job control to limit concurrent processes
-#
-# 3. REDUCED RETRY DELAYS: 2 seconds instead of 10 seconds between retries
-#    - Faster recovery from transient failures
-#
-# 4. DEDUPLICATION: Removed duplicate function definitions
-#    - Cleaner code, smaller memory footprint
-#
-# 5. EARLY SKIP: Operators without version constraints skip version lookup entirely
-#    - No unnecessary processing for ACM, MCE, etc.
-#
-# 6. ASSOCIATIVE ARRAYS: Use bash associative arrays for O(1) lookups
-#    - Faster operator/channel matching
-#
-# ============================================
-
 # --- Configurable variables ---
 SOURCE_INDEX="${SOURCE_INDEX:-<your_source_index_here>}"
 IMAGESET_OUTPUT_FILE="${IMAGESET_OUTPUT_FILE:-imageset-config.yml}"
@@ -38,12 +9,6 @@ USE_VERSION_RANGE="${USE_VERSION_RANGE:-true}"
 NO_LIMITATIONS_MODE="${NO_LIMITATIONS_MODE:-false}"
 ALLOW_CHANNEL_SPECIFIC_VERSIONS="${ALLOW_CHANNEL_SPECIFIC_VERSIONS:-true}"
 OCP_VERSION="${OCP_VERSION:-}"
-
-# Performance tuning
-PARALLEL_JOBS="${PARALLEL_JOBS:-8}"        # Number of parallel operator processing jobs
-RETRY_DELAY="${RETRY_DELAY:-2}"            # Seconds between retries (was 10)
-RETRY_COUNT="${RETRY_COUNT:-3}"            # Number of retry attempts
-
 TMPDIR="$(mktemp -d)"
 trap 'rm -rf "$TMPDIR"' EXIT
 
@@ -68,121 +33,151 @@ OPERATORS_WITHOUT_VERSION_CONSTRAINTS=(
   "multicluster-engine"
 )
 
-# Build associative arrays for O(1) lookups (OPTIMIZATION #6)
-declare -A REDHAT_REGISTRY_OPERATORS_MAP
-declare -A OPERATORS_WITHOUT_VERSION_CONSTRAINTS_MAP
-
-for op in "${REDHAT_REGISTRY_OPERATORS[@]}"; do
-  REDHAT_REGISTRY_OPERATORS_MAP["$op"]=1
-done
-
-for op in "${OPERATORS_WITHOUT_VERSION_CONSTRAINTS[@]}"; do
-  OPERATORS_WITHOUT_VERSION_CONSTRAINTS_MAP["$op"]=1
-done
-
-# ============================================
-# Helper Functions
-# ============================================
-
+# Debug helper function
 debug_log() {
   if [[ "$DEBUG" == "true" ]]; then
     echo "[DEBUG] $*" >&2
   fi
 }
 
-# O(1) lookup using associative array (OPTIMIZATION #6)
+# Helper function to check if operator should skip version constraints
 is_redhat_registry_operator() {
-  [[ -n "${REDHAT_REGISTRY_OPERATORS_MAP[$1]:-}" ]]
+  local operator="$1"
+  for redhat_op in "${REDHAT_REGISTRY_OPERATORS[@]}"; do
+    if [[ "$operator" == "$redhat_op" ]]; then
+      return 0  # Found in list
+    fi
+  done
+  return 1  # Not found in list
 }
 
-# O(1) lookup using associative array (OPTIMIZATION #6)
+# Helper function to check if operator should skip channel and version constraints
 should_skip_channel_and_versions() {
-  [[ -n "${OPERATORS_WITHOUT_VERSION_CONSTRAINTS_MAP[$1]:-}" ]]
+  local operator="$1"
+  for op in "${OPERATORS_WITHOUT_VERSION_CONSTRAINTS[@]}"; do
+    if [[ "$operator" == "$op" ]]; then
+      return 0  # Found in list
+    fi
+  done
+  return 1  # Not found
 }
 
-# Optimized retry with reduced delay (OPTIMIZATION #3)
+# Retry helper function
 retry() {
-  local retries="${RETRY_COUNT}" delay="${RETRY_DELAY}"
+  local retries=$1 delay=$2
+  shift 2
   local count=0
   until "$@"; do
-    local exit_code=$?
+    exit_code=$?
     count=$((count + 1))
     if [ "$count" -lt "$retries" ]; then
-      debug_log "Retry $count/$retries failed. Retrying in $delay seconds..."
+      echo "Retry $count/$retries failed. Retrying in $delay seconds..."
       sleep "$delay"
     else
-      debug_log "Command failed after $retries attempts."
+      echo "Command failed after $retries attempts."
       return $exit_code
     fi
   done
 }
 
-# ============================================
-# Version Parsing Functions
-# ============================================
-
+# Version parsing and comparison functions
 extract_version() {
   local version_string="$1"
+  # Extract version from HEAD column values like:
+  # - "aap-operator.v2.5.0-0.1758147230" (from oc-mirror list operators HEAD column)
+  # - "openshift-gitops-operator.v1.18.0" (standard format)
+  # - "any-operator-name.v1.11.7-0.1724840231.p" (unlimited suffixes)
+  # - "operator-prefix.v2.1.0-beta1" (generic operator prefix)
+  # - "odf-prometheus-operator.v4.20.0-98.stable" (channel-specific versions)
+  # - "some-operator.v4.20.0-98.stable" (generic channel-specific)
+  
   local version
+  debug_log "Extracting version from: $version_string"
   
   # Generic pattern 1: operator-prefix.v4.20.0-98.stable (channel-specific)
   if [[ "$version_string" =~ ^[a-zA-Z0-9][a-zA-Z0-9_-]*\.(v?[0-9]+\.[0-9]+\.[0-9]+-[0-9a-zA-Z._-]+)\.(stable|fast|candidate|eus)$ ]]; then
     version="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
+    debug_log "Found generic channel-specific version pattern: $version"
   # Generic pattern 2: operator-prefix.v2.5.0-0.1758147230 (extended unlimited suffixes)  
   elif [[ "$version_string" =~ ^[a-zA-Z0-9][a-zA-Z0-9_-]*\.(v?[0-9]+\.[0-9]+\.[0-9]+-[0-9a-zA-Z._-]+)$ ]]; then
     version="${BASH_REMATCH[1]}"
+    debug_log "Found generic extended version pattern with unlimited suffix: $version"
   # Generic pattern 3: operator-prefix.v4.20.0-98 (standard extended)
   elif [[ "$version_string" =~ ^[a-zA-Z0-9][a-zA-Z0-9_-]*\.(v?[0-9]+\.[0-9]+\.[0-9]+-[0-9]+)$ ]]; then
     version="${BASH_REMATCH[1]}"
+    debug_log "Found generic extended version pattern: $version"
   # Generic pattern 4: operator-prefix.v1.18.0 (semantic version)
   elif [[ "$version_string" =~ ^[a-zA-Z0-9][a-zA-Z0-9_-]*\.(v?[0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
     version="${BASH_REMATCH[1]}"
+    debug_log "Found generic semantic version: $version"
   # Generic pattern 5: operator-prefix.v1.5 (major.minor)
   elif [[ "$version_string" =~ ^[a-zA-Z0-9][a-zA-Z0-9_-]*\.(v?[0-9]+\.[0-9]+)$ ]]; then
     version="${BASH_REMATCH[1]}.0"
-  # Legacy patterns for backwards compatibility
+    debug_log "Found generic major.minor version, padded to: $version"
+  # Legacy pattern 1: .v4.20.0-98.stable (backwards compatibility)
   elif [[ "$version_string" =~ \.(v?[0-9]+\.[0-9]+\.[0-9]+-[0-9a-zA-Z._-]+)\.(stable|fast|candidate|eus) ]]; then
     version="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
+    debug_log "Found legacy channel-specific version pattern: $version"
+  # Legacy pattern 2: .v2.5.0-0.1758147230 (backwards compatibility)
   elif [[ "$version_string" =~ \.(v?[0-9]+\.[0-9]+\.[0-9]+-[0-9a-zA-Z._-]+) ]]; then
     version="${BASH_REMATCH[1]}"
+    debug_log "Found legacy extended version pattern: $version"
+  # Legacy pattern 3: .v4.20.0-98 (backwards compatibility)
   elif [[ "$version_string" =~ \.(v?[0-9]+\.[0-9]+\.[0-9]+-[0-9]+) ]]; then
     version="${BASH_REMATCH[1]}"
+    debug_log "Found legacy extended version pattern: $version"
+  # Legacy pattern 4: .v1.18.0 (backwards compatibility)
   elif [[ "$version_string" =~ \.(v?[0-9]+\.[0-9]+\.[0-9]+) ]]; then
     version="${BASH_REMATCH[1]}"
+    debug_log "Found legacy semantic version: $version"
+  # Legacy pattern 5: .v1.5 (backwards compatibility)
   elif [[ "$version_string" =~ \.(v?[0-9]+\.[0-9]+) ]]; then
     version="${BASH_REMATCH[1]}.0"
+    debug_log "Found legacy major.minor version, padded to: $version"
   else
-    # Fallback extraction
+    # Enhanced fallback: try to extract version after any operator prefix, preserving v prefix
     version=$(echo "$version_string" | sed -E 's/^[a-zA-Z0-9][a-zA-Z0-9_-]*\.(v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9a-zA-Z._-]+)?).*$/\1/' | head -1)
     if [[ ! "$version" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9a-zA-Z._-]+)?$ ]]; then
+      # Final fallback: extract any version pattern, preserving v prefix
       version=$(echo "$version_string" | sed -E 's/.*\.(v?[0-9]+\.[0-9]+(\.[0-9]+)?(-[0-9a-zA-Z._-]+)?).*/\1/' | head -1)
     fi
+    debug_log "Fallback extraction result: $version"
   fi
   
-  # Normalize version for comparison
+  # Normalize version for comparison (remove trailing parts after dash for comparison, preserve v prefix)
   local normalized_version
   if [[ "$version" =~ ^(v?[0-9]+\.[0-9]+\.[0-9]+)-.*\.(stable|fast|candidate|eus)$ ]]; then
+    # Handle versions like v4.20.0-98.stable - extract base for comparison
     normalized_version="${BASH_REMATCH[1]}"
+    debug_log "Normalized channel-specific version for comparison: $normalized_version (from $version)"
   elif [[ "$version" =~ ^(v?[0-9]+\.[0-9]+\.[0-9]+)-.*$ ]]; then
     normalized_version="${BASH_REMATCH[1]}"
+    debug_log "Normalized version for comparison: $normalized_version (from $version)"
   else
     normalized_version="$version"
   fi
   
-  # Validation
-  if [[ "$normalized_version" =~ ^v?[0-9]+\.[0-9]+(\.[0-9]+)?$ ]] || \
-     [[ "$version" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+-[0-9a-zA-Z._-]+(\.(stable|fast|candidate|eus))?$ ]]; then
-    echo "$version"
+  # Enhanced validation - allow unlimited character suffixes and channel-specific versions with v prefix 
+  if [[ "$normalized_version" =~ ^v?[0-9]+\.[0-9]+(\.[0-9]+)?$ ]] || [[ "$version" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+-[0-9a-zA-Z._-]+(\.(stable|fast|candidate|eus))?$ ]]; then
+    echo "$version"  # Return the original version with extended info
+    debug_log "Final version result: $version"
   else
+    debug_log "Version validation failed, using fallback"
     echo "1.0.0"
   fi
 }
 
 version_compare() {
+  # Enhanced version comparison for semantic versions and extended formats
+  # Returns: 0 if equal, 1 if $1 > $2, 2 if $1 < $2
   local v1="$1" v2="$2"
+  
+  debug_log "Comparing versions: '$v1' vs '$v2'"
+  
+  # Normalize versions by extracting base semantic version for comparison
   local norm_v1 norm_v2
   
-  # Extract base version
+  # Extract base version (remove -XX.channel suffix for comparison, handle v prefix)
   if [[ "$v1" =~ ^(v?[0-9]+\.[0-9]+\.[0-9]+)-.*\.(stable|fast|candidate|eus)$ ]]; then
     norm_v1="${BASH_REMATCH[1]}"
   elif [[ "$v1" =~ ^(v?[0-9]+\.[0-9]+\.[0-9]+)-.*$ ]]; then
@@ -199,97 +194,136 @@ version_compare() {
     norm_v2="$v2"
   fi
   
-  # Remove 'v' prefix
+  # Remove 'v' prefix for numeric comparison
   norm_v1="${norm_v1#v}"
   norm_v2="${norm_v2#v}"
   
-  # Split and compare
+  debug_log "Normalized versions: '$norm_v1' vs '$norm_v2'"
+  
+  # Split versions into components
   IFS='.' read -ra V1 <<< "$norm_v1"
   IFS='.' read -ra V2 <<< "$norm_v2"
   
+  # Pad arrays to same length
   local max_len=$((${#V1[@]} > ${#V2[@]} ? ${#V1[@]} : ${#V2[@]}))
   while [[ ${#V1[@]} -lt $max_len ]]; do V1+=("0"); done
   while [[ ${#V2[@]} -lt $max_len ]]; do V2+=("0"); done
   
+  # Compare each component
   for ((i=0; i<max_len; i++)); do
-    if [[ ${V1[i]} -gt ${V2[i]} ]]; then return 1; fi
-    if [[ ${V1[i]} -lt ${V2[i]} ]]; then return 2; fi
+    if [[ ${V1[i]} -gt ${V2[i]} ]]; then
+      debug_log "Version comparison result: $v1 > $v2"
+      return 1
+    elif [[ ${V1[i]} -lt ${V2[i]} ]]; then
+      debug_log "Version comparison result: $v1 < $v2"
+      return 2
+    fi
   done
   
-  # Compare suffixes if base versions equal
-  local suffix1="" suffix2=""
-  [[ "$v1" =~ -([0-9]+) ]] && suffix1="${BASH_REMATCH[1]}"
-  [[ "$v2" =~ -([0-9]+) ]] && suffix2="${BASH_REMATCH[1]}"
+  # If base versions are equal, compare the suffix numbers and channel types
+  local suffix1="" suffix2="" channel1="" channel2=""
   
-  if [[ -n "$suffix1" && -n "$suffix2" ]]; then
-    if [[ "$suffix1" -gt "$suffix2" ]]; then return 1; fi
-    if [[ "$suffix1" -lt "$suffix2" ]]; then return 2; fi
+  # Extract suffix and channel from v1
+  if [[ "$v1" =~ -([0-9]+)\.(stable|fast|candidate|eus)$ ]]; then
+    suffix1="${BASH_REMATCH[1]}"
+    channel1="${BASH_REMATCH[2]}"
+  elif [[ "$v1" =~ -([0-9]+)$ ]]; then
+    suffix1="${BASH_REMATCH[1]}"
   fi
   
+  # Extract suffix and channel from v2
+  if [[ "$v2" =~ -([0-9]+)\.(stable|fast|candidate|eus)$ ]]; then
+    suffix2="${BASH_REMATCH[1]}"
+    channel2="${BASH_REMATCH[2]}"
+  elif [[ "$v2" =~ -([0-9]+)$ ]]; then
+    suffix2="${BASH_REMATCH[1]}"
+  fi
+  
+  # Compare suffixes if both versions have them
+  if [[ -n "$suffix1" && -n "$suffix2" ]]; then
+    if [[ "$suffix1" -gt "$suffix2" ]]; then
+      debug_log "Version comparison result: $v1 > $v2 (by suffix: $suffix1 > $suffix2)"
+      return 1
+    elif [[ "$suffix1" -lt "$suffix2" ]]; then
+      debug_log "Version comparison result: $v1 < $v2 (by suffix: $suffix1 < $suffix2)"
+      return 2
+    fi
+    
+    # If suffixes are equal, compare channels (stable > fast > candidate > eus is typical priority)
+    if [[ -n "$channel1" && -n "$channel2" && "$channel1" != "$channel2" ]]; then
+      case "$channel1-$channel2" in
+        "stable-fast"|"stable-candidate"|"stable-eus"|"fast-candidate"|"fast-eus"|"candidate-eus")
+          debug_log "Version comparison result: $v1 > $v2 (by channel: $channel1 > $channel2)"
+          return 1
+          ;;
+        "fast-stable"|"candidate-stable"|"eus-stable"|"candidate-fast"|"eus-fast"|"eus-candidate")
+          debug_log "Version comparison result: $v1 < $v2 (by channel: $channel1 < $channel2)"
+          return 2
+          ;;
+      esac
+    fi
+  fi
+  
+  debug_log "Version comparison result: $v1 == $v2"
   return 0
 }
 
-# ============================================
-# OPTIMIZATION #1: Cache all catalog data upfront
-# ============================================
-fetch_and_cache_catalog_data() {
-  local cache_file="$TMPDIR/catalog_cache.txt"
-  local channels_file="$TMPDIR/channels_cache.txt"
-  
-  echo "Fetching catalog data (single call optimization)..."
-  
-  # Single call to get all operators and their channels
-  retry bash -c "
-    oc-mirror list operators --catalog \"$SOURCE_INDEX\" 2>/dev/null > \"$cache_file\"
-  " || {
-    echo "Error: Failed to fetch catalog data" >&2
-    return 1
-  }
-  
-  # Extract operator -> default channel mapping
-  awk 'NR>1 && NF>=2 {print $1, $NF}' "$cache_file" | sort -u > "$channels_file"
-  
-  # Create per-operator version files for fast lookup
-  awk 'NR>1 && NF>=3 {print $1, $2, $3}' "$cache_file" > "$TMPDIR/all_versions.txt"
-  
-  echo "Catalog data cached successfully"
-}
-
-# Get channel from cache (OPTIMIZATION #1)
-get_cached_channel() {
-  local operator="$1"
-  awk -v op="$operator" '$1 == op {print $2; exit}' "$TMPDIR/channels_cache.txt"
-}
-
-# Get versions from cache (OPTIMIZATION #1)
-get_cached_versions() {
-  local operator="$1"
-  local channel="$2"
-  awk -v op="$operator" -v ch="$channel" '$1 == op && $2 == ch {print $3}' "$TMPDIR/all_versions.txt"
-}
-
-# ============================================
-# Optimized version finding using cached data
-# ============================================
-find_min_max_versions_cached() {
+find_min_max_versions() {
   local operator="$1"
   local default_channel="$2"
   
-  # Get versions from cache instead of making network call
-  local versions_output
-  versions_output=$(get_cached_versions "$operator" "$default_channel")
+  debug_log "Finding min/max versions for $operator in channel $default_channel..."
+  debug_log "No limitations mode: $NO_LIMITATIONS_MODE"
+  debug_log "Channel-specific versions: $ALLOW_CHANNEL_SPECIFIC_VERSIONS"
   
-  # If no versions in specific channel, try all channels
-  if [[ -z "$versions_output" ]]; then
-    versions_output=$(awk -v op="$operator" '$1 == op {print $3}' "$TMPDIR/all_versions.txt")
+  # Get detailed operator information including all channels
+  local operator_details
+  operator_details=$(retry 3 10 bash -c "
+    oc-mirror list operators \
+      --catalog \"$SOURCE_INDEX\" \
+      --package \"$operator\" 2>/dev/null
+  ")
+  
+  debug_log "Operator details output:"
+  debug_log "$operator_details"
+  
+  # Extract versions from the specific default channel
+  local versions_output
+  versions_output=$(echo "$operator_details" | awk -v op="$operator" -v ch="$default_channel" '
+    $1 == op && $2 == ch { print $3 }
+  ')
+  
+  debug_log "Versions found in channel $default_channel: $versions_output"
+  
+  # If no limitations mode is enabled, get ALL versions from ALL channels
+  if [[ "$NO_LIMITATIONS_MODE" == "true" ]]; then
+    debug_log "No limitations mode: collecting ALL versions from ALL channels..."
+    local all_versions
+    all_versions=$(echo "$operator_details" | awk -v op="$operator" '
+      NR > 1 && $1 == op && NF >= 3 { print $3 }
+    ')
+    if [[ -n "$all_versions" ]]; then
+      versions_output="$versions_output"$'\n'"$all_versions"
+    fi
+    debug_log "Extended versions (all channels): $versions_output"
+  # If no versions found in the specific channel, try to get all available versions
+  elif [[ -z "$versions_output" ]]; then
+    debug_log "No direct versions found in channel $default_channel, analyzing all versions..."
+    versions_output=$(echo "$operator_details" | awk -v op="$operator" '
+      NR > 1 && $1 == op && NF >= 3 { print $3 }
+    ')
+    debug_log "All versions found: $versions_output"
   fi
   
   if [[ -z "$versions_output" ]]; then
+    debug_log "Warning: No versions found for $operator"
     echo "1.0.0 1.0.0"
     return
   fi
   
   local min_version="" max_version=""
+  local versions_found=0
+  local channel_specific_versions=()
   
   while IFS= read -r version_string; do
     [[ -z "$version_string" ]] && continue
@@ -297,107 +331,195 @@ find_min_max_versions_cached() {
     local version
     version=$(extract_version "$version_string")
     
-    # Validate version
+    # Enhanced validation for channel-specific versions
     local is_valid=false
     if [[ "$ALLOW_CHANNEL_SPECIFIC_VERSIONS" == "true" ]]; then
+      # Accept channel-specific versions like v4.20.0-98.stable or extended versions with unlimited suffixes
       if [[ "$version" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9a-zA-Z._-]+)?(\.(stable|fast|candidate|eus))?$ ]]; then
         is_valid=true
+        debug_log "Accepted channel-specific version: $version"
       fi
     else
+      # Standard validation
       if [[ "$version" =~ ^v?[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
         is_valid=true
       fi
     fi
     
-    [[ "$is_valid" != "true" ]] && continue
+    if [[ "$is_valid" != "true" ]]; then
+      debug_log "Skipping invalid version: $version_string -> $version"
+      continue
+    fi
+    
+    versions_found=$((versions_found + 1))
+    debug_log "Found valid version: $version (from $version_string)"
+    
+    # Store channel-specific versions for special handling
+    if [[ "$version" =~ -[0-9a-zA-Z._-]+(\.(stable|fast|candidate|eus))?$ ]]; then
+      channel_specific_versions+=("$version")
+    fi
     
     if [[ -z "$min_version" ]]; then
       min_version="$version"
       max_version="$version"
+      debug_log "Initial version set: min=$min_version, max=$max_version"
     else
+      # Check if this version is smaller than current min
       version_compare "$version" "$min_version"
-      [[ $? -eq 2 ]] && min_version="$version"
+      local cmp_result=$?
+      if [[ $cmp_result -eq 2 ]]; then
+        debug_log "New minimum: $version < $min_version"
+        min_version="$version"
+      fi
       
+      # Check if this version is larger than current max
       version_compare "$version" "$max_version"
-      [[ $? -eq 1 ]] && max_version="$version"
+      cmp_result=$?
+      if [[ $cmp_result -eq 1 ]]; then
+        debug_log "New maximum: $version > $max_version"
+        max_version="$version"
+      fi
     fi
   done <<< "$versions_output"
   
-  # Fallback
-  [[ -z "$min_version" ]] && min_version="1.0.0"
-  [[ -z "$max_version" ]] && max_version="1.0.0"
+  # Special handling for channel-specific versions
+  if [[ "${#channel_specific_versions[@]}" -gt 0 ]]; then
+    debug_log "Found ${#channel_specific_versions[@]} channel-specific versions"
+    debug_log "Channel-specific versions: ${channel_specific_versions[*]}"
+  fi
   
+  # Fallback: get the latest version using channel-specific query
+  if [[ $versions_found -eq 0 ]] || [[ -z "$min_version" || -z "$max_version" ]]; then
+    debug_log "Using fallback method to get latest version..."
+    local latest_version
+    latest_version=$(retry 3 10 bash -c "
+      oc-mirror list operators \
+        --catalog \"$SOURCE_INDEX\" \
+        --package \"$operator\" \
+        --channel \"$default_channel\" 2>/dev/null | awk 'END {print \$3}'
+    ")
+    
+    debug_log "Fallback latest version: $latest_version"
+    
+    if [[ -n "$latest_version" ]]; then
+      local parsed_version
+      parsed_version=$(extract_version "$latest_version")
+      if [[ "$ALLOW_CHANNEL_SPECIFIC_VERSIONS" == "true" ]] && [[ "$parsed_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9a-zA-Z._-]+)?(\.(stable|fast|candidate|eus))?$ ]]; then
+        min_version="$parsed_version"
+        max_version="$parsed_version"
+        debug_log "Fallback version set: $parsed_version"
+      elif [[ "$parsed_version" =~ ^v?[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
+        min_version="$parsed_version"
+        max_version="$parsed_version"
+        debug_log "Fallback version set: $parsed_version"
+      fi
+    fi
+  fi
+  
+  # Final fallback
+  if [[ -z "$min_version" || -z "$max_version" ]]; then
+    min_version="1.0.0"
+    max_version="1.0.0"
+    debug_log "Warning: Could not determine versions, using fallback 1.0.0"
+  fi
+  
+  debug_log "Final result: min=$min_version, max=$max_version"
   echo "$min_version $max_version"
 }
 
-# ============================================
-# OPTIMIZATION #2: Parallel operator processing
-# ============================================
-process_operator_parallel() {
-  local pkg="$1"
-  local output_file="$2"
-  local default_channel
+# Test function for version parsing
+test_version_parsing() {
+  echo "Testing version parsing..."
+  local test_cases=(
+    "openshift-gitops-operator.v1.18.0:v1.18.0"
+    "openshift-gitops-operator.v1.11.7-0.1724840231.p:v1.11.7-0.1724840231.p"
+    "operator-name.v2.1.0-beta1:v2.1.0-beta1"
+    "some-operator.v1.5:v1.5.0"
+    "test.1.2.3:1.2.3"
+    "odf-prometheus-operator.v4.20.0-98.stable:v4.20.0-98.stable"
+    "odf-prometheus-operator.v4.20.0-98:v4.20.0-98"
+    "some-operator.v3.15.2-45.candidate:v3.15.2-45.candidate"
+    "operator.v2.8.1-12.fast:v2.8.1-12.fast"
+    "odf-operator.v4.20.0-98.stable:v4.20.0-98.stable"
+    "aap-operator.v2.5.0-0.1758147230:v2.5.0-0.1758147230"
+    "aap-operator.v2.5.0-0.1758147817:v2.5.0-0.1758147817"
+    "ansible-automation-platform-operator.v2.5.0-0.1758147230:v2.5.0-0.1758147230"
+    "test-operator.v1.0.0-0.123456789012345:v1.0.0-0.123456789012345"
+    "generic-operator.v3.2.1-0.987654321:v3.2.1-0.987654321"
+    "some_operator.v2.4.6-0.1234567890abc:v2.4.6-0.1234567890abc"
+    "operator-name.v1.0.0-0.deadbeef123:v1.0.0-0.deadbeef123"
+    "my-operator.v4.20.0-99.stable:v4.20.0-99.stable"
+  )
   
-  # OPTIMIZATION #5: Early skip for operators without constraints
-  if should_skip_channel_and_versions "$pkg"; then
-    echo "    - name: '${pkg}'" > "$output_file"
-    return 0
-  fi
-  
-  # Get channel from cache
-  default_channel=$(get_cached_channel "$pkg")
-  
-  if [[ -z "$default_channel" ]]; then
-    echo "    - name: '${pkg}'" > "$output_file"
-    return 0
-  fi
-  
-  # OPTIMIZATION #5: Skip version lookup for redhat registry operators
-  if is_redhat_registry_operator "$pkg"; then
-    echo "    - name: '${pkg}'" > "$output_file"
-    return 0
-  fi
-  
-  # Get versions from cache
-  local version_range
-  version_range=$(find_min_max_versions_cached "$pkg" "$default_channel")
-  read -r min_version max_version <<< "$version_range"
-  
-  # Write operator config
-  {
-    echo "    - name: '${pkg}'"
-    echo "      channels:"
-    echo "        - name: '${default_channel}'"
-    echo "          minVersion: '${min_version}'"
-    echo "          maxVersion: '${max_version}'"
-  } > "$output_file"
+  for test_case in "${test_cases[@]}"; do
+    IFS=':' read -r input expected <<< "$test_case"
+    result=$(extract_version "$input")
+    if [[ "$result" == "$expected" ]]; then
+      echo "✅ PASS: $input -> $result"
+    else
+      echo "❌ FAIL: $input -> expected $expected, got $result"
+    fi
+  done
+  echo "Version parsing tests completed."
 }
 
-# ============================================
-# Generate imageset-config.yml (main function)
-# ============================================
+# Test function for version comparison
+test_version_comparison() {
+  echo "Testing version comparison..."
+  local test_cases=(
+    "1.0.0:1.0.0:0"
+    "1.1.0:1.0.0:1"
+    "1.0.0:1.1.0:2"
+    "2.0.0:1.9.9:1"
+    "1.10.0:1.9.0:1"
+    "1.0.1:1.0.0:1"
+    "4.20.0-98:4.20.0-97:1"
+    "4.20.0-97:4.20.0-98:2"
+    "4.20.0-98:4.20.0-98:0"
+    "4.21.0-1:4.20.0-99:1"
+    "4.19.5-10:4.20.0-1:2"
+    "4.20.0-98.stable:4.20.0-97.stable:1"
+    "4.20.0-98.stable:4.20.0-98.fast:1"
+    "4.20.0-98.stable:4.20.0-98.stable:0"
+  )
+  
+  for test_case in "${test_cases[@]}"; do
+    IFS=':' read -r v1 v2 expected <<< "$test_case"
+    version_compare "$v1" "$v2"
+    result=$?
+    if [[ "$result" == "$expected" ]]; then
+      echo "✅ PASS: $v1 vs $v2 -> $result"
+    else
+      echo "❌ FAIL: $v1 vs $v2 -> expected $expected, got $result"
+    fi
+  done
+  echo "Version comparison tests completed."
+}
+
+# Function to generate templated imageset-config.yml
 generate_imageset_config() {
   local ocp_version="${OCP_VERSION:-4.18.27}"
   local output_file="${IMAGESET_OUTPUT_FILE:-imageset-config.yml}"
   
-  # Extract major.minor version
+  # Extract major.minor version (e.g., 4.18.27 -> 4.18)
   local major_minor
   if [[ "$ocp_version" =~ ^([0-9]+\.[0-9]+) ]]; then
     major_minor="${BASH_REMATCH[1]}"
   else
-    echo "Error: Invalid OCP_VERSION format: $ocp_version" >&2
+    echo "Error: Invalid OCP_VERSION format: $ocp_version. Expected format: X.Y.Z (e.g., 4.18.27)" >&2
     return 1
   fi
   
   # Set SOURCE_INDEX if not already set
   if [[ "$SOURCE_INDEX" == "<your_source_index_here>" ]] || [[ -z "$SOURCE_INDEX" ]]; then
     SOURCE_INDEX="registry.redhat.io/redhat/redhat-operator-index:v${major_minor}"
+    debug_log "Setting SOURCE_INDEX to: $SOURCE_INDEX"
   fi
   
-  debug_log "Generating imageset-config.yml with OCP_VERSION=$ocp_version"
+  debug_log "Generating imageset-config.yml with OCP_VERSION=$ocp_version, major.minor=$major_minor"
   debug_log "Using SOURCE_INDEX=$SOURCE_INDEX"
   
-  # Pre-defined list of packages
+  # Pre-defined list of packages (from lines 18-40 of imageset-config.yml)
   local packages=(
     'advanced-cluster-management'
     'multicluster-engine'
@@ -438,43 +560,19 @@ generate_imageset_config() {
   
   echo "Fetching operator information and determining version ranges..."
   
-  # OPTIMIZATION #1: Cache all catalog data upfront (single network call)
-  fetch_and_cache_catalog_data || {
-    echo "Warning: Could not fetch catalog data, generating without version constraints" >&2
-    # Fallback: generate without version constraints
-    cat > "$output_file" <<EOF
-apiVersion: mirror.openshift.io/v2alpha1
-kind: ImageSetConfiguration
-archiveSize: 4
-mirror:
-  platform:
-    architectures:
-    - "amd64"
-    channels:
-    - name: stable-${major_minor}
-      minVersion: ${ocp_version}
-      maxVersion: ${ocp_version}
-      type: ocp
-    graph: true
-  operators:
-  - catalog: registry.redhat.io/redhat/redhat-operator-index:v${major_minor}
-    targetCatalog: openshift-marketplace/redhat-operators-disconnected
-    full: false
-    packages:
-EOF
-    for pkg in "${packages[@]}"; do
-      echo "    - name: '${pkg}'" >> "$output_file"
-    done
-    cat >> "$output_file" <<EOF
-  additionalImages:
-  - name: registry.redhat.io/ubi8/ubi:latest
-  - name: registry.redhat.io/openshift4/ztp-site-generate-rhel8:v${major_minor}.0
-  - name: registry.redhat.io/rhel9/support-tools:latest
-  - name: registry.redhat.io/rhacm2/multicluster-operators-subscription-rhel9:v2.15.0-1
-  helm: {}
-EOF
-    echo "Generated $output_file with OCP_VERSION=$ocp_version (fallback mode - no version constraints)"
-    return 0
+  # Get default channels for each package
+  local tmp_channels_file=$(mktemp)
+  # Ensure cleanup on exit
+  trap "rm -f '$tmp_channels_file'" EXIT
+  
+  retry 3 10 bash -c "
+    oc-mirror list operators --catalog \"$SOURCE_INDEX\" 2>/dev/null \
+    | awk 'x==1 {print \$1,\$NF} /NAME/ {x=1}' \
+    > \"$tmp_channels_file\"
+  " || {
+    echo "Error: Failed to fetch operator information from catalog" >&2
+    rm -f "$tmp_channels_file"
+    return 1
   }
   
   # Generate the YAML file header
@@ -499,50 +597,48 @@ mirror:
     packages:
 EOF
   
-  # OPTIMIZATION #2: Process operators in parallel
-  local parallel_dir="$TMPDIR/parallel"
-  mkdir -p "$parallel_dir"
-  
-  local job_count=0
-  local total_packages=${#packages[@]}
-  local processed=0
-  
-  echo "Processing $total_packages packages (parallel jobs: $PARALLEL_JOBS)..."
-  
+  # Process each package to get version ranges
   for pkg in "${packages[@]}"; do
-    local pkg_output="$parallel_dir/${pkg}.yaml"
+    echo "Processing package: $pkg..."
     
-    # Run in background for parallelism
-    process_operator_parallel "$pkg" "$pkg_output" &
+    # Get default channel for this package
+    local default_channel
+    default_channel=$(awk -v pkg="$pkg" '$1 == pkg {print $2; exit}' "$tmp_channels_file")
     
-    job_count=$((job_count + 1))
-    processed=$((processed + 1))
-    
-    # Limit parallel jobs (OPTIMIZATION #2)
-    if [[ $job_count -ge $PARALLEL_JOBS ]]; then
-      wait -n 2>/dev/null || true
-      job_count=$((job_count - 1))
+    if [[ -z "$default_channel" ]]; then
+      echo "Warning: Could not find default channel for $pkg, skipping version constraints" >&2
+      echo "    - name: '${pkg}'" >> "$output_file"
+      continue
     fi
     
-    # Progress indicator
-    if [[ $((processed % 5)) -eq 0 ]]; then
-      echo "  Processed $processed/$total_packages packages..."
-    fi
-  done
-  
-  # Wait for all background jobs to complete
-  wait
-  echo "  Processed $total_packages/$total_packages packages... done"
-  
-  # Combine results in order
-  for pkg in "${packages[@]}"; do
-    local pkg_output="$parallel_dir/${pkg}.yaml"
-    if [[ -f "$pkg_output" ]]; then
-      cat "$pkg_output" >> "$output_file"
+    debug_log "Package: $pkg, Default channel: $default_channel"
+    
+    # Get min/max versions for this package
+    local version_range
+    version_range=$(find_min_max_versions "$pkg" "$default_channel")
+    read -r min_version max_version <<< "$version_range"
+    
+    debug_log "Package: $pkg, Min version: $min_version, Max version: $max_version"
+    
+    # Check if this operator should skip channel and version constraints
+    if should_skip_channel_and_versions "$pkg"; then
+      debug_log "Skipping channel and version constraints for operator: $pkg"
+      echo "    - name: '${pkg}'" >> "$output_file"
+    # Check if this operator should skip version constraints (but keep channel)
+    elif is_redhat_registry_operator "$pkg"; then
+      debug_log "Skipping version constraints for Red Hat registry operator: $pkg"
+      echo "    - name: '${pkg}'" >> "$output_file"
     else
       echo "    - name: '${pkg}'" >> "$output_file"
+      echo "      channels:" >> "$output_file"
+      echo "        - name: '${default_channel}'" >> "$output_file"
+      echo "          minVersion: '${min_version}'" >> "$output_file"
+      echo "          maxVersion: '${max_version}'" >> "$output_file"
     fi
   done
+  
+  # Clean up temp file
+  rm -f "$tmp_channels_file"
   
   # Add additional images and helm sections
   cat >> "$output_file" <<EOF
@@ -555,122 +651,63 @@ EOF
 EOF
   
   echo "Generated $output_file with OCP_VERSION=$ocp_version (major.minor=$major_minor)"
+  debug_log "Output file: $output_file"
 }
 
-# ============================================
-# Test Functions
-# ============================================
-
-test_version_parsing() {
-  echo "Testing version parsing..."
-  local test_cases=(
-    "openshift-gitops-operator.v1.18.0:v1.18.0"
-    "openshift-gitops-operator.v1.11.7-0.1724840231.p:v1.11.7-0.1724840231.p"
-    "operator-name.v2.1.0-beta1:v2.1.0-beta1"
-    "some-operator.v1.5:v1.5.0"
-    "odf-prometheus-operator.v4.20.0-98.stable:v4.20.0-98.stable"
-    "aap-operator.v2.5.0-0.1758147230:v2.5.0-0.1758147230"
-  )
-  
-  local passed=0 failed=0
-  for test_case in "${test_cases[@]}"; do
-    IFS=':' read -r input expected <<< "$test_case"
-    result=$(extract_version "$input")
-    if [[ "$result" == "$expected" ]]; then
-      echo "✅ PASS: $input -> $result"
-      passed=$((passed + 1))
-    else
-      echo "❌ FAIL: $input -> expected $expected, got $result"
-      failed=$((failed + 1))
-    fi
-  done
-  echo "Version parsing tests: $passed passed, $failed failed"
-}
-
-test_version_comparison() {
-  echo "Testing version comparison..."
-  local test_cases=(
-    "1.0.0:1.0.0:0"
-    "1.1.0:1.0.0:1"
-    "1.0.0:1.1.0:2"
-    "4.20.0-98:4.20.0-97:1"
-    "4.20.0-97:4.20.0-98:2"
-  )
-  
-  local passed=0 failed=0
-  local result
-  for test_case in "${test_cases[@]}"; do
-    IFS=':' read -r v1 v2 expected <<< "$test_case"
-    set +e
-    version_compare "$v1" "$v2"
-    result=$?
-    set -e
-    if [[ "$result" == "$expected" ]]; then
-      echo "✅ PASS: $v1 vs $v2 -> $result"
-      passed=$((passed + 1))
-    else
-      echo "❌ FAIL: $v1 vs $v2 -> expected $expected, got $result"
-      failed=$((failed + 1))
-    fi
-  done
-  echo "Version comparison tests: $passed passed, $failed failed"
-}
-
-# ============================================
-# Help Function
-# ============================================
-
+# Help function
 show_help() {
   cat << EOF
-Enhanced ImageSet Configuration Generator (Optimized)
-
-PERFORMANCE OPTIMIZATIONS:
-  - Single catalog fetch (was: per-operator calls)
-  - Parallel processing (configurable via PARALLEL_JOBS)
-  - Reduced retry delays (${RETRY_DELAY}s vs 10s)
-  - O(1) operator lookups using associative arrays
-  - Early skip for operators without version constraints
+Enhanced ImageSet Configuration Generator
 
 USAGE:
   $0 [OPTIONS]
 
 OPTIONS:
   -h, --help              Show this help message
-  -i, --index INDEX       Source catalog index
+  -i, --index INDEX       Source catalog index (required)
   -o, --output FILE       Output ImageSet config file (default: imageset-config.yaml)
   -d, --debug             Enable debug mode
-  -s, --single-version    Use single version mode
-  -n, --no-limitations    Enable no limitations mode
+  -s, --single-version    Use single version mode (disable version ranges)
+  -n, --no-limitations    Enable no limitations mode (include all versions from all channels)
   -c, --disable-channel-versions  Disable channel-specific version support
-  -t, --test              Run tests and exit
+  -t, --test              Run version parsing tests and exit
   -g, --generate          Generate templated imageset-config.yml (requires OCP_VERSION)
 
 ENVIRONMENT VARIABLES:
-  SOURCE_INDEX            Source catalog index
-  IMAGESET_OUTPUT_FILE    Output file path
-  DEBUG                   Enable debug mode (true/false)
-  OCP_VERSION             OpenShift version (e.g., 4.18.27)
-  PARALLEL_JOBS           Number of parallel jobs (default: 8)
-  RETRY_DELAY             Seconds between retries (default: 2)
-  RETRY_COUNT             Number of retry attempts (default: 3)
+  SOURCE_INDEX                      Source catalog index
+  IMAGESET_OUTPUT_FILE              Output file path
+  DEBUG                             Enable debug mode (true/false)
+  USE_VERSION_RANGE                 Enable version range detection (true/false)
+  NO_LIMITATIONS_MODE               Enable no limitations mode (true/false)
+  ALLOW_CHANNEL_SPECIFIC_VERSIONS   Allow channel-specific versions like v4.20.0-98.stable (true/false)
+  OCP_VERSION                       OpenShift version (e.g., 4.18.27) for templating
 
 EXAMPLES:
-  # Generate with OCP version
+  # Basic usage
+  $0 -i quay.io/redhat-user-workloads/rh-openshift-gitops-tenant/catalog:v4.19
+
+  # With debug and custom output
+  $0 -i my-catalog:latest -o my-config.yaml -d
+
+  # Enable no limitations mode (include all versions from all channels)
+  $0 -i my-catalog:latest -n -d
+
+  # With channel-specific versions like v4.20.0-98.stable (enabled by default)
+  $0 -i my-catalog:latest -d
+
+  # Disable channel-specific versions if you only want standard semantic versions
+  $0 -i my-catalog:latest -c
+
+  # Generate templated imageset-config.yml
   OCP_VERSION=4.18.27 $0 -g
 
-  # With custom parallelism
-  PARALLEL_JOBS=16 OCP_VERSION=4.18.27 $0 -g
-
-  # Debug mode
-  DEBUG=true OCP_VERSION=4.18.27 $0 -g
+  # Test version parsing
+  $0 -t
 
 EOF
 }
 
-# ============================================
-# Command Line Argument Parsing
-# ============================================
-
+# Parse command line arguments
 while [[ $# -gt 0 ]]; do
   case $1 in
     -h|--help)
@@ -718,10 +755,6 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# ============================================
-# Main Execution (non-generate mode)
-# ============================================
-
 # Validate required parameters
 if [[ "$SOURCE_INDEX" == "<your_source_index_here>" ]] || [[ -z "$SOURCE_INDEX" ]]; then
   echo "Error: SOURCE_INDEX is required. Use -i or set SOURCE_INDEX environment variable." >&2
@@ -732,96 +765,445 @@ fi
 echo "Using SOURCE_INDEX=$SOURCE_INDEX"
 echo "Using IMAGESET_OUTPUT_FILE=$IMAGESET_OUTPUT_FILE"
 echo "Debug mode: $DEBUG"
-echo "Parallel jobs: $PARALLEL_JOBS"
-echo "Retry delay: ${RETRY_DELAY}s"
+echo "Use version range: $USE_VERSION_RANGE"
+echo "No limitations mode: $NO_LIMITATIONS_MODE"
+echo "Channel-specific versions: $ALLOW_CHANNEL_SPECIFIC_VERSIONS"
 
-# OPTIMIZATION #1: Cache catalog data upfront
-fetch_and_cache_catalog_data
+version_compare() {
+  # Enhanced version comparison for semantic versions and extended formats
+  # Returns: 0 if equal, 1 if $1 > $2, 2 if $1 < $2
+  local v1="$1" v2="$2"
+  
+  debug_log "Comparing versions: '$v1' vs '$v2'"
+  
+  # Normalize versions by extracting base semantic version for comparison
+  local norm_v1 norm_v2
+  
+  # Extract base version (remove -XX.channel suffix for comparison, handle v prefix)
+  if [[ "$v1" =~ ^(v?[0-9]+\.[0-9]+\.[0-9]+)-.*\.(stable|fast|candidate|eus)$ ]]; then
+    norm_v1="${BASH_REMATCH[1]}"
+  elif [[ "$v1" =~ ^(v?[0-9]+\.[0-9]+\.[0-9]+)-.*$ ]]; then
+    norm_v1="${BASH_REMATCH[1]}"
+  else
+    norm_v1="$v1"
+  fi
+  
+  if [[ "$v2" =~ ^(v?[0-9]+\.[0-9]+\.[0-9]+)-.*\.(stable|fast|candidate|eus)$ ]]; then
+    norm_v2="${BASH_REMATCH[1]}"
+  elif [[ "$v2" =~ ^(v?[0-9]+\.[0-9]+\.[0-9]+)-.*$ ]]; then
+    norm_v2="${BASH_REMATCH[1]}"
+  else
+    norm_v2="$v2"
+  fi
+  
+  # Remove 'v' prefix for numeric comparison
+  norm_v1="${norm_v1#v}"
+  norm_v2="${norm_v2#v}"
+  
+  debug_log "Normalized versions: '$norm_v1' vs '$norm_v2'"
+  
+  # Split versions into components
+  IFS='.' read -ra V1 <<< "$norm_v1"
+  IFS='.' read -ra V2 <<< "$norm_v2"
+  
+  # Pad arrays to same length
+  local max_len=$((${#V1[@]} > ${#V2[@]} ? ${#V1[@]} : ${#V2[@]}))
+  while [[ ${#V1[@]} -lt $max_len ]]; do V1+=("0"); done
+  while [[ ${#V2[@]} -lt $max_len ]]; do V2+=("0"); done
+  
+  # Compare each component
+  for ((i=0; i<max_len; i++)); do
+    if [[ ${V1[i]} -gt ${V2[i]} ]]; then
+      debug_log "Version comparison result: $v1 > $v2"
+      return 1
+    elif [[ ${V1[i]} -lt ${V2[i]} ]]; then
+      debug_log "Version comparison result: $v1 < $v2"
+      return 2
+    fi
+  done
+  
+  # If base versions are equal, compare the suffix numbers and channel types
+  local suffix1="" suffix2="" channel1="" channel2=""
+  
+  # Extract suffix and channel from v1
+  if [[ "$v1" =~ -([0-9]+)\.(stable|fast|candidate|eus)$ ]]; then
+    suffix1="${BASH_REMATCH[1]}"
+    channel1="${BASH_REMATCH[2]}"
+  elif [[ "$v1" =~ -([0-9]+)$ ]]; then
+    suffix1="${BASH_REMATCH[1]}"
+  fi
+  
+  # Extract suffix and channel from v2
+  if [[ "$v2" =~ -([0-9]+)\.(stable|fast|candidate|eus)$ ]]; then
+    suffix2="${BASH_REMATCH[1]}"
+    channel2="${BASH_REMATCH[2]}"
+  elif [[ "$v2" =~ -([0-9]+)$ ]]; then
+    suffix2="${BASH_REMATCH[1]}"
+  fi
+  
+  # Compare suffixes if both versions have them
+  if [[ -n "$suffix1" && -n "$suffix2" ]]; then
+    if [[ "$suffix1" -gt "$suffix2" ]]; then
+      debug_log "Version comparison result: $v1 > $v2 (by suffix: $suffix1 > $suffix2)"
+      return 1
+    elif [[ "$suffix1" -lt "$suffix2" ]]; then
+      debug_log "Version comparison result: $v1 < $v2 (by suffix: $suffix1 < $suffix2)"
+      return 2
+    fi
+    
+    # If suffixes are equal, compare channels (stable > fast > candidate > eus is typical priority)
+    if [[ -n "$channel1" && -n "$channel2" && "$channel1" != "$channel2" ]]; then
+      case "$channel1-$channel2" in
+        "stable-fast"|"stable-candidate"|"stable-eus"|"fast-candidate"|"fast-eus"|"candidate-eus")
+          debug_log "Version comparison result: $v1 > $v2 (by channel: $channel1 > $channel2)"
+          return 1
+          ;;
+        "fast-stable"|"candidate-stable"|"eus-stable"|"candidate-fast"|"eus-fast"|"eus-candidate")
+          debug_log "Version comparison result: $v1 < $v2 (by channel: $channel1 < $channel2)"
+          return 2
+          ;;
+      esac
+    fi
+  fi
+  
+  debug_log "Version comparison result: $v1 == $v2"
+  return 0
+}
 
-# Load operators from cache
-mapfile -t OPERATORS < <(awk '{print $1}' "$TMPDIR/channels_cache.txt")
-mapfile -t DEF_CHANNELS < <(awk '{print $2}' "$TMPDIR/channels_cache.txt")
+find_min_max_versions() {
+  local operator="$1"
+  local default_channel="$2"
+  
+  debug_log "Finding min/max versions for $operator in channel $default_channel..."
+  debug_log "No limitations mode: $NO_LIMITATIONS_MODE"
+  debug_log "Channel-specific versions: $ALLOW_CHANNEL_SPECIFIC_VERSIONS"
+  
+  # Get detailed operator information including all channels
+  local operator_details
+  operator_details=$(retry 3 10 bash -c "
+    oc-mirror list operators \
+      --catalog \"$SOURCE_INDEX\" \
+      --package \"$operator\" 2>/dev/null
+  ")
+  
+  debug_log "Operator details output:"
+  debug_log "$operator_details"
+  
+  # Extract versions from the specific default channel
+  local versions_output
+  versions_output=$(echo "$operator_details" | awk -v op="$operator" -v ch="$default_channel" '
+    $1 == op && $2 == ch { print $3 }
+  ')
+  
+  debug_log "Versions found in channel $default_channel: $versions_output"
+  
+  # If no limitations mode is enabled, get ALL versions from ALL channels
+  if [[ "$NO_LIMITATIONS_MODE" == "true" ]]; then
+    debug_log "No limitations mode: collecting ALL versions from ALL channels..."
+    local all_versions
+    all_versions=$(echo "$operator_details" | awk -v op="$operator" '
+      NR > 1 && $1 == op && NF >= 3 { print $3 }
+    ')
+    if [[ -n "$all_versions" ]]; then
+      versions_output="$versions_output"$'\n'"$all_versions"
+    fi
+    debug_log "Extended versions (all channels): $versions_output"
+  # If no versions found in the specific channel, try to get all available versions
+  elif [[ -z "$versions_output" ]]; then
+    debug_log "No direct versions found in channel $default_channel, analyzing all versions..."
+    versions_output=$(echo "$operator_details" | awk -v op="$operator" '
+      NR > 1 && $1 == op && NF >= 3 { print $3 }
+    ')
+    debug_log "All versions found: $versions_output"
+  fi
+  
+  if [[ -z "$versions_output" ]]; then
+    debug_log "Warning: No versions found for $operator"
+    echo "1.0.0 1.0.0"
+    return
+  fi
+  
+  local min_version="" max_version=""
+  local versions_found=0
+  local channel_specific_versions=()
+  
+  while IFS= read -r version_string; do
+    [[ -z "$version_string" ]] && continue
+    
+    local version
+    version=$(extract_version "$version_string")
+    
+    # Enhanced validation for channel-specific versions
+    local is_valid=false
+    if [[ "$ALLOW_CHANNEL_SPECIFIC_VERSIONS" == "true" ]]; then
+      # Accept channel-specific versions like v4.20.0-98.stable or extended versions with unlimited suffixes
+      if [[ "$version" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9a-zA-Z._-]+)?(\.(stable|fast|candidate|eus))?$ ]]; then
+        is_valid=true
+        debug_log "Accepted channel-specific version: $version"
+      fi
+    else
+      # Standard validation
+      if [[ "$version" =~ ^v?[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
+        is_valid=true
+      fi
+    fi
+    
+    if [[ "$is_valid" != "true" ]]; then
+      debug_log "Skipping invalid version: $version_string -> $version"
+      continue
+    fi
+    
+    versions_found=$((versions_found + 1))
+    debug_log "Found valid version: $version (from $version_string)"
+    
+    # Store channel-specific versions for special handling
+    if [[ "$version" =~ -[0-9a-zA-Z._-]+(\.(stable|fast|candidate|eus))?$ ]]; then
+      channel_specific_versions+=("$version")
+    fi
+    
+    if [[ -z "$min_version" ]]; then
+      min_version="$version"
+      max_version="$version"
+      debug_log "Initial version set: min=$min_version, max=$max_version"
+    else
+      # Check if this version is smaller than current min
+      version_compare "$version" "$min_version"
+      local cmp_result=$?
+      if [[ $cmp_result -eq 2 ]]; then
+        debug_log "New minimum: $version < $min_version"
+        min_version="$version"
+      fi
+      
+      # Check if this version is larger than current max
+      version_compare "$version" "$max_version"
+      cmp_result=$?
+      if [[ $cmp_result -eq 1 ]]; then
+        debug_log "New maximum: $version > $max_version"
+        max_version="$version"
+      fi
+    fi
+  done <<< "$versions_output"
+  
+  # Special handling for channel-specific versions
+  if [[ "${#channel_specific_versions[@]}" -gt 0 ]]; then
+    debug_log "Found ${#channel_specific_versions[@]} channel-specific versions"
+    debug_log "Channel-specific versions: ${channel_specific_versions[*]}"
+  fi
+  
+  # Fallback: get the latest version using channel-specific query
+  if [[ $versions_found -eq 0 ]] || [[ -z "$min_version" || -z "$max_version" ]]; then
+    debug_log "Using fallback method to get latest version..."
+    local latest_version
+    latest_version=$(retry 3 10 bash -c "
+      oc-mirror list operators \
+        --catalog \"$SOURCE_INDEX\" \
+        --package \"$operator\" \
+        --channel \"$default_channel\" 2>/dev/null | awk 'END {print \$3}'
+    ")
+    
+    debug_log "Fallback latest version: $latest_version"
+    
+    if [[ -n "$latest_version" ]]; then
+      local parsed_version
+      parsed_version=$(extract_version "$latest_version")
+      if [[ "$ALLOW_CHANNEL_SPECIFIC_VERSIONS" == "true" ]] && [[ "$parsed_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9a-zA-Z._-]+)?(\.(stable|fast|candidate|eus))?$ ]]; then
+        min_version="$parsed_version"
+        max_version="$parsed_version"
+        debug_log "Fallback version set: $parsed_version"
+      elif [[ "$parsed_version" =~ ^v?[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
+        min_version="$parsed_version"
+        max_version="$parsed_version"
+        debug_log "Fallback version set: $parsed_version"
+      fi
+    fi
+  fi
+  
+  # Final fallback
+  if [[ -z "$min_version" || -z "$max_version" ]]; then
+    min_version="1.0.0"
+    max_version="1.0.0"
+    debug_log "Warning: Could not determine versions, using fallback 1.0.0"
+  fi
+  
+  debug_log "Final result: min=$min_version, max=$max_version"
+  echo "$min_version $max_version"
+}
 
+# Test function for version parsing
+test_version_parsing() {
+  echo "Testing version parsing..."
+  local test_cases=(
+    "openshift-gitops-operator.v1.18.0:v1.18.0"
+    "openshift-gitops-operator.v1.11.7-0.1724840231.p:v1.11.7-0.1724840231.p"
+    "operator-name.v2.1.0-beta1:v2.1.0-beta1"
+    "some-operator.v1.5:v1.5.0"
+    "test.1.2.3:1.2.3"
+    "odf-prometheus-operator.v4.20.0-98.stable:v4.20.0-98.stable"
+    "odf-prometheus-operator.v4.20.0-98:v4.20.0-98"
+    "some-operator.v3.15.2-45.candidate:v3.15.2-45.candidate"
+    "operator.v2.8.1-12.fast:v2.8.1-12.fast"
+    "odf-operator.v4.20.0-98.stable:v4.20.0-98.stable"
+    "aap-operator.v2.5.0-0.1758147230:v2.5.0-0.1758147230"
+    "aap-operator.v2.5.0-0.1758147817:v2.5.0-0.1758147817"
+    "ansible-automation-platform-operator.v2.5.0-0.1758147230:v2.5.0-0.1758147230"
+    "test-operator.v1.0.0-0.123456789012345:v1.0.0-0.123456789012345"
+    "generic-operator.v3.2.1-0.987654321:v3.2.1-0.987654321"
+    "some_operator.v2.4.6-0.1234567890abc:v2.4.6-0.1234567890abc"
+    "operator-name.v1.0.0-0.deadbeef123:v1.0.0-0.deadbeef123"
+    "my-operator.v4.20.0-99.stable:v4.20.0-99.stable"
+  )
+  
+  for test_case in "${test_cases[@]}"; do
+    IFS=':' read -r input expected <<< "$test_case"
+    result=$(extract_version "$input")
+    if [[ "$result" == "$expected" ]]; then
+      echo "✅ PASS: $input -> $result"
+    else
+      echo "❌ FAIL: $input -> expected $expected, got $result"
+    fi
+  done
+  echo "Version parsing tests completed."
+}
+
+# Test function for version comparison
+test_version_comparison() {
+  echo "Testing version comparison..."
+  local test_cases=(
+    "1.0.0:1.0.0:0"
+    "1.1.0:1.0.0:1"
+    "1.0.0:1.1.0:2"
+    "2.0.0:1.9.9:1"
+    "1.10.0:1.9.0:1"
+    "1.0.1:1.0.0:1"
+    "4.20.0-98:4.20.0-97:1"
+    "4.20.0-97:4.20.0-98:2"
+    "4.20.0-98:4.20.0-98:0"
+    "4.21.0-1:4.20.0-99:1"
+    "4.19.5-10:4.20.0-1:2"
+    "4.20.0-98.stable:4.20.0-97.stable:1"
+    "4.20.0-98.stable:4.20.0-98.fast:1"
+    "4.20.0-98.stable:4.20.0-98.stable:0"
+  )
+  
+  for test_case in "${test_cases[@]}"; do
+    IFS=':' read -r v1 v2 expected <<< "$test_case"
+    version_compare "$v1" "$v2"
+    result=$?
+    if [[ "$result" == "$expected" ]]; then
+      echo "✅ PASS: $v1 vs $v2 -> $result"
+    else
+      echo "❌ FAIL: $v1 vs $v2 -> expected $expected, got $result"
+    fi
+  done
+  echo "Version comparison tests completed."
+}
+
+# --- Get operators and their default channels ---
+echo "Fetching operators and default channels..."
+retry 3 10 bash -c "
+  oc-mirror list operators --catalog \"$SOURCE_INDEX\" 2>/dev/null \
+  | awk 'x==1 {print \$1,\$NF} /NAME/ {x=1}' \
+  > \"$TMPDIR/operators.txt\"
+"
+
+mapfile -t OPERATORS < <(awk '{print $1}' "$TMPDIR/operators.txt")
+mapfile -t DEF_CHANNELS < <(awk '{print $2}' "$TMPDIR/operators.txt")
+
+# --- Get versions for each operator/channel ---
 if [[ "$USE_VERSION_RANGE" == "true" ]]; then
   echo "Determining dynamic version ranges for operators..."
   MIN_VERSIONS=()
   MAX_VERSIONS=()
 
-  # OPTIMIZATION #2: Process in parallel batches
-  local_tmpdir="$TMPDIR/versions"
-  mkdir -p "$local_tmpdir"
-  
-  job_count=0
   for i in "${!OPERATORS[@]}"; do
     OP="${OPERATORS[$i]}"
     CH="${DEF_CHANNELS[$i]}"
+    echo "Analyzing versions for operator=$OP channel=$CH..."
+    debug_log "Processing operator: $OP, channel: $CH"
+
+    # Get min/max versions dynamically
+    version_range=$(find_min_max_versions "$OP" "$CH")
+    read -r min_ver max_ver <<< "$version_range"
     
-    # Process in background
-    (
-      version_range=$(find_min_max_versions_cached "$OP" "$CH")
-      echo "$version_range" > "$local_tmpdir/$i.txt"
-    ) &
-    
-    job_count=$((job_count + 1))
-    if [[ $job_count -ge $PARALLEL_JOBS ]]; then
-      wait -n 2>/dev/null || true
-      job_count=$((job_count - 1))
-    fi
-  done
-  wait
-  
-  # Collect results
-  for i in "${!OPERATORS[@]}"; do
-    if [[ -f "$local_tmpdir/$i.txt" ]]; then
-      read -r min_ver max_ver < "$local_tmpdir/$i.txt"
-    else
-      min_ver="1.0.0"
-      max_ver="1.0.0"
-    fi
     MIN_VERSIONS+=("$min_ver")
     MAX_VERSIONS+=("$max_ver")
-    debug_log "Operator ${OPERATORS[$i]}: $min_ver - $max_ver"
+    
+    echo "  -> Min version: $min_ver, Max version: $max_ver"
+    debug_log "Version range for $OP: $min_ver to $max_ver"
   done
 else
-  echo "Using single version mode..."
+  echo "Using single version mode (original behavior)..."
   DEF_PACKAGES=()
   for i in "${!OPERATORS[@]}"; do
     OP="${OPERATORS[$i]}"
     CH="${DEF_CHANNELS[$i]}"
+    echo "Fetching default CSV for operator=$OP channel=$CH..."
+    debug_log "Getting single version for $OP in channel $CH"
+
+    pkg=$(retry 3 10 bash -c "
+      oc-mirror list operators \
+        --catalog \"$SOURCE_INDEX\" \
+        --package \"$OP\" \
+        --channel \"$CH\" 2>/dev/null | tail -1 | awk '{print \$3}'
+    ")
     
-    # Get latest version from cache
-    pkg=$(get_cached_versions "$OP" "$CH" | tail -1)
+    # Extract version from package string
     version=$(extract_version "$pkg")
     DEF_PACKAGES+=("$version")
+    debug_log "Single version for $OP: $version (from $pkg)"
   done
 fi
 
-# Render packages list into YAML
-echo "Rendering packages list..."
-{
-  for i in "${!OPERATORS[@]}"; do
-    echo "- name: '${OPERATORS[$i]}'"
-    
-    if should_skip_channel_and_versions "${OPERATORS[$i]}"; then
-      continue
-    fi
-    
-    echo "  channels:"
-    echo "    - name: '${DEF_CHANNELS[$i]}'"
-    
-    if ! is_redhat_registry_operator "${OPERATORS[$i]}"; then
-      if [[ "$USE_VERSION_RANGE" == "true" ]]; then
-        echo "      minVersion: '${MIN_VERSIONS[$i]}'"
-        echo "      maxVersion: '${MAX_VERSIONS[$i]}'"
+# --- Render packages list into YAML ---
+if [[ "$USE_VERSION_RANGE" == "true" ]]; then
+  echo "Rendering packages list with dynamic version ranges..."
+  {
+    for i in "${!OPERATORS[@]}"; do
+      echo "- name: '${OPERATORS[$i]}'"
+      
+      # Check if this operator should skip channel and version constraints
+      if should_skip_channel_and_versions "${OPERATORS[$i]}"; then
+        debug_log "Skipping channel and version constraints for operator: ${OPERATORS[$i]}"
       else
-        echo "      minVersion: '${DEF_PACKAGES[$i]}'"
-        echo "      maxVersion: '${DEF_PACKAGES[$i]}'"
+        echo "  channels:"
+        echo "    - name: '${DEF_CHANNELS[$i]}'"
+        
+        # Skip version constraints for Red Hat registry operators
+        if is_redhat_registry_operator "${OPERATORS[$i]}"; then
+          debug_log "Skipping version constraints for Red Hat registry operator: ${OPERATORS[$i]}"
+        else
+          echo "      minVersion: '${MIN_VERSIONS[$i]}'"
+          echo "      maxVersion: '${MAX_VERSIONS[$i]}'"
+        fi
       fi
-    fi
-  done
-} > "$TMPDIR/packages.yaml"
+    done
+  } > "$TMPDIR/packages.yaml"
+else
+  echo "Rendering packages list with single versions..."
+  {
+    for i in "${!OPERATORS[@]}"; do
+      echo "- name: '${OPERATORS[$i]}'"
+      
+      # Check if this operator should skip channel and version constraints
+      if should_skip_channel_and_versions "${OPERATORS[$i]}"; then
+        debug_log "Skipping channel and version constraints for operator: ${OPERATORS[$i]}"
+      else
+        echo "  channels:"
+        echo "    - name: '${DEF_CHANNELS[$i]}'"
+        
+        # Skip version constraints for Red Hat registry operators
+        if is_redhat_registry_operator "${OPERATORS[$i]}"; then
+          debug_log "Skipping version constraints for Red Hat registry operator: ${OPERATORS[$i]}"
+        else
+          echo "      minVersion: '${DEF_PACKAGES[$i]}'"
+          echo "      maxVersion: '${DEF_PACKAGES[$i]}'"
+        fi
+      fi
+    done
+  } > "$TMPDIR/packages.yaml"
+fi
 
-# Render ImageSetConfiguration
+# --- Render ImageSetConfiguration ---
 echo "Creating ImageSetConfiguration..."
 cat > "$IMAGESET_OUTPUT_FILE" <<EOF
 apiVersion: mirror.openshift.io/v2alpha1
