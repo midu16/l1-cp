@@ -1,6 +1,7 @@
 # oc-mirror log files
 .oc-mirror.log
 **/.oc-mirror.log
+*.oc-mirror.log
 
 # Custom operator index directory and all its contents
 catalog/custom-operator-index/
@@ -52,5 +53,6 @@ mermaid-images/
 
 
 # Kubeconfig files
+kubeconfig
 *.kubeconfig
-*/network-tester/kubeconfig
+**/kubeconfig

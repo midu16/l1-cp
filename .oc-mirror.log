@@ -7621,3 +7621,943 @@ Creating archive /apps/idumi/mirror_seq1_000009.tar
 Creating archive /apps/idumi/mirror_seq1_000010.tar
 Creating archive /apps/idumi/mirror_seq1_000011.tar
 Creating archive /apps/idumi/mirror_seq1_000012.tar
+NAME                                            DISPLAY NAME  DEFAULT CHANNEL
+3scale-operator                                               threescale-2.13
+advanced-cluster-management                                   release-2.15
+amq-broker-rhel8                                              7.12.x
+amq-broker-rhel9                                              7.13.x
+amq-streams                                                   stable
+amq-streams-console                                           stable
+amq-streams-proxy                                             stable
+amq7-interconnect-operator                                    1.10.x
+ansible-automation-platform-operator                          stable-2.6
+ansible-cloud-addons-operator                                 stable-2.5-cluster-scoped
+apicast-operator                                              threescale-2.14
+apicurio-registry-3                                           3.x
+authorino-operator                                            stable
+aws-efs-csi-driver-operator                                   stable
+aws-load-balancer-operator                                    stable-v1
+bamoe-businessautomation-operator                             8.x-stable
+bamoe-kogito-operator                                         8.x
+businessautomation-operator                                   stable
+cephcsi-operator                                              stable-4.20
+cincinnati-operator                                           v1
+cli-manager                                                   tech-preview
+cluster-kube-descheduler-operator                             stable
+cluster-logging                                               stable-6.4
+cluster-observability-operator                                stable
+clusterresourceoverride                                       stable
+compliance-operator                                           stable
+container-security-operator                                   stable-3.16
+cryostat-operator                                             stable
+datagrid                                                      stable
+devspaces                                                     stable
+devworkspace-operator                                         fast
+dns-operator                                                  stable
+dpu-network-operator                                          stable
+eap                                                           stable
+external-dns-operator                                         stable-v1
+fence-agents-remediation                                      stable
+file-integrity-operator                                       stable
+gatekeeper-operator-product                                   stable
+gcp-filestore-csi-driver-operator                             stable
+ingress-node-firewall                                         stable
+job-set                                                       stable-v1.0
+jws-operator                                                  alpha
+kernel-module-management                                      stable
+kernel-module-management-hub                                  stable
+kiali-ossm                                                    stable
+kubernetes-nmstate-operator                                   stable
+kubevirt-hyperconverged                                       stable
+kueue-operator                                                stable-v1.2
+leader-worker-set                                             stable-v1.0
+lifecycle-agent                                               stable
+lightspeed-operator                                           stable
+limitador-operator                                            stable
+local-storage-operator                                        stable
+logic-operator                                                stable
+logic-operator-rhel8                                          alpha
+loki-operator                                                 stable-6.4
+lvms-operator                                                 stable-4.21
+machine-deletion-remediation                                  stable
+mcg-operator                                                  stable-4.20
+metallb-operator                                              stable
+model-validation-operator                                     tech-preview
+mta-operator                                                  stable-v8.0
+mtr-operator                                                  alpha
+mtv-operator                                                  release-v2.8
+multiarch-tuning-operator                                     stable
+multicluster-engine                                           stable-2.10
+netobserv-operator                                            stable
+nfd                                                           stable
+node-healthcheck-operator                                     stable
+node-maintenance-operator                                     stable
+node-observability-operator                                   alpha
+numaresources-operator                                        4.21
+o-cloud-manager                                               stable
+ocs-client-operator                                           stable-4.20
+ocs-operator                                                  stable-4.20
+odf-csi-addons-operator                                       stable-4.20
+odf-dependencies                                              stable-4.20
+odf-external-snapshotter-operator                             stable-4.20
+odf-multicluster-orchestrator                                 stable-4.20
+odf-operator                                                  stable-4.20
+odf-prometheus-operator                                       stable-4.20
+odr-cluster-operator                                          stable-4.20
+odr-hub-operator                                              stable-4.20
+openshift-builds-operator                                     latest
+openshift-cert-manager-operator                               stable-v1
+openshift-custom-metrics-autoscaler-operator                  stable
+openshift-external-secrets-operator                           stable-v1
+openshift-gitops-operator                                     latest
+openshift-pipelines-operator-rh                               latest
+openshift-secondary-scheduler-operator                        stable
+openshift-zero-trust-workload-identity-manager                stable-v1
+opentelemetry-product                                         stable
+pf-status-relay-operator                                      stable
+ptp-operator                                                  stable
+quay-bridge-operator                                          stable-3.16
+quay-operator                                                 stable-3.16
+recipe                                                        stable-4.20
+red-hat-camel-k                                               1.10.x
+red-hat-hawtio-operator                                       stable-v1
+redhat-oadp-operator                                          stable
+rh-service-binding-operator                                   stable
+rhacs-operator                                                stable
+rhbk-operator                                                 stable-v26.4
+rhcl-operator                                                 stable
+rhods-prometheus-operator                                     beta
+rhpam-kogito-operator                                         7.x
+rhsso-operator                                                stable
+rhtas-operator                                                stable
+rook-ceph-operator                                            stable-4.20
+run-once-duration-override-operator                           stable
+runtimes-inventory-operator                                   stable
+sandboxed-containers-operator                                 stable
+secrets-store-csi-driver-operator                             stable
+security-profiles-operator                                    release-alpha-rhel-8
+self-node-remediation                                         stable
+serverless-operator                                           stable
+service-registry-operator                                     2.x
+servicemeshoperator                                           stable
+servicemeshoperator3                                          stable
+skupper-netobs-operator                                       stable-2
+skupper-operator                                              stable-2
+smb-csi-driver-operator                                       stable
+sriov-network-operator                                        stable
+support-log-gather-operator                                   tech-preview
+tang-operator                                                 alpha
+tempo-product                                                 stable
+topology-aware-lifecycle-manager                              stable
+vertical-pod-autoscaler                                       stable
+volsync-product                                               stable
+web-terminal                                                  fast
+windows-machine-config-operator                               stable
+NAME                                            DISPLAY NAME  DEFAULT CHANNEL
+3scale-operator                                               threescale-2.16
+advanced-cluster-management                                   release-2.15
+amq-broker-rhel8                                              7.12.x
+amq-broker-rhel9                                              7.13.x
+amq-streams                                                   stable
+amq-streams-console                                           stable
+amq-streams-proxy                                             stable
+amq7-interconnect-operator                                    1.10.x
+ansible-automation-platform-operator                          stable-2.6
+ansible-cloud-addons-operator                                 stable-2.5-cluster-scoped
+apicast-operator                                              threescale-2.16
+apicurio-registry-3                                           3.x
+authorino-operator                                            stable
+aws-efs-csi-driver-operator                                   stable
+aws-load-balancer-operator                                    stable-v1
+bamoe-businessautomation-operator                             8.x-stable
+bamoe-kogito-operator                                         8.x
+bpfman-operator                                               latest
+businessautomation-operator                                   stable
+cephcsi-operator                                              stable-4.19
+cincinnati-operator                                           v1
+cli-manager                                                   tech-preview
+cluster-kube-descheduler-operator                             stable
+cluster-logging                                               stable-6.4
+cluster-observability-operator                                stable
+clusterresourceoverride                                       stable
+compliance-operator                                           stable
+container-security-operator                                   stable-3.16
+costmanagement-metrics-operator                               stable
+cryostat-operator                                             stable
+das-operator                                                  stable-v0
+datagrid                                                      stable
+deployment-validation-operator                                alpha
+devspaces                                                     stable
+devworkspace-operator                                         fast
+dns-operator                                                  stable
+dpu-operator                                                  stable
+eap                                                           stable
+external-dns-operator                                         stable-v1
+fence-agents-remediation                                      stable
+file-integrity-operator                                       stable
+fuse-apicurito                                                fuse-apicurito-7.13.x
+fuse-console                                                  7.13.x
+fuse-online                                                   latest
+gatekeeper-operator-product                                   stable
+gcp-filestore-csi-driver-operator                             stable
+ingress-node-firewall                                         stable
+job-set                                                       stable-v1.0
+jws-operator                                                  alpha
+kernel-module-management                                      stable
+kernel-module-management-hub                                  stable
+kiali-ossm                                                    stable
+kubernetes-nmstate-operator                                   stable
+kubevirt-hyperconverged                                       stable
+kueue-operator                                                stable-v1.2
+leader-worker-set                                             stable-v1.0
+lifecycle-agent                                               stable
+lightspeed-operator                                           stable
+limitador-operator                                            stable
+local-storage-operator                                        stable
+logic-operator                                                stable
+logic-operator-rhel8                                          alpha
+loki-operator                                                 stable-6.4
+lvms-operator                                                 stable-4.19
+machine-deletion-remediation                                  stable
+mcg-operator                                                  stable-4.19
+metallb-operator                                              stable
+model-validation-operator                                     tech-preview
+mta-operator                                                  stable-v8.0
+mtc-operator                                                  release-v1.8
+mtr-operator                                                  alpha
+mtv-operator                                                  release-v2.10
+multiarch-tuning-operator                                     stable
+multicluster-engine                                           stable-2.10
+multicluster-global-hub-operator-rh                           release-1.6
+netobserv-operator                                            stable
+nfd                                                           stable
+node-healthcheck-operator                                     stable
+node-maintenance-operator                                     stable
+node-observability-operator                                   alpha
+numaresources-operator                                        4.19
+o-cloud-manager                                               stable
+ocs-client-operator                                           stable-4.19
+ocs-operator                                                  stable-4.19
+odf-csi-addons-operator                                       stable-4.19
+odf-dependencies                                              stable-4.19
+odf-multicluster-orchestrator                                 stable-4.19
+odf-operator                                                  stable-4.19
+odf-prometheus-operator                                       stable-4.19
+odr-cluster-operator                                          stable-4.19
+odr-hub-operator                                              stable-4.19
+openshift-builds-operator                                     latest
+openshift-cert-manager-operator                               stable-v1
+openshift-custom-metrics-autoscaler-operator                  stable
+openshift-external-secrets-operator                           tech-preview-v0.1
+openshift-gitops-operator                                     latest
+openshift-pipelines-operator-rh                               latest
+openshift-secondary-scheduler-operator                        stable
+openshift-zero-trust-workload-identity-manager                stable-v1
+opentelemetry-product                                         stable
+pf-status-relay-operator                                      stable
+policy-controller-operator                                    tech-preview
+power-monitoring-operator                                     tech-preview
+ptp-operator                                                  stable
+quay-bridge-operator                                          stable-3.16
+quay-operator                                                 stable-3.16
+recipe                                                        stable-4.19
+red-hat-camel-k                                               1.10.x
+red-hat-hawtio-operator                                       stable-v1
+redhat-oadp-operator                                          stable
+rh-service-binding-operator                                   stable
+rhacs-operator                                                stable
+rhbk-operator                                                 stable-v26.4
+rhcl-operator                                                 stable
+rhdh                                                          fast
+rhods-operator                                                stable
+rhods-prometheus-operator                                     beta
+rhpam-kogito-operator                                         7.x
+rhsso-operator                                                stable
+rhtas-operator                                                stable
+rhtpa-operator                                                stable-v1.1
+rook-ceph-operator                                            stable-4.19
+run-once-duration-override-operator                           stable
+runtimes-inventory-operator                                   stable
+sandboxed-containers-operator                                 stable
+secrets-store-csi-driver-operator                             stable
+security-profiles-operator                                    release-alpha-rhel-8
+self-node-remediation                                         stable
+serverless-operator                                           stable
+service-registry-operator                                     2.x
+servicemeshoperator                                           stable
+servicemeshoperator3                                          stable
+skupper-netobs-operator                                       stable-2
+skupper-operator                                              stable-2
+smb-csi-driver-operator                                       stable
+sriov-network-operator                                        stable
+submariner                                                    stable-0.22
+tang-operator                                                 alpha
+tempo-product                                                 stable
+topology-aware-lifecycle-manager                              stable
+trustee-operator                                              stable
+vertical-pod-autoscaler                                       stable
+volsync-product                                               stable
+web-terminal                                                  fast
+windows-machine-config-operator                               stable
+NAME                         DISPLAY NAME  DEFAULT CHANNEL
+advanced-cluster-management                release-2.15
+
+PACKAGE                      CHANNEL       HEAD
+advanced-cluster-management  release-2.13  advanced-cluster-management.v2.13.5
+advanced-cluster-management  release-2.14  advanced-cluster-management.v2.14.2
+advanced-cluster-management  release-2.15  advanced-cluster-management.v2.15.1
+NAME                 DISPLAY NAME  DEFAULT CHANNEL
+multicluster-engine                stable-2.10
+
+PACKAGE              CHANNEL      HEAD
+multicluster-engine  stable-2.10  multicluster-engine.v2.10.1
+multicluster-engine  stable-2.8   multicluster-engine.v2.8.4
+multicluster-engine  stable-2.9   multicluster-engine.v2.9.2
+NAME                              DISPLAY NAME  DEFAULT CHANNEL
+topology-aware-lifecycle-manager                stable
+
+PACKAGE                           CHANNEL  HEAD
+topology-aware-lifecycle-manager  4.19     topology-aware-lifecycle-manager.v4.19.2
+topology-aware-lifecycle-manager  stable   topology-aware-lifecycle-manager.v4.19.2
+NAME                       DISPLAY NAME  DEFAULT CHANNEL
+openshift-gitops-operator                latest
+
+PACKAGE                    CHANNEL      HEAD
+openshift-gitops-operator  gitops-1.10  openshift-gitops-operator.v1.10.6
+openshift-gitops-operator  gitops-1.11  openshift-gitops-operator.v1.11.7-0.1724840231.p
+openshift-gitops-operator  gitops-1.12  openshift-gitops-operator.v1.12.6
+openshift-gitops-operator  gitops-1.13  openshift-gitops-operator.v1.13.3-0.1741683398.p
+openshift-gitops-operator  gitops-1.14  openshift-gitops-operator.v1.14.4
+openshift-gitops-operator  gitops-1.15  openshift-gitops-operator.v1.15.4
+openshift-gitops-operator  gitops-1.16  openshift-gitops-operator.v1.16.5
+openshift-gitops-operator  gitops-1.17  openshift-gitops-operator.v1.17.4
+openshift-gitops-operator  gitops-1.18  openshift-gitops-operator.v1.18.3
+openshift-gitops-operator  gitops-1.19  openshift-gitops-operator.v1.19.1
+openshift-gitops-operator  gitops-1.6   openshift-gitops-operator.v1.6.6
+openshift-gitops-operator  gitops-1.7   openshift-gitops-operator.v1.7.4-0.1690486082.p
+openshift-gitops-operator  gitops-1.8   openshift-gitops-operator.v1.8.6
+openshift-gitops-operator  gitops-1.9   openshift-gitops-operator.v1.9.4
+openshift-gitops-operator  latest       openshift-gitops-operator.v1.19.1
+NAME           DISPLAY NAME  DEFAULT CHANNEL
+lvms-operator                stable-4.19
+
+PACKAGE        CHANNEL      HEAD
+lvms-operator  stable-4.18  lvms-operator.v4.18.3
+lvms-operator  stable-4.19  lvms-operator.v4.19.1
+NAME          DISPLAY NAME  DEFAULT CHANNEL
+odf-operator                stable-4.19
+
+PACKAGE       CHANNEL      HEAD
+odf-operator  stable-4.18  odf-operator.v4.18.15-rhodf
+odf-operator  stable-4.19  odf-operator.v4.19.10-rhodf
+NAME              DISPLAY NAME  DEFAULT CHANNEL
+odf-dependencies                stable-4.19
+
+PACKAGE           CHANNEL      HEAD
+odf-dependencies  stable-4.18  odf-dependencies.v4.18.15-rhodf
+odf-dependencies  stable-4.19  odf-dependencies.v4.19.10-rhodf
+NAME                DISPLAY NAME  DEFAULT CHANNEL
+rook-ceph-operator                stable-4.19
+
+PACKAGE             CHANNEL      HEAD
+rook-ceph-operator  stable-4.18  rook-ceph-operator.v4.18.15-rhodf
+rook-ceph-operator  stable-4.19  rook-ceph-operator.v4.19.10-rhodf
+NAME          DISPLAY NAME  DEFAULT CHANNEL
+ocs-operator                stable-4.19
+
+PACKAGE       CHANNEL      HEAD
+ocs-operator  stable-4.18  ocs-operator.v4.18.15-rhodf
+ocs-operator  stable-4.19  ocs-operator.v4.19.10-rhodf
+NAME          DISPLAY NAME  DEFAULT CHANNEL
+mcg-operator                stable-4.19
+
+PACKAGE       CHANNEL      HEAD
+mcg-operator  stable-4.18  mcg-operator.v4.18.15-rhodf
+mcg-operator  stable-4.19  mcg-operator.v4.19.10-rhodf
+NAME                     DISPLAY NAME  DEFAULT CHANNEL
+odf-prometheus-operator                stable-4.19
+
+PACKAGE                  CHANNEL      HEAD
+odf-prometheus-operator  stable-4.18  odf-prometheus-operator.v4.18.15-rhodf
+odf-prometheus-operator  stable-4.19  odf-prometheus-operator.v4.19.10-rhodf
+NAME              DISPLAY NAME  DEFAULT CHANNEL
+cephcsi-operator                stable-4.19
+
+PACKAGE           CHANNEL      HEAD
+cephcsi-operator  stable-4.18  cephcsi-operator.v4.18.15-rhodf
+cephcsi-operator  stable-4.19  cephcsi-operator.v4.19.10-rhodf
+NAME                     DISPLAY NAME  DEFAULT CHANNEL
+odf-csi-addons-operator                stable-4.19
+
+PACKAGE                  CHANNEL      HEAD
+odf-csi-addons-operator  stable-4.18  odf-csi-addons-operator.v4.18.15-rhodf
+odf-csi-addons-operator  stable-4.19  odf-csi-addons-operator.v4.19.10-rhodf
+NAME                 DISPLAY NAME  DEFAULT CHANNEL
+ocs-client-operator                stable-4.19
+
+PACKAGE              CHANNEL      HEAD
+ocs-client-operator  stable-4.18  ocs-client-operator.v4.18.15-rhodf
+ocs-client-operator  stable-4.19  ocs-client-operator.v4.19.10-rhodf
+NAME    DISPLAY NAME  DEFAULT CHANNEL
+recipe                stable-4.19
+
+PACKAGE  CHANNEL      HEAD
+recipe   stable-4.18  recipe.v4.18.15-rhodf
+recipe   stable-4.19  recipe.v4.19.10-rhodf
+NAME                     DISPLAY NAME  DEFAULT CHANNEL
+odf-csi-addons-operator                stable-4.19
+
+PACKAGE                  CHANNEL      HEAD
+odf-csi-addons-operator  stable-4.18  odf-csi-addons-operator.v4.18.15-rhodf
+odf-csi-addons-operator  stable-4.19  odf-csi-addons-operator.v4.19.10-rhodf
+NAME                    DISPLAY NAME  DEFAULT CHANNEL
+local-storage-operator                stable
+
+PACKAGE                 CHANNEL  HEAD
+local-storage-operator  stable   local-storage-operator.v4.19.0-202602091011
+NAME          DISPLAY NAME  DEFAULT CHANNEL
+mcg-operator                stable-4.19
+
+PACKAGE       CHANNEL      HEAD
+mcg-operator  stable-4.18  mcg-operator.v4.18.15-rhodf
+mcg-operator  stable-4.19  mcg-operator.v4.19.10-rhodf
+NAME          DISPLAY NAME  DEFAULT CHANNEL
+ptp-operator                stable
+
+PACKAGE       CHANNEL  HEAD
+ptp-operator  stable   ptp-operator.v4.19.0-202602091011
+NAME                    DISPLAY NAME  DEFAULT CHANNEL
+sriov-network-operator                stable
+
+PACKAGE                 CHANNEL  HEAD
+sriov-network-operator  stable   sriov-network-operator.v4.19.0-202602091011
+NAME             DISPLAY NAME  DEFAULT CHANNEL
+cluster-logging                stable-6.4
+
+PACKAGE          CHANNEL     HEAD
+cluster-logging  stable-6.2  cluster-logging.v6.2.8
+cluster-logging  stable-6.3  cluster-logging.v6.3.3
+cluster-logging  stable-6.4  cluster-logging.v6.4.2
+NAME                     DISPLAY NAME  DEFAULT CHANNEL
+file-integrity-operator                stable
+
+PACKAGE                  CHANNEL      HEAD
+file-integrity-operator  4.7          file-integrity-operator.v0.1.13
+file-integrity-operator  release-0.1  file-integrity-operator.v0.1.32
+file-integrity-operator  stable       file-integrity-operator.v1.3.8
+file-integrity-operator  v1           file-integrity-operator.v1.0.0
+NAME                 DISPLAY NAME  DEFAULT CHANNEL
+compliance-operator                stable
+
+PACKAGE              CHANNEL      HEAD
+compliance-operator  4.7          compliance-operator.v0.1.32
+compliance-operator  release-0.1  compliance-operator.v0.1.61
+compliance-operator  stable       compliance-operator.v1.8.2
+NAME                      DISPLAY NAME  DEFAULT CHANNEL
+kernel-module-management                stable
+
+PACKAGE                   CHANNEL      HEAD
+kernel-module-management  release-2.0  kernel-module-management.v2.0.2
+kernel-module-management  release-2.1  kernel-module-management.v2.1.1
+kernel-module-management  release-2.2  kernel-module-management.v2.2.1
+kernel-module-management  release-2.3  kernel-module-management.v2.3.0
+kernel-module-management  release-2.4  kernel-module-management.v2.4.1
+kernel-module-management  release-2.5  kernel-module-management.v2.5.1
+kernel-module-management  stable       kernel-module-management.v2.5.1
+NAME                          DISPLAY NAME  DEFAULT CHANNEL
+kernel-module-management-hub                stable
+
+PACKAGE                       CHANNEL      HEAD
+kernel-module-management-hub  release-2.0  kernel-module-management-hub.v2.0.2
+kernel-module-management-hub  release-2.1  kernel-module-management-hub.v2.1.1
+kernel-module-management-hub  release-2.2  kernel-module-management-hub.v2.2.1
+kernel-module-management-hub  release-2.3  kernel-module-management-hub.v2.3.0
+kernel-module-management-hub  release-2.4  kernel-module-management-hub.v2.4.1
+kernel-module-management-hub  release-2.5  kernel-module-management-hub.v2.5.1
+kernel-module-management-hub  stable       kernel-module-management-hub.v2.5.1
+NAME                       DISPLAY NAME  DEFAULT CHANNEL
+node-maintenance-operator                stable
+
+PACKAGE                    CHANNEL   HEAD
+node-maintenance-operator  4.12-eus  node-maintenance-operator.v5.0.1
+node-maintenance-operator  4.14-eus  node-maintenance-operator.v5.2.1
+node-maintenance-operator  4.16-eus  node-maintenance-operator.v5.3.1
+node-maintenance-operator  4.18-eus  node-maintenance-operator.v5.4.1
+node-maintenance-operator  stable    node-maintenance-operator.v5.5.0
+NAME         DISPLAY NAME  DEFAULT CHANNEL
+amq-streams                stable
+
+PACKAGE      CHANNEL            HEAD
+amq-streams  amq-streams-2.2.x  amqstreams.v2.2.2-2
+amq-streams  amq-streams-2.3.x  amqstreams.v2.3.0-4
+amq-streams  amq-streams-2.4.x  amqstreams.v2.4.0-3
+amq-streams  amq-streams-2.5.x  amqstreams.v2.5.2-8
+amq-streams  amq-streams-2.6.x  amqstreams.v2.6.0-2
+amq-streams  amq-streams-2.7.x  amqstreams.v2.7.0-7
+amq-streams  amq-streams-2.8.x  amqstreams.v2.8.0-0-0.1738265624.p
+amq-streams  amq-streams-2.9.x  amqstreams.v2.9.3-4
+amq-streams  amq-streams-2.x    amqstreams.v2.9.3-4
+amq-streams  amq-streams-3.0.x  amqstreams.v3.0.1-7
+amq-streams  amq-streams-3.1.x  amqstreams.v3.1.0-11
+amq-streams  amq-streams-3.x    amqstreams.v3.1.0-11
+amq-streams  amq-streams-lts    amqstreams.v2.5.2-8
+amq-streams  stable             amqstreams.v3.1.0-11
+NAME           DISPLAY NAME  DEFAULT CHANNEL
+quay-operator                stable-3.16
+
+PACKAGE        CHANNEL      HEAD
+quay-operator  quay-v3.4    quay-operator.v3.4.7
+quay-operator  quay-v3.5    quay-operator.v3.5.7
+quay-operator  stable-3.10  quay-operator.v3.10.17
+quay-operator  stable-3.11  quay-operator.v3.11.13
+quay-operator  stable-3.12  quay-operator.v3.12.14
+quay-operator  stable-3.13  quay-operator.v3.13.10
+quay-operator  stable-3.14  quay-operator.v3.14.5
+quay-operator  stable-3.15  quay-operator.v3.15.3
+quay-operator  stable-3.16  quay-operator.v3.16.2
+quay-operator  stable-3.6   quay-operator.v3.6.10
+quay-operator  stable-3.7   quay-operator.v3.7.14
+quay-operator  stable-3.8   quay-operator.v3.8.15
+quay-operator  stable-3.9   quay-operator.v3.9.17
+NAME                  DISPLAY NAME  DEFAULT CHANNEL
+redhat-oadp-operator                stable
+
+PACKAGE               CHANNEL  HEAD
+redhat-oadp-operator  stable   oadp-operator.v1.5.4
+NAME           DISPLAY NAME  DEFAULT CHANNEL
+rhbk-operator                stable-v26.4
+
+PACKAGE        CHANNEL       HEAD
+rhbk-operator  stable-v22    rhbk-operator.v22.0.13-opr.1
+rhbk-operator  stable-v22.0  rhbk-operator.v22.0.13-opr.1
+rhbk-operator  stable-v24    rhbk-operator.v24.0.11-opr.1
+rhbk-operator  stable-v24.0  rhbk-operator.v24.0.11-opr.1
+rhbk-operator  stable-v26    rhbk-operator.v26.4.8-opr.1
+rhbk-operator  stable-v26.0  rhbk-operator.v26.0.17-opr.1
+rhbk-operator  stable-v26.2  rhbk-operator.v26.2.12-opr.1
+rhbk-operator  stable-v26.4  rhbk-operator.v26.4.8-opr.1
+NAME             DISPLAY NAME  DEFAULT CHANNEL
+lifecycle-agent                stable
+
+PACKAGE          CHANNEL  HEAD
+lifecycle-agent  4.19     lifecycle-agent.v4.19.1
+lifecycle-agent  stable   lifecycle-agent.v4.19.1
+NAME              DISPLAY NAME  DEFAULT CHANNEL
+metallb-operator                stable
+
+PACKAGE           CHANNEL  HEAD
+metallb-operator  stable   metallb-operator.v4.19.0-202602091011
+NAME                         DISPLAY NAME  DEFAULT CHANNEL
+kubernetes-nmstate-operator                stable
+
+PACKAGE                      CHANNEL  HEAD
+kubernetes-nmstate-operator  stable   kubernetes-nmstate-operator.4.19.0-202602091011
+NAME                                            DISPLAY NAME  DEFAULT CHANNEL
+3scale-operator                                               threescale-2.16
+advanced-cluster-management                                   release-2.15
+amq-broker-rhel8                                              7.12.x
+amq-broker-rhel9                                              7.13.x
+amq-streams                                                   stable
+amq-streams-console                                           stable
+amq-streams-proxy                                             stable
+amq7-interconnect-operator                                    1.10.x
+ansible-automation-platform-operator                          stable-2.6
+ansible-cloud-addons-operator                                 stable-2.5-cluster-scoped
+apicast-operator                                              threescale-2.16
+apicurio-registry-3                                           3.x
+authorino-operator                                            stable
+aws-efs-csi-driver-operator                                   stable
+aws-load-balancer-operator                                    stable-v1
+bamoe-businessautomation-operator                             8.x-stable
+bamoe-kogito-operator                                         8.x
+bpfman-operator                                               latest
+businessautomation-operator                                   stable
+cephcsi-operator                                              stable-4.18
+cincinnati-operator                                           v1
+cli-manager                                                   tech-preview
+cluster-kube-descheduler-operator                             stable
+cluster-logging                                               stable-6.4
+cluster-observability-operator                                stable
+clusterresourceoverride                                       stable
+compliance-operator                                           stable
+container-security-operator                                   stable-3.16
+costmanagement-metrics-operator                               stable
+cryostat-operator                                             stable
+datagrid                                                      stable
+deployment-validation-operator                                alpha
+devspaces                                                     stable
+devworkspace-operator                                         fast
+dns-operator                                                  stable
+dpu-network-operator                                          stable
+dpu-operator                                                  stable
+eap                                                           stable
+elasticsearch-operator                                        stable-5.8
+external-dns-operator                                         stable-v1
+fence-agents-remediation                                      stable
+file-integrity-operator                                       stable
+fuse-apicurito                                                fuse-apicurito-7.13.x
+fuse-console                                                  7.13.x
+fuse-online                                                   latest
+gatekeeper-operator-product                                   stable
+gcp-filestore-csi-driver-operator                             stable
+ingress-node-firewall                                         stable
+jaeger-product                                                stable
+job-set                                                       stable-v1.0
+jws-operator                                                  alpha
+kernel-module-management                                      stable
+kernel-module-management-hub                                  stable
+kiali-ossm                                                    stable
+kubernetes-nmstate-operator                                   stable
+kubevirt-hyperconverged                                       stable
+kueue-operator                                                stable-v1.2
+leader-worker-set                                             stable-v1.0
+lifecycle-agent                                               stable
+lightspeed-operator                                           stable
+limitador-operator                                            stable
+local-storage-operator                                        stable
+logic-operator                                                stable
+logic-operator-rhel8                                          alpha
+loki-operator                                                 stable-6.4
+lvms-operator                                                 stable-4.18
+machine-deletion-remediation                                  stable
+mcg-operator                                                  stable-4.18
+metallb-operator                                              stable
+model-validation-operator                                     tech-preview
+mta-operator                                                  stable-v8.0
+mtc-operator                                                  release-v1.8
+mtr-operator                                                  alpha
+mtv-operator                                                  release-v2.10
+multiarch-tuning-operator                                     stable
+multicluster-engine                                           stable-2.10
+multicluster-global-hub-operator-rh                           release-1.6
+nbde-tang-server                                              stable
+netobserv-operator                                            stable
+nfd                                                           stable
+node-healthcheck-operator                                     stable
+node-maintenance-operator                                     stable
+node-observability-operator                                   alpha
+numaresources-operator                                        4.18
+ocs-client-operator                                           stable-4.18
+ocs-operator                                                  stable-4.18
+odf-csi-addons-operator                                       stable-4.18
+odf-dependencies                                              stable-4.18
+odf-multicluster-orchestrator                                 stable-4.18
+odf-operator                                                  stable-4.18
+odf-prometheus-operator                                       stable-4.18
+odr-cluster-operator                                          stable-4.18
+odr-hub-operator                                              stable-4.18
+openshift-builds-operator                                     latest
+openshift-cert-manager-operator                               stable-v1
+openshift-custom-metrics-autoscaler-operator                  stable
+openshift-gitops-operator                                     latest
+openshift-pipelines-operator-rh                               latest
+openshift-secondary-scheduler-operator                        stable
+openshift-zero-trust-workload-identity-manager                stable-v1
+openstack-operator                                            stable-v1.0
+opentelemetry-product                                         stable
+orchestrator-operator                                         stable
+pf-status-relay-operator                                      stable
+policy-controller-operator                                    tech-preview
+power-monitoring-operator                                     tech-preview
+ptp-operator                                                  stable
+quay-bridge-operator                                          stable-3.16
+quay-operator                                                 stable-3.16
+recipe                                                        stable-4.18
+red-hat-camel-k                                               1.10.x
+red-hat-hawtio-operator                                       stable-v1
+redhat-oadp-operator                                          stable-1.4
+rh-service-binding-operator                                   stable
+rhacs-operator                                                stable
+rhbk-operator                                                 stable-v26.4
+rhcl-operator                                                 stable
+rhdh                                                          fast
+rhods-operator                                                stable
+rhpam-kogito-operator                                         7.x
+rhsso-operator                                                stable
+rhtas-operator                                                stable
+rhtpa-operator                                                stable-v1.1
+rook-ceph-operator                                            stable-4.18
+run-once-duration-override-operator                           stable
+runtimes-inventory-operator                                   stable
+sandboxed-containers-operator                                 stable
+secrets-store-csi-driver-operator                             stable
+security-profiles-operator                                    release-alpha-rhel-8
+self-node-remediation                                         stable
+serverless-operator                                           stable
+service-registry-operator                                     2.x
+service-telemetry-operator                                    stable-1.5
+servicemeshoperator                                           stable
+servicemeshoperator3                                          stable
+skupper-netobs-operator                                       stable-2
+skupper-operator                                              stable-2
+smart-gateway-operator                                        stable-1.5
+smb-csi-driver-operator                                       stable
+sriov-network-operator                                        stable
+submariner                                                    stable-0.22
+tang-operator                                                 alpha
+tempo-product                                                 stable
+topology-aware-lifecycle-manager                              stable
+trustee-operator                                              stable
+vertical-pod-autoscaler                                       stable
+volsync-product                                               stable
+watcher-operator                                              stable-v1.0
+web-terminal                                                  fast
+windows-machine-config-operator                               stable
+NAME                         DISPLAY NAME  DEFAULT CHANNEL
+advanced-cluster-management                release-2.15
+
+PACKAGE                      CHANNEL       HEAD
+advanced-cluster-management  release-2.12  advanced-cluster-management.v2.12.7
+advanced-cluster-management  release-2.13  advanced-cluster-management.v2.13.5
+advanced-cluster-management  release-2.14  advanced-cluster-management.v2.14.2
+advanced-cluster-management  release-2.15  advanced-cluster-management.v2.15.1
+NAME                 DISPLAY NAME  DEFAULT CHANNEL
+multicluster-engine                stable-2.10
+
+PACKAGE              CHANNEL      HEAD
+multicluster-engine  stable-2.10  multicluster-engine.v2.10.1
+multicluster-engine  stable-2.7   multicluster-engine.v2.7.8
+multicluster-engine  stable-2.8   multicluster-engine.v2.8.4
+multicluster-engine  stable-2.9   multicluster-engine.v2.9.2
+NAME                              DISPLAY NAME  DEFAULT CHANNEL
+topology-aware-lifecycle-manager                stable
+
+PACKAGE                           CHANNEL  HEAD
+topology-aware-lifecycle-manager  4.18     topology-aware-lifecycle-manager.v4.18.3
+topology-aware-lifecycle-manager  stable   topology-aware-lifecycle-manager.v4.18.3
+NAME                       DISPLAY NAME  DEFAULT CHANNEL
+openshift-gitops-operator                latest
+
+PACKAGE                    CHANNEL      HEAD
+openshift-gitops-operator  gitops-1.10  openshift-gitops-operator.v1.10.6
+openshift-gitops-operator  gitops-1.11  openshift-gitops-operator.v1.11.7-0.1724840231.p
+openshift-gitops-operator  gitops-1.12  openshift-gitops-operator.v1.12.6
+openshift-gitops-operator  gitops-1.13  openshift-gitops-operator.v1.13.3-0.1741683398.p
+openshift-gitops-operator  gitops-1.14  openshift-gitops-operator.v1.14.4
+openshift-gitops-operator  gitops-1.15  openshift-gitops-operator.v1.15.4
+openshift-gitops-operator  gitops-1.16  openshift-gitops-operator.v1.16.5
+openshift-gitops-operator  gitops-1.17  openshift-gitops-operator.v1.17.4
+openshift-gitops-operator  gitops-1.18  openshift-gitops-operator.v1.18.3
+openshift-gitops-operator  gitops-1.19  openshift-gitops-operator.v1.19.1
+openshift-gitops-operator  gitops-1.6   openshift-gitops-operator.v1.6.6
+openshift-gitops-operator  gitops-1.7   openshift-gitops-operator.v1.7.4-0.1690486082.p
+openshift-gitops-operator  gitops-1.8   openshift-gitops-operator.v1.8.6
+openshift-gitops-operator  gitops-1.9   openshift-gitops-operator.v1.9.4
+openshift-gitops-operator  latest       openshift-gitops-operator.v1.19.1
+NAME           DISPLAY NAME  DEFAULT CHANNEL
+lvms-operator                stable-4.18
+
+PACKAGE        CHANNEL      HEAD
+lvms-operator  stable-4.17  lvms-operator.v4.17.6
+lvms-operator  stable-4.18  lvms-operator.v4.18.4
+NAME          DISPLAY NAME  DEFAULT CHANNEL
+odf-operator                stable-4.18
+
+PACKAGE       CHANNEL      HEAD
+odf-operator  stable-4.17  odf-operator.v4.17.19-rhodf
+odf-operator  stable-4.18  odf-operator.v4.18.15-rhodf
+NAME              DISPLAY NAME  DEFAULT CHANNEL
+odf-dependencies                stable-4.18
+
+PACKAGE           CHANNEL      HEAD
+odf-dependencies  stable-4.18  odf-dependencies.v4.18.15-rhodf
+NAME                DISPLAY NAME  DEFAULT CHANNEL
+rook-ceph-operator                stable-4.18
+
+PACKAGE             CHANNEL      HEAD
+rook-ceph-operator  stable-4.17  rook-ceph-operator.v4.17.19-rhodf
+rook-ceph-operator  stable-4.18  rook-ceph-operator.v4.18.15-rhodf
+NAME          DISPLAY NAME  DEFAULT CHANNEL
+ocs-operator                stable-4.18
+
+PACKAGE       CHANNEL      HEAD
+ocs-operator  stable-4.17  ocs-operator.v4.17.19-rhodf
+ocs-operator  stable-4.18  ocs-operator.v4.18.15-rhodf
+NAME          DISPLAY NAME  DEFAULT CHANNEL
+mcg-operator                stable-4.18
+
+PACKAGE       CHANNEL      HEAD
+mcg-operator  stable-4.17  mcg-operator.v4.17.19-rhodf
+mcg-operator  stable-4.18  mcg-operator.v4.18.15-rhodf
+NAME                     DISPLAY NAME  DEFAULT CHANNEL
+odf-prometheus-operator                stable-4.18
+
+PACKAGE                  CHANNEL      HEAD
+odf-prometheus-operator  stable-4.17  odf-prometheus-operator.v4.17.19-rhodf
+odf-prometheus-operator  stable-4.18  odf-prometheus-operator.v4.18.15-rhodf
+NAME              DISPLAY NAME  DEFAULT CHANNEL
+cephcsi-operator                stable-4.18
+
+PACKAGE           CHANNEL      HEAD
+cephcsi-operator  stable-4.17  cephcsi-operator.v4.17.19-rhodf
+cephcsi-operator  stable-4.18  cephcsi-operator.v4.18.15-rhodf
+NAME                     DISPLAY NAME  DEFAULT CHANNEL
+odf-csi-addons-operator                stable-4.18
+
+PACKAGE                  CHANNEL      HEAD
+odf-csi-addons-operator  stable-4.17  odf-csi-addons-operator.v4.17.19-rhodf
+odf-csi-addons-operator  stable-4.18  odf-csi-addons-operator.v4.18.15-rhodf
+NAME                           DISPLAY NAME  DEFAULT CHANNEL
+odf-multicluster-orchestrator                stable-4.18
+
+PACKAGE                        CHANNEL      HEAD
+odf-multicluster-orchestrator  stable-4.17  odf-multicluster-orchestrator.v4.17.19-rhodf
+odf-multicluster-orchestrator  stable-4.18  odf-multicluster-orchestrator.v4.18.15-rhodf
+NAME                 DISPLAY NAME  DEFAULT CHANNEL
+ocs-client-operator                stable-4.18
+
+PACKAGE              CHANNEL      HEAD
+ocs-client-operator  stable-4.17  ocs-client-operator.v4.17.19-rhodf
+ocs-client-operator  stable-4.18  ocs-client-operator.v4.18.15-rhodf
+NAME                  DISPLAY NAME  DEFAULT CHANNEL
+odr-cluster-operator                stable-4.18
+
+PACKAGE               CHANNEL      HEAD
+odr-cluster-operator  stable-4.17  odr-cluster-operator.v4.17.19-rhodf
+odr-cluster-operator  stable-4.18  odr-cluster-operator.v4.18.15-rhodf
+NAME    DISPLAY NAME  DEFAULT CHANNEL
+recipe                stable-4.18
+
+PACKAGE  CHANNEL      HEAD
+recipe   stable-4.17  recipe.v4.17.19-rhodf
+recipe   stable-4.18  recipe.v4.18.15-rhodf
+NAME                     DISPLAY NAME  DEFAULT CHANNEL
+odf-csi-addons-operator                stable-4.18
+
+PACKAGE                  CHANNEL      HEAD
+odf-csi-addons-operator  stable-4.17  odf-csi-addons-operator.v4.17.19-rhodf
+odf-csi-addons-operator  stable-4.18  odf-csi-addons-operator.v4.18.15-rhodf
+NAME                    DISPLAY NAME  DEFAULT CHANNEL
+local-storage-operator                stable
+
+PACKAGE                 CHANNEL  HEAD
+local-storage-operator  stable   local-storage-operator.v4.18.0-202601302238
+NAME          DISPLAY NAME  DEFAULT CHANNEL
+mcg-operator                stable-4.18
+
+PACKAGE       CHANNEL      HEAD
+mcg-operator  stable-4.17  mcg-operator.v4.17.19-rhodf
+mcg-operator  stable-4.18  mcg-operator.v4.18.15-rhodf
+NAME          DISPLAY NAME  DEFAULT CHANNEL
+ptp-operator                stable
+
+PACKAGE       CHANNEL  HEAD
+ptp-operator  stable   ptp-operator.v4.18.0-202602040315
+NAME                    DISPLAY NAME  DEFAULT CHANNEL
+sriov-network-operator                stable
+
+PACKAGE                 CHANNEL  HEAD
+sriov-network-operator  stable   sriov-network-operator.v4.18.0-202601302238
+NAME             DISPLAY NAME  DEFAULT CHANNEL
+cluster-logging                stable-6.4
+
+PACKAGE          CHANNEL     HEAD
+cluster-logging  stable-6.1  cluster-logging.v6.1.9
+cluster-logging  stable-6.2  cluster-logging.v6.2.8
+cluster-logging  stable-6.3  cluster-logging.v6.3.3
+cluster-logging  stable-6.4  cluster-logging.v6.4.2
+NAME                     DISPLAY NAME  DEFAULT CHANNEL
+file-integrity-operator                stable
+
+PACKAGE                  CHANNEL      HEAD
+file-integrity-operator  4.7          file-integrity-operator.v0.1.13
+file-integrity-operator  release-0.1  file-integrity-operator.v0.1.32
+file-integrity-operator  stable       file-integrity-operator.v1.3.8
+file-integrity-operator  v1           file-integrity-operator.v1.0.0
+NAME                 DISPLAY NAME  DEFAULT CHANNEL
+compliance-operator                stable
+
+PACKAGE              CHANNEL      HEAD
+compliance-operator  4.7          compliance-operator.v0.1.32
+compliance-operator  release-0.1  compliance-operator.v0.1.61
+compliance-operator  stable       compliance-operator.v1.8.2
+NAME                      DISPLAY NAME  DEFAULT CHANNEL
+kernel-module-management                stable
+
+PACKAGE                   CHANNEL      HEAD
+kernel-module-management  release-2.0  kernel-module-management.v2.0.2
+kernel-module-management  release-2.1  kernel-module-management.v2.1.1
+kernel-module-management  release-2.2  kernel-module-management.v2.2.1
+kernel-module-management  release-2.3  kernel-module-management.v2.3.0
+kernel-module-management  release-2.4  kernel-module-management.v2.4.1
+kernel-module-management  release-2.5  kernel-module-management.v2.5.1
+kernel-module-management  stable       kernel-module-management.v2.5.1
+NAME                          DISPLAY NAME  DEFAULT CHANNEL
+kernel-module-management-hub                stable
+
+PACKAGE                       CHANNEL      HEAD
+kernel-module-management-hub  release-2.0  kernel-module-management-hub.v2.0.2
+kernel-module-management-hub  release-2.1  kernel-module-management-hub.v2.1.1
+kernel-module-management-hub  release-2.2  kernel-module-management-hub.v2.2.1
+kernel-module-management-hub  release-2.3  kernel-module-management-hub.v2.3.0
+kernel-module-management-hub  release-2.4  kernel-module-management-hub.v2.4.1
+kernel-module-management-hub  release-2.5  kernel-module-management-hub.v2.5.1
+kernel-module-management-hub  stable       kernel-module-management-hub.v2.5.1
+NAME                       DISPLAY NAME  DEFAULT CHANNEL
+node-maintenance-operator                stable
+
+PACKAGE                    CHANNEL   HEAD
+node-maintenance-operator  4.12-eus  node-maintenance-operator.v5.0.1
+node-maintenance-operator  4.14-eus  node-maintenance-operator.v5.2.1
+node-maintenance-operator  4.16-eus  node-maintenance-operator.v5.3.1
+node-maintenance-operator  4.18-eus  node-maintenance-operator.v5.4.1
+node-maintenance-operator  stable    node-maintenance-operator.v5.5.0
+NAME         DISPLAY NAME  DEFAULT CHANNEL
+amq-streams                stable
+
+PACKAGE      CHANNEL            HEAD
+amq-streams  amq-streams-2.2.x  amqstreams.v2.2.2-2
+amq-streams  amq-streams-2.3.x  amqstreams.v2.3.0-4
+amq-streams  amq-streams-2.4.x  amqstreams.v2.4.0-3
+amq-streams  amq-streams-2.5.x  amqstreams.v2.5.2-8
+amq-streams  amq-streams-2.6.x  amqstreams.v2.6.0-2
+amq-streams  amq-streams-2.7.x  amqstreams.v2.7.0-7
+amq-streams  amq-streams-2.8.x  amqstreams.v2.8.0-0-0.1738265624.p
+amq-streams  amq-streams-2.9.x  amqstreams.v2.9.3-4
+amq-streams  amq-streams-2.x    amqstreams.v2.9.3-4
+amq-streams  amq-streams-3.0.x  amqstreams.v3.0.1-7
+amq-streams  amq-streams-3.1.x  amqstreams.v3.1.0-11
+amq-streams  amq-streams-3.x    amqstreams.v3.1.0-11
+amq-streams  amq-streams-lts    amqstreams.v2.5.2-8
+amq-streams  stable             amqstreams.v3.1.0-11
+NAME           DISPLAY NAME  DEFAULT CHANNEL
+quay-operator                stable-3.16
+
+PACKAGE        CHANNEL      HEAD
+quay-operator  quay-v3.4    quay-operator.v3.4.7
+quay-operator  quay-v3.5    quay-operator.v3.5.7
+quay-operator  stable-3.10  quay-operator.v3.10.17
+quay-operator  stable-3.11  quay-operator.v3.11.13
+quay-operator  stable-3.12  quay-operator.v3.12.14
+quay-operator  stable-3.13  quay-operator.v3.13.10
+quay-operator  stable-3.14  quay-operator.v3.14.5
+quay-operator  stable-3.15  quay-operator.v3.15.3
+quay-operator  stable-3.16  quay-operator.v3.16.2
+quay-operator  stable-3.6   quay-operator.v3.6.10
+quay-operator  stable-3.7   quay-operator.v3.7.14
+quay-operator  stable-3.8   quay-operator.v3.8.15
+quay-operator  stable-3.9   quay-operator.v3.9.17
+NAME                  DISPLAY NAME  DEFAULT CHANNEL
+redhat-oadp-operator                stable-1.4
+
+PACKAGE               CHANNEL     HEAD
+redhat-oadp-operator  stable-1.0  oadp-operator.v1.0.17
+redhat-oadp-operator  stable-1.4  oadp-operator.v1.4.8
+NAME           DISPLAY NAME  DEFAULT CHANNEL
+rhbk-operator                stable-v26.4
+
+PACKAGE        CHANNEL       HEAD
+rhbk-operator  stable-v22    rhbk-operator.v22.0.13-opr.1
+rhbk-operator  stable-v22.0  rhbk-operator.v22.0.13-opr.1
+rhbk-operator  stable-v24    rhbk-operator.v24.0.11-opr.1
+rhbk-operator  stable-v24.0  rhbk-operator.v24.0.11-opr.1
+rhbk-operator  stable-v26    rhbk-operator.v26.4.8-opr.1
+rhbk-operator  stable-v26.0  rhbk-operator.v26.0.17-opr.1
+rhbk-operator  stable-v26.2  rhbk-operator.v26.2.12-opr.1
+rhbk-operator  stable-v26.4  rhbk-operator.v26.4.8-opr.1
+NAME             DISPLAY NAME  DEFAULT CHANNEL
+lifecycle-agent                stable
+
+PACKAGE          CHANNEL  HEAD
+lifecycle-agent  4.18     lifecycle-agent.v4.18.2
+lifecycle-agent  stable   lifecycle-agent.v4.18.2
