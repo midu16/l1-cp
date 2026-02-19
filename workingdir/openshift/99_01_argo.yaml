@@ -27,5 +27,5 @@ metadata:
 spec:
   installPlanApproval: Automatic
   name: openshift-gitops-operator
-  source: cs-redhat-operator-index
+  source: redhat-operators-disconnected
   sourceNamespace: openshift-marketplace
