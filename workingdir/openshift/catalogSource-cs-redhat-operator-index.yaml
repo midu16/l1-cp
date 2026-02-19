@@ -5,5 +5,5 @@ metadata:
   name: redhat-operators-disconnected
   namespace: openshift-marketplace
 spec:
-  image: infra.5g-deployment.lab:8443/hub-demo/redhat/redhat-operator-index:v4.18
+  image: infra.5g-deployment.lab:8443/hub-demo/openshift-marketplace/redhat-operators-disconnected:v4.18
   sourceType: grpc
