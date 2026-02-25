@@ -11,9 +11,9 @@ on:
   workflow_dispatch:
     inputs:
       ocp_version:
-        description: "OpenShift version (e.g., 4.18.27)"
+        description: "OpenShift version (e.g., 4.19.23)"
         required: true
-        default: "4.18.27"
+        default: "4.19.23"
       registry_url:
         description: "AirGapped Registry URL"
         required: true
@@ -133,7 +133,7 @@ jobs:
 
       - name: 📝 Render imageset-config.yml
         run: |
-          # Extract major.minor from OCP_VERSION (e.g., 4.18.27 -> 4.18)
+          # Extract major.minor from OCP_VERSION (e.g., 4.19.23 -> 4.19)
           OCP_MAJOR_MINOR="${OCP_VERSION%.*}"
           export SOURCE_INDEX="registry.redhat.io/redhat/redhat-operator-index:v${OCP_MAJOR_MINOR}"
           echo "Using SOURCE_INDEX: ${SOURCE_INDEX}"
