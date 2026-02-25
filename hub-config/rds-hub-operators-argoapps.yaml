@@ -11,7 +11,7 @@ spec:
     server: 'https://kubernetes.default.svc'
   source:
     path: telco-hub/configuration/reference-crs/
-    repoURL: 'https://github.com/midu16/telco-reference.git'
+    repoURL: 'http://infra.5g-deployment.lab:3000/student/telco-reference.git'
     targetRevision: release-4.18
   project: default
   syncPolicy:
