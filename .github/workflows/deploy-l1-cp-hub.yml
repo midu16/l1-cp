@@ -11,9 +11,9 @@ on:
   workflow_dispatch:
     inputs:
       ocp_version:
-        description: "OpenShift version (e.g., 4.18.27)"
+        description: "OpenShift version (e.g., 4.19.23)"
         required: true
-        default: "4.18.27"
+        default: "4.19.23"
       registry_url:
         description: "AirGapped Registry URL"
         required: true
@@ -133,7 +133,7 @@ jobs:
 
       - name: 📝 Render imageset-config.yml
         run: |
-          # Extract major.minor from OCP_VERSION (e.g., 4.18.27 -> 4.18)
+          # Extract major.minor from OCP_VERSION (e.g., 4.19.23 -> 4.19)
           OCP_MAJOR_MINOR="${OCP_VERSION%.*}"
           export SOURCE_INDEX="registry.redhat.io/redhat/redhat-operator-index:v${OCP_MAJOR_MINOR}"
           echo "Using SOURCE_INDEX: ${SOURCE_INDEX}"
@@ -168,7 +168,7 @@ jobs:
           RELEASE_IMAGE="${REGISTRY_URL}/hub-demo/openshift/release-images:${OCP_VERSION}-x86_64"
 
       - name: 💿 Generate agent ISO
-        run: sudo make create-agent-iso
+        run: sudo make create-agent-iso OCP_VERSION="${OCP_VERSION}"
 
       - name: 📤 Copy agent ISO to webcache
         run: |
@@ -214,20 +214,31 @@ jobs:
         run: |
           sudo mkdir -p /root/.kcli/clusters/hub/auth/
           sudo rsync -a --inplace "${KUBECONFIG_PATH}" /root/.kcli/clusters/hub/auth/kubeconfig
+
+      - name: ✅ Approve all InstallPlans
+        run: |
+          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" get installplan -A -o json | \
+            jq -r '.items[] | select(.spec.approved != true) | "\(.metadata.namespace) \(.metadata.name)"' | \
+            while read -r ns name; do
+              echo "Approving InstallPlan $name in namespace $ns"
+              sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" -n "$ns" patch installplan "$name" --type merge -p '{"spec":{"approved":true}}'
+            done
+          echo "✅ InstallPlan approval complete"
+
       - name: 📋 Hub Argo Application
         run: |
           sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" apply -f "${REPO_PATH}/hub-config/${ARGOCD_APP}"
           if [[ "${ARGOCD_APP}" == "rds-hub-operators-argoapps.yaml" ]]; then
             echo "🔄 Waiting for RDS Hub Operators deployment..."
-            sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" -n openshift-gitops wait apps/rds-hub-operators-deployment --for=jsonpath="{.status.sync.status}"=Synced --timeout=900s
+            sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" -n openshift-gitops wait apps/rds-hub-operators-deployment --for=jsonpath="{.status.sync.status}"=Synced --timeout=1800s
             echo "✅ RDS Hub Operators deployment synced successfully"
           elif [[ "${ARGOCD_APP}" == "hub-operators-argoapps.yaml" ]]; then
             echo "🔄 Waiting for Hub Operators deployment..."
-            sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" -n openshift-gitops wait apps/hub-operators-deployment --for=jsonpath="{.status.sync.status}"=Synced --timeout=900s
+            sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" -n openshift-gitops wait apps/hub-operators-deployment --for=jsonpath="{.status.sync.status}"=Synced --timeout=1800s
             echo "🔄 Waiting for Hub Operators config..."
-            sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" -n openshift-gitops wait apps/hub-operators-config --for=jsonpath="{.status.sync.status}"=Synced --timeout=900s
+            sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" -n openshift-gitops wait apps/hub-operators-config --for=jsonpath="{.status.sync.status}"=Synced --timeout=1800s
             echo "🔄 Waiting for Hub Webcache..."
-            sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" -n openshift-gitops wait apps/hub-webcache --for=jsonpath="{.status.sync.status}"=Synced --timeout=900s
+            sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" -n openshift-gitops wait apps/hub-webcache --for=jsonpath="{.status.sync.status}"=Synced --timeout=1800s
             echo "✅ All Hub Operators synced successfully"
           else
             echo "❌ Error: Unknown ARGOCD_APP value: ${ARGOCD_APP}"

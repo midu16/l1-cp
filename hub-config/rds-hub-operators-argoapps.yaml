@@ -10,9 +10,9 @@ spec:
     namespace: ''
     server: 'https://kubernetes.default.svc'
   source:
-    path: telco-hub/configuration/reference-crs/
+    path: telco-hub/configuration/
     repoURL: 'http://infra.5g-deployment.lab:3000/student/telco-reference.git'
-    targetRevision: release-4.18
+    targetRevision: release-4.19
   project: default
   syncPolicy:
     automated:
