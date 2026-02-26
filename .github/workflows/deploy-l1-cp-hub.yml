@@ -214,6 +214,17 @@ jobs:
         run: |
           sudo mkdir -p /root/.kcli/clusters/hub/auth/
           sudo rsync -a --inplace "${KUBECONFIG_PATH}" /root/.kcli/clusters/hub/auth/kubeconfig
+
+      - name: ✅ Approve all InstallPlans
+        run: |
+          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" get installplan -A -o json | \
+            jq -r '.items[] | select(.spec.approved != true) | "\(.metadata.namespace) \(.metadata.name)"' | \
+            while read -r ns name; do
+              echo "Approving InstallPlan $name in namespace $ns"
+              sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" -n "$ns" patch installplan "$name" --type merge -p '{"spec":{"approved":true}}'
+            done
+          echo "✅ InstallPlan approval complete"
+
       - name: 📋 Hub Argo Application
         run: |
           sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" apply -f "${REPO_PATH}/hub-config/${ARGOCD_APP}"
