@@ -230,15 +230,15 @@ jobs:
           sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" apply -f "${REPO_PATH}/hub-config/${ARGOCD_APP}"
           if [[ "${ARGOCD_APP}" == "rds-hub-operators-argoapps.yaml" ]]; then
             echo "🔄 Waiting for RDS Hub Operators deployment..."
-            sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" -n openshift-gitops wait apps/rds-hub-operators-deployment --for=jsonpath="{.status.sync.status}"=Synced --timeout=900s
+            sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" -n openshift-gitops wait apps/rds-hub-operators-deployment --for=jsonpath="{.status.sync.status}"=Synced --timeout=1800s
             echo "✅ RDS Hub Operators deployment synced successfully"
           elif [[ "${ARGOCD_APP}" == "hub-operators-argoapps.yaml" ]]; then
             echo "🔄 Waiting for Hub Operators deployment..."
-            sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" -n openshift-gitops wait apps/hub-operators-deployment --for=jsonpath="{.status.sync.status}"=Synced --timeout=900s
+            sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" -n openshift-gitops wait apps/hub-operators-deployment --for=jsonpath="{.status.sync.status}"=Synced --timeout=1800s
             echo "🔄 Waiting for Hub Operators config..."
-            sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" -n openshift-gitops wait apps/hub-operators-config --for=jsonpath="{.status.sync.status}"=Synced --timeout=900s
+            sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" -n openshift-gitops wait apps/hub-operators-config --for=jsonpath="{.status.sync.status}"=Synced --timeout=1800s
             echo "🔄 Waiting for Hub Webcache..."
-            sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" -n openshift-gitops wait apps/hub-webcache --for=jsonpath="{.status.sync.status}"=Synced --timeout=900s
+            sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" -n openshift-gitops wait apps/hub-webcache --for=jsonpath="{.status.sync.status}"=Synced --timeout=1800s
             echo "✅ All Hub Operators synced successfully"
           else
             echo "❌ Error: Unknown ARGOCD_APP value: ${ARGOCD_APP}"
