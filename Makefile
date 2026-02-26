@@ -873,10 +873,14 @@ create-agent-iso: ## Create agent ISO image - copies workingdir to ./hub/ and ru
 	echo "$(GREEN)✓ Copied content to ./hub/$(NC)"; \
 	if [ -n "$(OCP_VERSION)" ] && [ -f ./hub/openshift/catalogSource-cs-redhat-operator-index.yaml ]; then \
 		OCP_MAJOR_MINOR=$$(echo "$(OCP_VERSION)" | cut -d. -f1,2); \
-		echo "$(BLUE)Updating catalogSource image tag to v$$OCP_MAJOR_MINOR...$(NC)"; \
+		echo "$(BLUE)Updating catalogSource image tag to v$$OCP_MAJOR_MINOR (from OCP_VERSION=$(OCP_VERSION))...$(NC)"; \
 		sed -i "s|redhat-operators-disconnected:v[0-9]*\.[0-9]*|redhat-operators-disconnected:v$$OCP_MAJOR_MINOR|g" \
 			./hub/openshift/catalogSource-cs-redhat-operator-index.yaml; \
 		echo "$(GREEN)✓ Updated catalogSource to use redhat-operators-disconnected:v$$OCP_MAJOR_MINOR$(NC)"; \
+	else \
+		if [ -f ./hub/openshift/catalogSource-cs-redhat-operator-index.yaml ]; then \
+			echo "$(YELLOW)⚠ OCP_VERSION not set — catalogSource image tag left unchanged (set OCP_VERSION for correct tag)$(NC)"; \
+		fi; \
 	fi; \
 	echo "$(BLUE)Running openshift-install agent create image...$(NC)"; \
 	./bin/openshift-install agent create image --dir ./hub/. --log-level debug || { \
