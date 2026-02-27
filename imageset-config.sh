@@ -558,7 +558,7 @@ mirror:
       channels:
       - name: release-2.13
     - name: multicluster-engine
-      defaultChannel: release-2.8
+      defaultChannel: stable-2.8
       channels:
       - name: stable-2.8
     - name: topology-aware-lifecycle-manager
