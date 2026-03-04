@@ -27,9 +27,9 @@ on:
         required: false
         default: "sno1"
       argocd_app: 
-        description: "ArgoCD application name (e.g., hub-operators-argoapps.yaml)"
+        description: "ArgoCD application name (e.g., rds-hub-operators-argoapps.yaml)"
         required: true
-        default: "hub-operators-argoapps.yaml"
+        default: "rds-hub-operators-argoapps.yaml"
 defaults:
   run:
     shell: bash
@@ -152,11 +152,26 @@ jobs:
 
       - name: 📦 Mirror images to AirGapped registry
         run: |
-          sudo DOCKER_CONFIG=/root/.docker ./bin/oc-mirror -c imageset-config.yml --v2 \
-            --workspace file://hub-demo/ \
-            docker://"${REGISTRY_URL}"/hub-demo \
-            --max-nested-paths 10 --parallel-images 10 --parallel-layers 10 \
-            --dest-tls-verify=false --log-level debug
+          MAX_ATTEMPTS=3
+          DELAY=15
+          attempt=1
+          while true; do
+            if sudo DOCKER_CONFIG=/root/.docker ./bin/oc-mirror -c imageset-config.yml --v2 \
+              --workspace file://hub-demo/ \
+              docker://"${REGISTRY_URL}"/hub-demo \
+              --max-nested-paths 10 --parallel-images 10 --parallel-layers 10 \
+              --dest-tls-verify=false --log-level debug; then
+              echo "✅ Mirror completed successfully on attempt $attempt"
+              break
+            fi
+            if [[ $attempt -ge $MAX_ATTEMPTS ]]; then
+              echo "❌ Mirror failed after $MAX_ATTEMPTS attempts"
+              exit 1
+            fi
+            echo "⚠️ Mirror attempt $attempt failed. Retrying in ${DELAY}s..."
+            sleep $DELAY
+            attempt=$((attempt + 1))
+          done
 
       - name: 🔍 Verify AirGapped registry content after mirroring
         run: |
@@ -228,22 +243,8 @@ jobs:
       - name: 📋 Hub Argo Application
         run: |
           sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" apply -f "${REPO_PATH}/hub-config/${ARGOCD_APP}"
-          if [[ "${ARGOCD_APP}" == "rds-hub-operators-argoapps.yaml" ]]; then
-            echo "🔄 Waiting for RDS Hub Operators deployment..."
-            sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" -n openshift-gitops wait apps/rds-hub-operators-deployment --for=jsonpath="{.status.sync.status}"=Synced --timeout=1800s
-            echo "✅ RDS Hub Operators deployment synced successfully"
-          elif [[ "${ARGOCD_APP}" == "hub-operators-argoapps.yaml" ]]; then
-            echo "🔄 Waiting for Hub Operators deployment..."
-            sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" -n openshift-gitops wait apps/hub-operators-deployment --for=jsonpath="{.status.sync.status}"=Synced --timeout=1800s
-            echo "🔄 Waiting for Hub Operators config..."
-            sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" -n openshift-gitops wait apps/hub-operators-config --for=jsonpath="{.status.sync.status}"=Synced --timeout=1800s
-            echo "🔄 Waiting for Hub Webcache..."
-            sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" -n openshift-gitops wait apps/hub-webcache --for=jsonpath="{.status.sync.status}"=Synced --timeout=1800s
-            echo "✅ All Hub Operators synced successfully"
-          else
-            echo "❌ Error: Unknown ARGOCD_APP value: ${ARGOCD_APP}"
-            echo "   Supported values:"
-            echo "     - rds-hub-operators-argoapps.yaml"
-            echo "     - hub-operators-argoapps.yaml"
-            exit 1
-          fi
+      
+      - name: 🔄 Waiting for Hub Operators deployment, Monitoring the progress of the deployment and approving InstallPlans
+        run: |
+          sudo python3 "${REPO_PATH}/monitoring/cluster_monitor.py" --kubeconfig "${KUBECONFIG_PATH}" --installplan --stable-for 600
+          echo "✅ Hub Operators deployment completed successfully"

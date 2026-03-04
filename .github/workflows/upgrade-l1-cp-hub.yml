@@ -1,0 +1,106 @@
+name: Upgrade Hub Cluster
+
+permissions:
+  contents: read
+
+concurrency:
+  group: upgrade-l1-cp-hub
+  cancel-in-progress: false
+
+on:
+  workflow_dispatch:
+    inputs:
+      ocp_version:
+        description: "OpenShift version (e.g., 4.19.23)"
+        required: true
+        default: "4.19.23"
+      registry_url:
+        description: "AirGapped Registry URL"
+        required: true
+        default: "infra.5g-deployment.lab:8443"
+      remote_host:
+        description: "Remote host for seed VM (optional)"
+        required: false
+        default: ""
+      vm_name:
+        description: "Seed VM name (optional)"
+        required: false
+        default: "sno1"
+      argocd_app: 
+        description: "ArgoCD application name (e.g., rds-hub-upgrade-argoapps.yaml)"
+        required: true
+        default: "rds-hub-upgrade-argoapps.yaml"
+defaults:
+  run:
+    shell: bash
+
+env:
+  OCP_VERSION: ${{ github.event.inputs.ocp_version }}
+  REGISTRY_URL: ${{ github.event.inputs.registry_url }}
+  REMOTE_HOST: ${{ github.event.inputs.remote_host }}
+  VM_NAME: ${{ github.event.inputs.vm_name }}
+  KUBECONFIG_PATH: ${{ github.workspace }}/hub/auth/kubeconfig
+  ARGOCD_APP: ${{ github.event.inputs.argocd_app }}
+  
+jobs:
+
+  upgrade-l1-cp-hub:
+    runs-on: [self-hosted, linux, x64]
+    timeout-minutes: 180
+    env:
+      REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+      REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+      REPO_PATH: ${{ github.workspace }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 📥 Download OCP tools
+        run: sudo make download-oc-tools VERSION="${OCP_VERSION}"
+
+      - name: 📝 Render imageset-config.yml
+        run: |
+          # Extract major.minor from OCP_VERSION (e.g., 4.19.23 -> 4.19)
+          OCP_MAJOR_MINOR="${OCP_VERSION%.*}"
+          export SOURCE_INDEX="registry.redhat.io/redhat/redhat-operator-index:v${OCP_MAJOR_MINOR}"
+          echo "Using SOURCE_INDEX: ${SOURCE_INDEX}"
+          sudo -E make imageset-config.yml OCP_VERSION="${OCP_VERSION}" SOURCE_INDEX="${SOURCE_INDEX}"
+
+      - name: 🔍 Validate AirGapped registry catalog
+        run: |
+          curl -sk -u "${REGISTRY_USERNAME}:${REGISTRY_PASSWORD}" \
+            "https://${REGISTRY_URL}/v2/_catalog" | jq . || echo "⚠️ Registry check failed"
+
+      - name: 📦 Mirror images to AirGapped registry
+        run: |
+          MAX_ATTEMPTS=3
+          DELAY=15
+          attempt=1
+          while true; do
+            if sudo DOCKER_CONFIG=/root/.docker ./bin/oc-mirror -c imageset-config.yml --v2 \
+              --workspace file://hub-demo-419/ \
+              docker://"${REGISTRY_URL}"/hub-demo-419 \
+              --max-nested-paths 10 --parallel-images 10 --parallel-layers 10 \
+              --dest-tls-verify=false --log-level debug; then
+              echo "✅ Mirror completed successfully on attempt $attempt"
+              break
+            fi
+            if [[ $attempt -ge $MAX_ATTEMPTS ]]; then
+              echo "❌ Mirror failed after $MAX_ATTEMPTS attempts"
+              exit 1
+            fi
+            echo "⚠️ Mirror attempt $attempt failed. Retrying in ${DELAY}s..."
+            sleep $DELAY
+            attempt=$((attempt + 1))
+          done
+
+      - name: 🔍 Verify AirGapped registry content after mirroring
+        run: |
+          curl -sk -u "${REGISTRY_USERNAME}:${REGISTRY_PASSWORD}" \
+              "https://${REGISTRY_URL}/v2/_catalog" | jq . || echo "⚠️ Registry check failed"
+
+      - name: Apply the upgrade CGU
+        run: |
+          git clone http://infra.5g-deployment.lab:3000/student/telco-reference.git
+          cd telco-reference && git fetch origin release-4.19 && git checkout release-4.19
+          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" apply -f hub-config/upgrade/${ARGOCD_APP}
