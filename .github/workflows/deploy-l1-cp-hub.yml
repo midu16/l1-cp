@@ -27,9 +27,9 @@ on:
         required: false
         default: "sno1"
       argocd_app: 
-        description: "ArgoCD application name (e.g., hub-operators-argoapps.yaml)"
+        description: "ArgoCD application name (e.g., rds-hub-operators-argoapps.yaml)"
         required: true
-        default: "hub-operators-argoapps.yaml"
+        default: "rds-hub-operators-argoapps.yaml"
 defaults:
   run:
     shell: bash
@@ -214,25 +214,21 @@ jobs:
         run: |
           sudo mkdir -p /root/.kcli/clusters/hub/auth/
           sudo rsync -a --inplace "${KUBECONFIG_PATH}" /root/.kcli/clusters/hub/auth/kubeconfig
+      - name: ✅ Approve all InstallPlans
+        run: |
+          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" get installplan -A -o json | \
+            jq -r '.items[] | select(.spec.approved != true) | "\(.metadata.namespace) \(.metadata.name)"' | \
+            while read -r ns name; do
+              echo "Approving InstallPlan $name in namespace $ns"
+              sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" -n "$ns" patch installplan "$name" --type merge -p '{"spec":{"approved":true}}'
+            done
+          echo "✅ InstallPlan approval complete"
+
       - name: 📋 Hub Argo Application
         run: |
           sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" apply -f "${REPO_PATH}/hub-config/${ARGOCD_APP}"
-          if [[ "${ARGOCD_APP}" == "rds-hub-operators-argoapps.yaml" ]]; then
-            echo "🔄 Waiting for RDS Hub Operators deployment..."
-            sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" -n openshift-gitops wait apps/rds-hub-operators-deployment --for=jsonpath="{.status.sync.status}"=Synced --timeout=900s
-            echo "✅ RDS Hub Operators deployment synced successfully"
-          elif [[ "${ARGOCD_APP}" == "hub-operators-argoapps.yaml" ]]; then
-            echo "🔄 Waiting for Hub Operators deployment..."
-            sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" -n openshift-gitops wait apps/hub-operators-deployment --for=jsonpath="{.status.sync.status}"=Synced --timeout=900s
-            echo "🔄 Waiting for Hub Operators config..."
-            sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" -n openshift-gitops wait apps/hub-operators-config --for=jsonpath="{.status.sync.status}"=Synced --timeout=900s
-            echo "🔄 Waiting for Hub Webcache..."
-            sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" -n openshift-gitops wait apps/hub-webcache --for=jsonpath="{.status.sync.status}"=Synced --timeout=900s
-            echo "✅ All Hub Operators synced successfully"
-          else
-            echo "❌ Error: Unknown ARGOCD_APP value: ${ARGOCD_APP}"
-            echo "   Supported values:"
-            echo "     - rds-hub-operators-argoapps.yaml"
-            echo "     - hub-operators-argoapps.yaml"
-            exit 1
-          fi
+      
+      - name: 🔄 Waiting for Hub Operators deployment, Monitoring the progress of the deployment and approving InstallPlans
+        run: |
+          sudo python3 "${REPO_PATH}/monitoring/cluster_monitor.py" --kubeconfig "${KUBECONFIG_PATH}" --installplan --stable-for 600
+          echo "✅ Hub Operators deployment completed successfully"
