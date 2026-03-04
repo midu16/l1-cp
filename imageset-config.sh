@@ -613,6 +613,10 @@ mirror:
     - name: redhat-oadp-operator
       channels:
       - name: stable-1.4
+    - name: cluster-logging
+      defaultChannel: stable-6.2
+      channels: 
+      - name: stable-6.2
   additionalImages:
   - name: registry.redhat.io/ubi8/ubi:latest
   - name: registry.redhat.io/openshift4/ztp-site-generate-rhel8:v4.18
@@ -716,6 +720,10 @@ mirror:
       defaultChannel: stable-4.19
       channels:
       - name: stable-4.19
+    - name: cluster-logging
+      defaultChannel: stable-6.2
+      channels: 
+      - name: stable-6.2
   additionalImages:
   - name: registry.redhat.io/ubi8/ubi:latest
   - name: registry.redhat.io/openshift4/ztp-site-generate-rhel8:v4.19
