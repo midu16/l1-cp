@@ -113,5 +113,5 @@ jobs:
 
       - name: 🔄 Waiting for Hub Operators upgrade, Monitoring the progress of the upgrade and approving InstallPlans
         run: |
-          sudo python3 "${REPO_PATH}/monitoring/cluster_monitor.py" --kubeconfig "${KUBECONFIG_PATH}" --installplan --stable-for 600
+          sudo python3 "${REPO_PATH}/monitoring/cluster_monitor.py" --kubeconfig "${KUBECONFIG_PATH}" --installplan --stable-for 600 --apiserver-metrics
           echo "✅ Hub Operators upgrade completed successfully"

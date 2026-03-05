@@ -19,14 +19,21 @@ Stability criteria:
 - All ACM policies in namespace local-cluster Compliant (no NonCompliant or Pending)
 
 When all criteria pass for at least --stable-for seconds, the program exits with rc 0.
+
+Optional --apiserver-metrics: collect Prometheus API server metrics (same format as
+collect-apiserver-metrics.sh / collect-apiserver-metrics-day2.sh) under ./data/release-XXX/
+(version derived from cluster version, e.g. release-419 for 4.19.x). On exit, prints a
+composed API server availability summary for the entire upgrade.
 """
 
 import argparse
 import json
+import math
 import os
 import subprocess
 import sys
 import time
+import urllib.parse
 from datetime import datetime, timezone
 
 # Default stability thresholds (seconds)
@@ -36,6 +43,33 @@ CSV_INSTALLING_MAX_SECONDS = 10 * 60  # 10 minutes (Installing longer = stuck)
 
 # Policy evaluation scope: only policies in this namespace are checked for stability
 POLICY_NAMESPACE = "local-cluster"
+
+# API server metrics (Prometheus/Thanos)
+PROM_NS = "openshift-monitoring"
+PROM_POD = "prometheus-k8s-0"
+THANOS_URL = "https://thanos-querier.openshift-monitoring.svc:9091"
+# Namespaces tracked for day-2 operator upgrade progress (same as collect-apiserver-metrics-day2.sh)
+TRACKED_OPERATOR_NAMESPACES = [
+    "open-cluster-management",
+    "multicluster-engine",
+    "openshift-operators",
+    "openshift-gitops-operator",
+    "openshift-local-storage",
+    "openshift-storage",
+    "openshift-logging",
+    "openshift-adp",
+    "open-cluster-management-backup",
+]
+
+# CSV filenames for apiserver metrics (must match collect-apiserver-metrics*.sh format)
+CSV_APISERVER_UP = "apiserver-up.csv"
+CSV_AGGREGATE = "apiserver-aggregate-availability.csv"
+CSV_SUCCESS = "apiserver-request-success-rate.csv"
+CSV_LATENCY = "apiserver-p99-latency.csv"
+CSV_REQRATE = "apiserver-request-rate.csv"
+CSV_UPGRADE = "upgrade-progress.csv"
+CSV_OPERATOR = "operator-upgrade-progress.csv"
+SUMMARY_JSON = "apiserver-availability-summary.json"
 
 
 def run_oc(args, kubeconfig=None, timeout=120):
@@ -89,6 +123,337 @@ def run_and_print(cmd_desc, oc_args, kubeconfig):
     else:
         print("ERROR:", err or out or "unknown")
     return ok
+
+
+# ---------------------------------------------------------------------------
+# API server metrics (from collect-apiserver-metrics.sh / collect-apiserver-metrics-day2.sh)
+# ---------------------------------------------------------------------------
+
+def get_cluster_version_for_data_dir(kubeconfig):
+    """
+    Get the cluster's desired/current version and derive release label for data dir.
+    Returns (version_string, release_label) e.g. ("4.19.23", "release-419").
+    release_label is used as subdir: ./data/release-419/
+    """
+    data, err = oc_get_json("clusterversion", "", kubeconfig)
+    if err or not data:
+        return "unknown", "release-unknown"
+    items = data.get("items") or []
+    if not items:
+        return "unknown", "release-unknown"
+    cv = items[0]
+    # Prefer desired version; fallback to history[0].version
+    desired = (cv.get("status") or {}).get("desired", {}).get("version")
+    if desired:
+        version = desired
+    else:
+        history = (cv.get("status") or {}).get("history") or []
+        version = (history[0] or {}).get("version", "unknown") if history else "unknown"
+    # Normalize to release-XXX e.g. 4.19.23 -> release-419, 4.20.14 -> release-420
+    parts = str(version).split(".")
+    if len(parts) >= 2:
+        try:
+            major, minor = int(parts[0]), int(parts[1])
+            release_label = f"release-{major}{minor:02d}"
+        except (ValueError, IndexError):
+            release_label = "release-unknown"
+    else:
+        release_label = "release-unknown"
+    return version, release_label
+
+
+def ensure_release_data_dir(base_dir, release_label):
+    """
+    Ensure base_dir and base_dir/release_label exist. Create if missing (exist_ok=True).
+    Returns the full path to the release subdir (e.g. ./data/release-419).
+    """
+    base_dir = os.path.abspath(base_dir or "data")
+    release_dir = os.path.join(base_dir, release_label)
+    try:
+        os.makedirs(base_dir, exist_ok=True)
+        os.makedirs(release_dir, exist_ok=True)
+    except OSError as e:
+        print(f"Warning: could not create data dir {release_dir}: {e}", file=sys.stderr)
+    return release_dir
+
+
+def init_apiserver_csvs(data_dir):
+    """Create CSV files with headers if they do not exist (same format as collect-apiserver-metrics*.sh)."""
+    headers = [
+        (CSV_APISERVER_UP, "timestamp,instance,up"),
+        (CSV_AGGREGATE, "timestamp,up_instances,total_instances"),
+        (CSV_SUCCESS, "timestamp,success_rate"),
+        (CSV_LATENCY, "timestamp,p99_latency_seconds"),
+        (CSV_REQRATE, "timestamp,requests_per_second"),
+        (CSV_UPGRADE, "timestamp,version,state,message"),
+        (CSV_OPERATOR, "timestamp,namespace,subscription,current_csv,installed_csv,state,pending_installplans"),
+    ]
+    for fname, header in headers:
+        path = os.path.join(data_dir, fname)
+        if not os.path.isfile(path):
+            try:
+                with open(path, "w") as f:
+                    f.write(header + "\n")
+            except OSError:
+                pass
+
+
+def get_prom_token(kubeconfig):
+    """Create a token for prometheus-k8s in openshift-monitoring. Returns token string or None."""
+    ok, out, err = run_oc(
+        ["create", "token", "prometheus-k8s", "-n", PROM_NS, "--duration=1h"],
+        kubeconfig=kubeconfig,
+        timeout=30,
+    )
+    if not ok or not out:
+        return None
+    return out.strip()
+
+
+def prom_query(kubeconfig, token, query):
+    """Run a Prometheus query via oc exec into prometheus-k8s-0 (Thanos URL). Returns parsed JSON or None."""
+    quoted = urllib.parse.quote(query, safe="")
+    curl_cmd = (
+        f"curl -sk -H \"Authorization: Bearer {token}\" "
+        f"\"{THANOS_URL}/api/v1/query\" --data-urlencode \"query={quoted}\""
+    )
+    ok, out, err = run_oc(
+        ["exec", "-n", PROM_NS, "-c", "prometheus", PROM_POD, "--", "sh", "-c", curl_cmd],
+        kubeconfig=kubeconfig,
+        timeout=30,
+    )
+    if not ok or not out:
+        return None
+    try:
+        return json.loads(out)
+    except json.JSONDecodeError:
+        return None
+
+
+def collect_apiserver_metrics_once(data_dir, kubeconfig, ts_iso):
+    """
+    Collect one round of API server metrics and append to CSVs (same as collect-apiserver-metrics.sh).
+    Returns (up_count, total_count) or (None, None) on failure.
+    """
+    token = get_prom_token(kubeconfig)
+    if not token:
+        return None, None
+    # 1) up{job="apiserver"}
+    up_json = prom_query(kubeconfig, token, 'up{job="apiserver"}')
+    if not up_json or "data" not in up_json:
+        return None, None
+    results = up_json.get("data", {}).get("result") or []
+    up_path = os.path.join(data_dir, CSV_APISERVER_UP)
+    agg_path = os.path.join(data_dir, CSV_AGGREGATE)
+    for r in results:
+        metric = r.get("metric") or {}
+        instance = metric.get("instance", "")
+        val = (r.get("value") or [None, None])[1]
+        with open(up_path, "a") as f:
+            f.write(f"{ts_iso},{instance},{val}\n")
+    up_count = sum(1 for r in results if (r.get("value") or [None, None])[1] == "1")
+    total_count = len(results)
+    with open(agg_path, "a") as f:
+        f.write(f"{ts_iso},{up_count},{total_count}\n")
+    # 2) success rate
+    sr_json = prom_query(
+        kubeconfig, token,
+        '1 - (sum(rate(apiserver_request_total{job="apiserver",code=~"5.."}[2m])) / sum(rate(apiserver_request_total{job="apiserver"}[2m])))',
+    )
+    sr_val = "NaN"
+    if sr_json and (sr_json.get("data") or {}).get("result"):
+        sr_val = (sr_json["data"]["result"][0].get("value") or [None, "NaN"])[1]
+    with open(os.path.join(data_dir, CSV_SUCCESS), "a") as f:
+        f.write(f"{ts_iso},{sr_val}\n")
+    # 3) P99 latency
+    lat_json = prom_query(
+        kubeconfig, token,
+        'histogram_quantile(0.99, sum(rate(apiserver_request_duration_seconds_bucket{job="apiserver",verb!="WATCH"}[2m])) by (le))',
+    )
+    lat_val = "NaN"
+    if lat_json and (lat_json.get("data") or {}).get("result"):
+        lat_val = (lat_json["data"]["result"][0].get("value") or [None, "NaN"])[1]
+    with open(os.path.join(data_dir, CSV_LATENCY), "a") as f:
+        f.write(f"{ts_iso},{lat_val}\n")
+    # 4) request rate
+    rr_json = prom_query(kubeconfig, token, 'sum(rate(apiserver_request_total{job="apiserver"}[2m]))')
+    rr_val = "NaN"
+    if rr_json and (rr_json.get("data") or {}).get("result"):
+        rr_val = (rr_json["data"]["result"][0].get("value") or [None, "NaN"])[1]
+    with open(os.path.join(data_dir, CSV_REQRATE), "a") as f:
+        f.write(f"{ts_iso},{rr_val}\n")
+    # 5) upgrade progress (clusterversion)
+    cv_data, _ = oc_get_json("clusterversion", "", kubeconfig)
+    version, state, msg = "unknown", "Unknown", "N/A"
+    if cv_data and (cv_data.get("items") or []):
+        status = (cv_data["items"][0].get("status") or {})
+        version = status.get("desired", {}).get("version", "unknown")
+        history = status.get("history") or []
+        if history:
+            state = history[0].get("state", "Unknown")
+        for c in status.get("conditions") or []:
+            if c.get("type") == "Progressing":
+                msg = (c.get("message") or "N/A").replace(",", ";").replace("\n", " ")[:200]
+                break
+    with open(os.path.join(data_dir, CSV_UPGRADE), "a") as f:
+        f.write(f"{ts_iso},{version},{state},{msg}\n")
+    return up_count, total_count
+
+
+def collect_operator_progress_once(data_dir, kubeconfig, ts_iso):
+    """Append one row per subscription in tracked namespaces to operator-upgrade-progress.csv (day2)."""
+    op_path = os.path.join(data_dir, CSV_OPERATOR)
+    for ns in TRACKED_OPERATOR_NAMESPACES:
+        data, err = oc_get_json("subscription.operators.coreos.com", ns, kubeconfig)
+        if err or not data:
+            continue
+        for sub in data.get("items") or []:
+            meta = sub.get("metadata") or {}
+            status = sub.get("status") or {}
+            sub_name = meta.get("name", "")
+            current_csv = status.get("currentCSV") or "none"
+            installed_csv = status.get("installedCSV") or "none"
+            state = status.get("state") or "Unknown"
+            ip_data, _ = oc_get_json("installplan.operators.coreos.com", ns, kubeconfig)
+            pending_ips = 0
+            if ip_data and ip_data.get("items"):
+                pending_ips = sum(1 for ip in ip_data["items"] if not (ip.get("spec") or {}).get("approved"))
+            with open(op_path, "a") as f:
+                f.write(f"{ts_iso},{ns},{sub_name},{current_csv},{installed_csv},{state},{pending_ips}\n")
+
+
+def generate_apiserver_summary(data_dir, kubeconfig):
+    """
+    Read CSVs under data_dir and produce apiserver-availability-summary.json plus a summary dict.
+    Same logic as generate_summary in collect-apiserver-metrics.sh.
+    """
+    agg_path = os.path.join(data_dir, CSV_AGGREGATE)
+    success_path = os.path.join(data_dir, CSV_SUCCESS)
+    lat_path = os.path.join(data_dir, CSV_LATENCY)
+    summary_path = os.path.join(data_dir, SUMMARY_JSON)
+    if not os.path.isfile(agg_path):
+        return None
+    # Parse aggregate (timestamp, up_instances, total_instances)
+    total_samples = 0
+    full_avail = partial_avail = degraded = zero_avail = 0
+    with open(agg_path) as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("timestamp"):
+                continue
+            total_samples += 1
+            parts = line.split(",", 2)
+            if len(parts) < 3:
+                continue
+            try:
+                up = int(parts[1])
+            except ValueError:
+                continue
+            if up >= 3:
+                full_avail += 1
+            elif up == 2:
+                partial_avail += 1
+            if up <= 1:
+                degraded += 1
+            if up == 0:
+                zero_avail += 1
+    # Success rate min/avg
+    min_success = float("nan")
+    avg_success = float("nan")
+    if os.path.isfile(success_path):
+        vals = []
+        with open(success_path) as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("timestamp"):
+                    continue
+                parts = line.split(",", 1)
+                if len(parts) < 2:
+                    continue
+                try:
+                    vals.append(float(parts[1]))
+                except ValueError:
+                    pass
+        if vals:
+            min_success = min(vals)
+            avg_success = sum(vals) / len(vals)
+    # P99 max/avg
+    max_p99 = avg_p99 = float("nan")
+    if os.path.isfile(lat_path):
+        vals = []
+        with open(lat_path) as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("timestamp"):
+                    continue
+                parts = line.split(",", 1)
+                if len(parts) < 2:
+                    continue
+                try:
+                    vals.append(float(parts[1]))
+                except ValueError:
+                    pass
+        if vals:
+            max_p99 = max(vals)
+            avg_p99 = sum(vals) / len(vals)
+    # Upgrade window: first/last from aggregate
+    start_ts = end_ts = ""
+    with open(agg_path) as f:
+        lines = [l.strip() for l in f if l.strip() and not l.startswith("timestamp")]
+    if lines:
+        start_ts = lines[0].split(",", 1)[0]
+        end_ts = lines[-1].split(",", 1)[0]
+    def _num(v):
+        return v if v is not None and not math.isnan(v) else None
+
+    summary = {
+        "monitoring_window": {"start": start_ts, "end": end_ts},
+        "total_samples": total_samples,
+        "api_server_availability": {
+            "full_3_of_3": full_avail,
+            "partial_2_of_3": partial_avail,
+            "degraded_1_or_less": degraded,
+            "total_outage_0_of_3": zero_avail,
+        },
+        "request_success_rate": {"minimum": _num(min_success), "average": _num(avg_success)},
+        "request_latency_p99": {"max_seconds": _num(max_p99), "avg_seconds": _num(avg_p99)},
+    }
+    try:
+        with open(summary_path, "w") as f:
+            json.dump(summary, f, indent=2)
+    except OSError:
+        pass
+    return summary
+
+
+def print_upgrade_summary_report(data_dir, kubeconfig):
+    """
+    Generate apiserver summary and print a composed availability report for the entire upgrade.
+    Call this when cluster_monitor is about to exit (upgrade done, cluster stable).
+    """
+    summary = generate_apiserver_summary(data_dir, kubeconfig)
+    if not summary:
+        print_section("API server availability summary")
+        print("  No aggregate data found; metrics were not collected or directory is empty.")
+        return
+    print_section("API server availability – upgrade summary")
+    print(f"  Monitoring window: {summary.get('monitoring_window', {}).get('start', '')} -> {summary.get('monitoring_window', {}).get('end', '')}")
+    print(f"  Total samples: {summary.get('total_samples', 0)}")
+    avail = summary.get("api_server_availability") or {}
+    print("  API server availability (samples):")
+    print(f"    Full (3/3 up):     {avail.get('full_3_of_3', 0)}")
+    print(f"    Partial (2/3 up):  {avail.get('partial_2_of_3', 0)}")
+    print(f"    Degraded (≤1 up):  {avail.get('degraded_1_or_less', 0)}")
+    print(f"    Total outage (0):  {avail.get('total_outage_0_of_3', 0)}")
+    def _fmt(v):
+        return v if v is not None else "N/A"
+    sr = summary.get("request_success_rate") or {}
+    print(f"  Request success rate: min={_fmt(sr.get('minimum'))}, avg={_fmt(sr.get('average'))}")
+    lat = summary.get("request_latency_p99") or {}
+    print(f"  P99 latency (s):      max={_fmt(lat.get('max_seconds'))}, avg={_fmt(lat.get('avg_seconds'))}")
+    summary_path = os.path.join(data_dir, SUMMARY_JSON)
+    print(f"\n  Summary JSON: {summary_path}")
+    print("=" * 60)
 
 
 def approve_pending_installplans(kubeconfig):
@@ -492,6 +857,17 @@ def main():
         metavar="SECONDS",
         help="Exit with rc 0 only after cluster has been stable for this many seconds (default: 0 = exit as soon as stable once)",
     )
+    parser.add_argument(
+        "--apiserver-metrics",
+        action="store_true",
+        help="Collect API server metrics (Prometheus) and store under ./data/release-XXX/; print summary at exit",
+    )
+    parser.add_argument(
+        "--data-dir",
+        default="data",
+        metavar="DIR",
+        help="Base directory for release-specific metrics (default: data); subdirs like release-419 created inside",
+    )
     args = parser.parse_args()
 
     if not args.kubeconfig:
@@ -501,6 +877,13 @@ def main():
     kubeconfig = args.kubeconfig
     mcp_updating_since = {}
     stable_since = None  # time when we first saw all checks pass; None if not currently stable
+    apiserver_data_dir = None  # set when --apiserver-metrics; used for collection and exit summary
+
+    if args.apiserver_metrics:
+        version, release_label = get_cluster_version_for_data_dir(kubeconfig)
+        apiserver_data_dir = ensure_release_data_dir(args.data_dir, release_label)
+        init_apiserver_csvs(apiserver_data_dir)
+        print(f"API server metrics: writing to {apiserver_data_dir} (cluster version {version}, release {release_label})")
 
     print(f"Using KUBECONFIG={kubeconfig}")
     print(f"Auto-approve InstallPlans: {args.installplan}")
@@ -524,6 +907,13 @@ def main():
         run_and_print("oc get installplan -A", ["get", "installplan", "-A"], kubeconfig)
         run_and_print("oc get csv -A", ["get", "csv", "-A"], kubeconfig)
         print_csv_summary(kubeconfig)
+
+        if apiserver_data_dir:
+            ts_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            up_count, total_count = collect_apiserver_metrics_once(apiserver_data_dir, kubeconfig, ts_iso)
+            if up_count is not None:
+                collect_operator_progress_once(apiserver_data_dir, kubeconfig, ts_iso)
+                print(f"  Apiserver metrics: up={up_count}/{total_count} (saved under {apiserver_data_dir})")
 
         if args.installplan:
             n = approve_pending_installplans(kubeconfig)
@@ -563,6 +953,8 @@ def main():
             if stable_since is None:
                 stable_since = now
             if args.stable_for <= 0 or (now - stable_since) >= args.stable_for:
+                if apiserver_data_dir:
+                    print_upgrade_summary_report(apiserver_data_dir, kubeconfig)
                 if args.stable_for > 0:
                     print_section(f"Cluster stable for {int(now - stable_since)}s (required {args.stable_for}s) – exiting")
                 else:
@@ -577,6 +969,8 @@ def main():
             time.sleep(args.interval)
         except KeyboardInterrupt:
             print("\nInterrupted by user – exiting")
+            if apiserver_data_dir:
+                print_upgrade_summary_report(apiserver_data_dir, kubeconfig)
             sys.exit(130)
 
 

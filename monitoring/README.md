@@ -39,6 +39,14 @@ python3 cluster_monitor.py --stable-for 300
 
 With `--stable-for 300`, the script exits with rc 0 only after the cluster has passed all stability checks for 300 seconds (5 minutes) in a row. If any check fails, the timer resets.
 
+**API server metrics** (same format as `collect-apiserver-metrics.sh` / `collect-apiserver-metrics-day2.sh`):
+
+```bash
+python3 cluster_monitor.py --apiserver-metrics
+```
+
+With `--apiserver-metrics`, each loop collects Prometheus API server metrics (up, success rate, P99 latency, request rate, upgrade progress, operator progress) and writes them under a **release-specific directory** derived from the cluster version, e.g. `./data/release-419/` for 4.19.x or `./data/release-420/` for 4.20.x. The base directory can be set with `--data-dir` (default: `data`). Subdirectories are created if missing (`./data` and `./data/release-XXX/`); existing directories are reused. When the monitor exits (cluster stable or Ctrl+C), it prints a **composed API server availability summary** for the entire upgrade (samples, full/partial/degraded/outage counts, success rate, P99 latency) and writes `apiserver-availability-summary.json` in that release directory.
+
 ## What it does
 
 Each loop iteration runs:
@@ -53,6 +61,8 @@ Each loop iteration runs:
 - `oc get csv -A` (ClusterServiceVersion – operator Installing/Succeeded status)
 
 If `--installplan` is set, it approves all pending InstallPlans.
+
+If `--apiserver-metrics` is set, each iteration also collects API server metrics from Prometheus/Thanos (same queries as `collect-apiserver-metrics.sh` and day-2 operator progress as in `collect-apiserver-metrics-day2.sh`) and appends to CSVs under `./data/release-XXX/`. On exit, a composed availability summary is printed and the summary JSON is written.
 
 ## Stability criteria (exit when all are true)
 

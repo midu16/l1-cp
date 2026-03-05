@@ -246,5 +246,5 @@ jobs:
       
       - name: 🔄 Waiting for Hub Operators deployment, Monitoring the progress of the deployment and approving InstallPlans
         run: |
-          sudo python3 "${REPO_PATH}/monitoring/cluster_monitor.py" --kubeconfig "${KUBECONFIG_PATH}" --installplan --stable-for 600
+          sudo python3 "${REPO_PATH}/monitoring/cluster_monitor.py" --kubeconfig "${KUBECONFIG_PATH}" --installplan --stable-for 600 
           echo "✅ Hub Operators deployment completed successfully"
