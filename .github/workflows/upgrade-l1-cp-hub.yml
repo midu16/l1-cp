@@ -109,4 +109,4 @@ jobs:
       - name: Apply the upgrade CGU
         run: |
           git clone -b release-4.19 http://infra.5g-deployment.lab:3000/student/telco-reference.git
-          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" apply -f ./telco-reference/hub-config/upgrade/${ARGOCD_APP}
+          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" apply -f ./telco-reference/telco-hub/upgrade/${ARGOCD_APP}
