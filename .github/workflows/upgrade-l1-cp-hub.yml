@@ -39,7 +39,7 @@ env:
   REGISTRY_URL: ${{ github.event.inputs.registry_url }}
   REMOTE_HOST: ${{ github.event.inputs.remote_host }}
   VM_NAME: ${{ github.event.inputs.vm_name }}
-  KUBECONFIG_PATH: ${{ github.workspace }}/hub/auth/kubeconfig
+  KUBECONFIG_PATH: '/root/.kcli/clusters/hub/auth/kubeconfig'
   ARGOCD_APP: ${{ github.event.inputs.argocd_app }}
   
 jobs:
