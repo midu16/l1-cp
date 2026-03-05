@@ -355,6 +355,81 @@ def check_policies(kubeconfig):
     return True, f"All {POLICY_NAMESPACE} policies Compliant ({len(compliant)}), disabled ({len(disabled)})"
 
 
+def get_policy_violation_messages(policy_obj):
+    """
+    Extract messages that explain why a Policy is not Compliant.
+    Reads status.details[].history[].message for NonCompliant/Pending details.
+    Returns a list of strings (one per template or cluster detail).
+    """
+    reasons = []
+    status = policy_obj.get("status") or {}
+    details = status.get("details") or []
+    for detail in details:
+        if not isinstance(detail, dict):
+            continue
+        compliant = detail.get("compliant", "")
+        if compliant == "Compliant":
+            continue
+        template_name = (detail.get("templateMeta") or {}).get("name", "policy")
+        history = detail.get("history") or []
+        # Prefer the most recent message (last in list); fall back to any non-compliant message
+        msg = None
+        for h in reversed(history) if history else []:
+            m = (h or {}).get("message", "").strip()
+            if m and ("noncompliant" in m.lower() or "violation" in m.lower() or "pending" in m.lower() or compliant != "Compliant"):
+                msg = m
+                break
+        if not msg and history:
+            msg = (history[-1] or {}).get("message", "").strip()
+        if msg:
+            reasons.append(f"[{template_name}] {msg}")
+        else:
+            reasons.append(f"[{template_name}] status: {compliant} (no history message)")
+    # If no details, use top-level status message if present
+    if not reasons and status.get("compliant") != "Compliant":
+        msg = status.get("message") or status.get("reason") or str(status.get("compliant", "Unknown"))
+        reasons.append(msg)
+    return reasons
+
+
+def print_policy_violations(kubeconfig):
+    """
+    For policies in local-cluster that are not Compliant, print the violation/reason
+    messages from status.details.history so users can see what prevents compliance.
+    """
+    data, _ = oc_get_json("policies.policy.open-cluster-management.io", None, kubeconfig)
+    if not data:
+        data, _ = oc_get_json("policies", None, kubeconfig)
+    if not data:
+        return
+    items = data.get("items") or []
+    items = [p for p in items if p.get("metadata", {}).get("namespace") == POLICY_NAMESPACE]
+    non_ok = [
+        p for p in items
+        if not p.get("spec", {}).get("disabled")
+        and p.get("status", {}).get("compliant") not in ("Compliant", None)
+    ]
+    if not non_ok:
+        return
+    print_section(f"Policy violation details (why not Compliant, {POLICY_NAMESPACE})")
+    for pol in non_ok:
+        ns = pol.get("metadata", {}).get("namespace", "?")
+        name = pol.get("metadata", {}).get("name", "?")
+        compliant = pol.get("status", {}).get("compliant", "Unknown")
+        reasons = get_policy_violation_messages(pol)
+        print(f"  Policy {ns}/{name} ({compliant}):")
+        if reasons:
+            for r in reasons[:10]:
+                # Wrap long lines for readability
+                for line in r.split("\n"):
+                    print(f"    | {line}")
+            if len(reasons) > 10:
+                print(f"    ... and {len(reasons) - 10} more detail(s)")
+        else:
+            print("    (no violation details in status; check policy status with 'oc get policy <name> -o yaml')")
+        print()
+
+
 def print_policy_summary(kubeconfig):
     """Print ACM policy status summary for local-cluster only: Compliant vs NonCompliant vs Pending."""
     data, _ = oc_get_json("policies.policy.open-cluster-management.io", None, kubeconfig)
@@ -386,6 +461,8 @@ def print_policy_summary(kubeconfig):
     other = [s for s in by_status if s not in ("Compliant", "NonCompliant", "Pending", "Disabled")]
     if other:
         print(f"  Other: {', '.join(other)}")
+    # For any NonCompliant/Pending policies, show what prevents them from being Compliant
+    print_policy_violations(kubeconfig)
 
 
 def main():

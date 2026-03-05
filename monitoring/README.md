@@ -63,7 +63,7 @@ If `--installplan` is set, it approves all pending InstallPlans.
 
 5. **CSVs (operators)** – No ClusterServiceVersion in `Installing` state; any CSV in `Installing` for more than 10 minutes is treated as stuck. A short summary shows Installing vs Succeeded (and Failed/other) per namespace.
 
-6. **Policies (ACM)** – All ACM policies in namespace `local-cluster` are `Compliant`. Only policies applied in `local-cluster` are evaluated; disabled policies are ignored. A summary shows Compliant vs NonCompliant vs Pending vs Disabled for that namespace.
+6. **Policies (ACM)** – All ACM policies in namespace `local-cluster` are `Compliant`. Only policies applied in `local-cluster` are evaluated; disabled policies are ignored. A summary shows Compliant vs NonCompliant vs Pending vs Disabled. For any NonCompliant or Pending policy, the monitor also prints **violation details** (from the policy status history) so you can see what is preventing the policy from becoming Compliant.
 
 When all six are satisfied, the script exits with rc 0. By default it exits as soon as all checks pass once; use `--stable-for SECONDS` to require that the cluster remain stable for that many seconds before exiting. Use Ctrl+C to stop early.
 
