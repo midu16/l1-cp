@@ -496,7 +496,7 @@ test_version_comparison() {
   echo "Version comparison tests completed."
 }
 
-# Function to generate templated imageset-config.yml (static templates for 4.18 and 4.19)
+# Function to generate templated imageset-config.yml (static templates for 4.18, 4.19, 4.20, and 4.21)
 generate_imageset_config() {
   local ocp_version="${OCP_VERSION:-4.18.27}"
   local output_file="${IMAGESET_OUTPUT_FILE:-imageset-config.yml}"
@@ -519,13 +519,17 @@ generate_imageset_config() {
   debug_log "Generating imageset-config.yml with OCP_VERSION=$ocp_version, major.minor=$major_minor"
   debug_log "Using SOURCE_INDEX=$SOURCE_INDEX"
   
-  # Only 4.18 and 4.19 have static templates; emit exact YAML per version
+  # Only 4.18, 4.19, 4.20, and 4.21 have static templates; emit exact YAML per version
   if [[ "$major_minor" == "4.18" ]]; then
     _generate_imageset_config_418 "$ocp_version" "$output_file"
   elif [[ "$major_minor" == "4.19" ]]; then
     _generate_imageset_config_419 "$ocp_version" "$output_file"
+  elif [[ "$major_minor" == "4.20" ]]; then
+    _generate_imageset_config_420 "$ocp_version" "$output_file"
+  elif [[ "$major_minor" == "4.21" ]]; then
+    _generate_imageset_config_421 "$ocp_version" "$output_file"
   else
-    echo "Error: Templated generation (-g) only supports OCP_VERSION 4.18.z and 4.19.z. Got: $ocp_version" >&2
+    echo "Error: Templated generation (-g) only supports OCP_VERSION 4.18.z, 4.19.z, 4.20.z, and 4.21.z. Got: $ocp_version" >&2
     echo "Use the script without -g (and set SOURCE_INDEX) for other versions." >&2
     return 1
   fi
@@ -729,6 +733,231 @@ mirror:
   - name: registry.redhat.io/openshift4/ztp-site-generate-rhel8:v4.19
   - name: registry.redhat.io/rhel8/support-tools:latest
   - name: registry.redhat.io/rhacm2/multicluster-operators-subscription-rhel9:v2.14
+  helm: {}
+EOF
+}
+
+# Static template for OCP 4.20.z
+_generate_imageset_config_420() {
+  local ocp_version="$1"
+  local output_file="$2"
+  cat > "$output_file" <<EOF
+---
+kind: ImageSetConfiguration
+apiVersion: mirror.openshift.io/v2alpha1
+mirror:
+  platform:
+    channels:
+    - name: stable-4.20
+      type: ocp
+      # Adjust minVersion and maxVersion according to your required releases. This allows you to
+      # minimize the mirrored content to only what is needed for your deployment. Note that only
+      # versions which are mirrored to the disconnected registry can be installed, so only versions
+      # listed here should be referenced in installation CRs (eg ClusterImageSet / imageSetRef).
+      minVersion: ${ocp_version}
+      maxVersion: ${ocp_version}
+  operators:
+  - catalog: registry.redhat.io/redhat/redhat-operator-index:v4.20
+    targetCatalog: openshift-marketplace/redhat-operators-disconnected
+    packages:
+    - name: advanced-cluster-management
+      defaultChannel: release-2.14
+      channels:
+      - name: release-2.14
+    - name: multicluster-engine
+      defaultChannel: stable-2.9
+      channels:
+      - name: stable-2.9
+    - name: openshift-gitops-operator
+      defaultChannel: gitops-1.16
+      channels:
+      - name: gitops-1.16
+    - name: redhat-oadp-operator
+      channels:
+      - name: stable
+    - name: topology-aware-lifecycle-manager
+      channels:
+      - name: stable
+    - name: local-storage-operator
+      channels:
+      - name: stable
+    - name: odf-operator
+      defaultChannel: stable-4.20
+      channels:
+      - name: stable-4.20
+    - name: odf-external-snapshotter-operator
+      defaultChannel: stable-4.20
+      channels:
+      - name: stable-4.20
+    - name: odf-dependencies
+      defaultChannel: stable-4.20
+      channels:
+      - name: stable-4.20
+    - name: odf-csi-addons-operator
+      defaultChannel: stable-4.20
+      channels:
+      - name: stable-4.20
+    - name: ocs-client-operator
+      defaultChannel: stable-4.20
+      channels:
+      - name: stable-4.20
+    - name: cephcsi-operator
+      defaultChannel: stable-4.20
+      channels:
+      - name: stable-4.20
+    - name: odf-prometheus-operator
+      defaultChannel: stable-4.20
+      channels:
+      - name: stable-4.20
+    - name: odf-multicluster-orchestrator
+      defaultChannel: stable-4.20
+      channels:
+      - name: stable-4.20
+    - name: ocs-operator
+      defaultChannel: stable-4.20
+      channels:
+      - name: stable-4.20
+    - name: rook-ceph-operator
+      defaultChannel: stable-4.20
+      channels:
+      - name: stable-4.20
+    - name: mcg-operator
+      defaultChannel: stable-4.20
+      channels:
+      - name: stable-4.20
+    - name: odr-hub-operator
+      defaultChannel: stable-4.20
+      channels:
+      - name: stable-4.20
+    - name: odr-cluster-operator
+      defaultChannel: stable-4.20
+      channels:
+      - name: stable-4.20
+    - name: recipe
+      defaultChannel: stable-4.20
+      channels:
+      - name: stable-4.20
+  additionalImages:
+  - name: registry.redhat.io/ubi8/ubi:latest
+  - name: registry.redhat.io/openshift4/ztp-site-generate-rhel8:v4.20
+  - name: registry.redhat.io/rhel8/support-tools:latest
+  - name: registry.redhat.io/rhacm2/multicluster-operators-subscription-rhel9:2.14.0-1
+  helm: {}
+EOF
+}
+
+# Static template for OCP 4.21.z
+_generate_imageset_config_421() {
+  local ocp_version="$1"
+  local output_file="$2"
+  cat > "$output_file" <<EOF
+---
+kind: ImageSetConfiguration
+apiVersion: mirror.openshift.io/v2alpha1
+mirror:
+  platform:
+    channels:
+    - name: stable-4.21
+      type: ocp
+      # Adjust minVersion and maxVersion according to your required releases. This allows you to
+      # minimize the mirrored content to only what is needed for your deployment. Note that only
+      # versions which are mirrored to the disconnected registry can be installed, so only versions
+      # listed here should be referenced in installation CRs (eg ClusterImageSet / imageSetRef).
+      minVersion: ${ocp_version}
+      maxVersion: ${ocp_version}
+  operators:
+  - catalog: registry.redhat.io/redhat/redhat-operator-index:v4.21
+    targetCatalog: openshift-marketplace/redhat-operators-disconnected
+    packages:
+    - name: advanced-cluster-management
+      defaultChannel: release-2.15
+      channels:
+      - name: release-2.15
+    - name: multicluster-engine
+      defaultChannel: stable-2.10
+      channels:
+      - name: stable-2.10
+    - name: openshift-gitops-operator
+      defaultChannel: gitops-1.19
+      channels:
+      - name: gitops-1.19
+    - name: redhat-oadp-operator
+      channels:
+      - name: stable
+    - name: topology-aware-lifecycle-manager
+      channels:
+      - name: stable
+    - name: local-storage-operator
+      channels:
+      - name: stable
+    - name: cluster-logging
+      channels:
+      - name: stable-6.4
+    - name: odf-operator
+      defaultChannel: stable-4.20
+      channels:
+      - name: stable-4.20
+    - name: odf-external-snapshotter-operator
+      defaultChannel: stable-4.20
+      channels:
+      - name: stable-4.20
+    - name: odf-dependencies
+      defaultChannel: stable-4.20
+      channels:
+      - name: stable-4.20
+    - name: odf-csi-addons-operator
+      defaultChannel: stable-4.20
+      channels:
+      - name: stable-4.20
+    - name: ocs-client-operator
+      defaultChannel: stable-4.20
+      channels:
+      - name: stable-4.20
+    - name: cephcsi-operator
+      defaultChannel: stable-4.20
+      channels:
+      - name: stable-4.20
+    - name: odf-prometheus-operator
+      defaultChannel: stable-4.20
+      channels:
+      - name: stable-4.20
+    - name: odf-multicluster-orchestrator
+      defaultChannel: stable-4.20
+      channels:
+      - name: stable-4.20
+    - name: ocs-operator
+      defaultChannel: stable-4.20
+      channels:
+      - name: stable-4.20
+    - name: rook-ceph-operator
+      defaultChannel: stable-4.20
+      channels:
+      - name: stable-4.20
+    - name: mcg-operator
+      defaultChannel: stable-4.20
+      channels:
+      - name: stable-4.20
+    - name: odr-hub-operator
+      defaultChannel: stable-4.20
+      channels:
+      - name: stable-4.20
+    - name: odr-cluster-operator
+      defaultChannel: stable-4.20
+      channels:
+      - name: stable-4.20
+    - name: recipe
+      defaultChannel: stable-4.20
+      channels:
+      - name: stable-4.20
+    - name: openshift-cert-manager-operator
+      defaultChannel: stable-v1
+      channels:
+      - name: stable-v1
+  additionalImages:
+  - name: registry.redhat.io/ubi8/ubi:latest
+  - name: registry.redhat.io/openshift4/ztp-site-generate-rhel8:v4.21
+  - name: registry.redhat.io/rhel8/support-tools:latest
+  - name: registry.redhat.io/rhacm2/multicluster-operators-subscription-rhel9:v2.15.0-1
   helm: {}
 EOF
 }
