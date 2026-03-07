@@ -57,7 +57,7 @@ jobs:
         run: |
           sudo chown -R $(whoami):$(whoami) "${GITHUB_WORKSPACE}"
           # Remove leftover root-owned oc-mirror / hub dirs so checkout and oc-mirror can run cleanly
-          sudo rm -rf "${GITHUB_WORKSPACE}/hub-demo" "${GITHUB_WORKSPACE}/hub-demo-419" "${GITHUB_WORKSPACE}/hub-demo-420" 2>/dev/null || true
+          sudo rm -rf "${GITHUB_WORKSPACE}/hub-demo" "${GITHUB_WORKSPACE}/hub-demo" "${GITHUB_WORKSPACE}/hub-demo" 2>/dev/null || true
           sudo rm -rf "${GITHUB_WORKSPACE}/.docker" 2>/dev/null || true
 
       - uses: actions/checkout@v4
@@ -85,8 +85,8 @@ jobs:
           attempt=1
           while true; do
             if sudo DOCKER_CONFIG=/root/.docker ./bin/oc-mirror -c imageset-config.yml --v2 \
-              --workspace file://hub-demo-419/ \
-              docker://"${REGISTRY_URL}"/hub-demo-419 \
+              --workspace file://hub-demo/ \
+              docker://"${REGISTRY_URL}"/hub-demo \
               --max-nested-paths 10 --parallel-images 10 --parallel-layers 10 \
               --dest-tls-verify=false --log-level debug; then
               echo "✅ Mirror completed successfully on attempt $attempt"
