@@ -5,9 +5,6 @@ metadata:
 spec:
   hugepages:
     defaultHugepagesSize: 1G
-    pages:
-      - count: 70
-        size: 1G
   machineConfigPoolSelector:
     pools.operator.machineconfiguration.openshift.io/master: ''
   nodeSelector:
