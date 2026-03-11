@@ -152,11 +152,29 @@ jobs:
 
       - name: 📦 Mirror images to AirGapped registry
         run: |
-          sudo DOCKER_CONFIG=/root/.docker ./bin/oc-mirror -c imageset-config.yml --v2 \
-            --workspace file://hub-demo/ \
-            docker://"${REGISTRY_URL}"/hub-demo \
-            --max-nested-paths 10 --parallel-images 10 --parallel-layers 10 \
-            --dest-tls-verify=false --log-level debug
+          max_attempts=5
+          attempt=1
+          while [ $attempt -le $max_attempts ]; do
+            echo "::group::Mirror attempt $attempt of $max_attempts"
+            if sudo DOCKER_CONFIG=/root/.docker ./bin/oc-mirror -c imageset-config.yml --v2 \
+              --workspace file://hub-demo/ \
+              docker://"${REGISTRY_URL}"/hub-demo \
+              --max-nested-paths 10 --parallel-images 10 --parallel-layers 10 \
+              --dest-tls-verify=false --log-level debug; then
+              echo "::endgroup::"
+              echo "Mirror completed successfully on attempt $attempt."
+              exit 0
+            fi
+            echo "::endgroup::"
+            echo "Attempt $attempt/$max_attempts failed."
+            if [ $attempt -lt $max_attempts ]; then
+              echo "Retrying in 30 seconds..."
+              sleep 30
+            fi
+            attempt=$((attempt + 1))
+          done
+          echo "Mirror failed after $max_attempts attempts."
+          exit 1
 
       - name: 🔍 Verify AirGapped registry content after mirroring
         run: |
