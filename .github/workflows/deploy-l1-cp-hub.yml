@@ -77,11 +77,17 @@ jobs:
 
       - name: 🗑️ Clean up previous RHACM Virtual Hub
         run: |
-          if sudo kcli list plan | grep "hub "; then
+          if sudo kcli list plan | grep -q "hub "; then
+            echo "Deleting hub plan on local host..."
             sudo kcli delete plan hub -y
+          else
+            echo "Plan hub does not exist on local host — skipping."
+          fi
+          if sudo ssh root@INBACRNRDL0103 'sudo kcli list plan | grep -q "hub "'; then
+            echo "Deleting hub plan on remote INBACRNRDL0103..."
             sudo ssh root@INBACRNRDL0103 'sudo kcli delete plan hub -y'
           else
-            echo "Plan hub does not exist — skipping deletion."
+            echo "Plan hub does not exist on remote — skipping."
           fi
 
       - name: 🗑️ Clean up old registry content
