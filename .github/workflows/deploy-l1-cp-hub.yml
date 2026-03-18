@@ -79,7 +79,7 @@ jobs:
         run: |
           if sudo kcli list plan | grep "hub "; then
             sudo kcli delete plan hub -y
-            sudo root@INBACRNRDL0103 'sudo kcli delete plan hub -y'
+            sudo ssh root@INBACRNRDL0103 'sudo kcli delete plan hub -y'
           else
             echo "Plan hub does not exist — skipping deletion."
           fi
