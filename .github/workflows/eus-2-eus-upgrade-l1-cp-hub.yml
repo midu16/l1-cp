@@ -1,19 +1,23 @@
-name: Upgrade Hub Cluster
+name: EUS-2-EUS Upgrade L1 CP Hub Cluster
 
 permissions:
   contents: read
 
 concurrency:
-  group: upgrade-l1-cp-hub
+  group: eus-2-eus-upgrade-l1-cp-hub
   cancel-in-progress: false
 
 on:
   workflow_dispatch:
     inputs:
-      ocp_version:
-        description: "OpenShift version (e.g., 4.19.23)"
+      ocp_version_from:
+        description: "OpenShift version from (e.g., 4.19.23)"
         required: true
         default: "4.19.23"
+      ocp_version_to:
+        description: "OpenShift version to (e.g., 4.20.14)"
+        required: true
+        default: "4.20.14"
       registry_url:
         description: "AirGapped Registry URL"
         required: true
@@ -27,24 +31,25 @@ on:
         required: false
         default: "sno1"
       argocd_app: 
-        description: "ArgoCD application name (e.g., rds-hub-upgrade-argoapps.yaml)"
+        description: "ArgoCD application name (e.g., eus-2-eus-upgrade-l1-cp-hub-argoapps.yaml)"
         required: true
-        default: "rds-hub-upgrade-argoapps.yaml"
+        default: "eus-2-eus-upgrade-l1-cp-hub-argoapps.yaml"
 defaults:
   run:
     shell: bash
 
 env:
-  OCP_VERSION: ${{ github.event.inputs.ocp_version }}
+  OCP_VERSION_FROM: ${{ github.event.inputs.ocp_version_from }}
+  OCP_VERSION_TO: ${{ github.event.inputs.ocp_version_to }}
   REGISTRY_URL: ${{ github.event.inputs.registry_url }}
   REMOTE_HOST: ${{ github.event.inputs.remote_host }}
   VM_NAME: ${{ github.event.inputs.vm_name }}
-  KUBECONFIG_PATH: ${{ github.workspace }}/hub/auth/kubeconfig
+  KUBECONFIG_PATH: '/root/.kcli/clusters/hub/auth/kubeconfig'
   ARGOCD_APP: ${{ github.event.inputs.argocd_app }}
   
 jobs:
 
-  upgrade-l1-cp-hub:
+  eus-2-eus-upgrade-l1-cp-hub:
     runs-on: [self-hosted, linux, x64]
     timeout-minutes: 180
     env:
@@ -53,18 +58,25 @@ jobs:
       REPO_PATH: ${{ github.workspace }}
 
     steps:
-      - uses: actions/checkout@v6
+      - name: 🔧 Fix workspace ownership (prevents EACCES on checkout/cleanup)
+        run: |
+          sudo chown -R $(whoami):$(whoami) "${GITHUB_WORKSPACE}"
+          # Remove leftover root-owned oc-mirror / hub dirs so checkout and oc-mirror can run cleanly
+          sudo rm -rf "${GITHUB_WORKSPACE}/hub-demo" "${GITHUB_WORKSPACE}/hub-demo-419" "${GITHUB_WORKSPACE}/hub-demo-420" 2>/dev/null || true
+          sudo rm -rf "${GITHUB_WORKSPACE}/.docker" 2>/dev/null || true
+
+      - uses: actions/checkout@v4
 
       - name: 📥 Download OCP tools
-        run: sudo make download-oc-tools VERSION="${OCP_VERSION}"
+        run: sudo make download-oc-tools VERSION="${OCP_VERSION_FROM}"
 
       - name: 📝 Render imageset-config.yml
         run: |
           # Extract major.minor from OCP_VERSION (e.g., 4.19.23 -> 4.19)
-          OCP_MAJOR_MINOR="${OCP_VERSION%.*}"
+          OCP_MAJOR_MINOR="${OCP_VERSION_FROM%.*}"
           export SOURCE_INDEX="registry.redhat.io/redhat/redhat-operator-index:v${OCP_MAJOR_MINOR}"
           echo "Using SOURCE_INDEX: ${SOURCE_INDEX}"
-          sudo -E make imageset-config.yml OCP_VERSION="${OCP_VERSION}" SOURCE_INDEX="${SOURCE_INDEX}"
+          sudo -E make imageset-config.yml OCP_VERSION="${OCP_VERSION_FROM}" SOURCE_INDEX="${SOURCE_INDEX}"
 
       - name: 🔍 Validate AirGapped registry catalog
         run: |
@@ -78,8 +90,8 @@ jobs:
           attempt=1
           while true; do
             if sudo DOCKER_CONFIG=/root/.docker ./bin/oc-mirror -c imageset-config.yml --v2 \
-              --workspace file://hub-demo-419/ \
-              docker://"${REGISTRY_URL}"/hub-demo-419 \
+              --workspace file://hub-demo-${OCP_VERSION_FROM}/ \
+              docker://"${REGISTRY_URL}"/hub-demo-${OCP_VERSION_FROM} \
               --max-nested-paths 10 --parallel-images 10 --parallel-layers 10 \
               --dest-tls-verify=false --log-level debug; then
               echo "✅ Mirror completed successfully on attempt $attempt"
@@ -101,6 +113,10 @@ jobs:
 
       - name: Apply the upgrade CGU
         run: |
-          git clone http://infra.5g-deployment.lab:3000/student/telco-reference.git
-          cd telco-reference && git fetch origin release-4.19 && git checkout release-4.19
-          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" apply -f hub-config/upgrade/${ARGOCD_APP}
+          git clone -b release-4.19 http://infra.5g-deployment.lab:3000/student/telco-reference.git
+          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" apply -f ./telco-reference/telco-hub/upgrade/${ARGOCD_APP}
+
+      - name: 🔄 Waiting for Hub Operators upgrade, Monitoring the progress of the upgrade and approving InstallPlans
+        run: |
+          sudo python3 "${REPO_PATH}/monitoring/cluster_monitor.py" --kubeconfig "${KUBECONFIG_PATH}" --installplan --stable-for 600 --apiserver-metrics
+          echo "✅ Hub Operators upgrade completed successfully"

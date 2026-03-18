@@ -35,6 +35,8 @@ defaults:
     shell: bash
 
 env:
+  # Opt into Node.js 24 for JavaScript actions (e.g. actions/checkout@v4); avoids Node 20 deprecation warning.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   OCP_VERSION: ${{ github.event.inputs.ocp_version }}
   REGISTRY_URL: ${{ github.event.inputs.registry_url }}
   REMOTE_HOST: ${{ github.event.inputs.remote_host }}
@@ -56,7 +58,7 @@ jobs:
         run: |
           sudo chown -R $(whoami):$(whoami) "${GITHUB_WORKSPACE}/"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           repository: midu16/l1-cp
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -77,6 +79,7 @@ jobs:
         run: |
           if sudo kcli list plan | grep "hub "; then
             sudo kcli delete plan hub -y
+            sudo root@INBACRNRDL0103 'sudo kcli delete plan hub -y'
           else
             echo "Plan hub does not exist — skipping deletion."
           fi
@@ -126,7 +129,7 @@ jobs:
       REPO_PATH: ${{ github.workspace }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: 📥 Download OCP tools
         run: sudo make download-oc-tools VERSION="${OCP_VERSION}"
@@ -250,3 +253,36 @@ jobs:
         run: |
           sudo python3 "${REPO_PATH}/monitoring/cluster_monitor.py" --kubeconfig "${KUBECONFIG_PATH}" --installplan --stable-for 600
           echo "✅ Hub Operators deployment completed successfully"
+# https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/nodes/working-with-nodes
+      - name: The compact cluster finished
+        run: sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" get nodes
+
+      - name: Expand the cluster with 2 additional nodes
+        run: | 
+          echo | openssl s_client -connect infra.5g-deployment.lab:8443 -servername infra.5g-deployment.lab 2>/dev/null | openssl x509 -outform PEM -out cert.pem
+          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" adm node-image create nodes-config.yaml --registry-config=/root/.docker/config.json --certificate-authority=./cert.pem
+          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}"
+
+      - name: Copy the node.x86_64.iso to remove hypervisor
+        run: scp -r node.x86_64.iso root@INBACRNRDL0103:/opt/
+
+      - name: 🖥️ Create Hub worker VMs 
+        run: ssh root@INBACRNRDL0103 bash -s << 'ENDSSH'
+              for i in 3 4; do
+                MAC="aa:aa:aa:aa:01:0$((i+1))"
+                UUID="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa010$((i+1))"
+                sudo kcli create vm \
+                  -P start=True -P uefi_legacy=true -P plan=hub \
+                  -P memory=71680 -P numcpus=40 -P disks=[200,50,250] \
+                  -P nets="[{'name': 'br0', 'mac': '$MAC'}]" \
+                  -P uuid="$UUID" \
+                  -P name="hub-ctlplane-$i" \
+                  -P iso=/opt/node.x86_64.iso
+              done
+              ENDSSH
+
+      - name: Monitor the Hub worker deployment
+        run: sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" adm node-image monitor --ip-addresses "172.16.30.23","172.16.30.24"
+
+      - name: Approve all the pending certificates
+        run: sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" get csr -o json | jq -r '.items[] | select(.status.conditions == null) | .metadata.name' | xargs -r oc --kubeconfig="${KUBECONFIG_PATH}"adm certificate approve
