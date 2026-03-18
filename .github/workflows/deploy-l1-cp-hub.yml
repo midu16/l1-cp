@@ -265,7 +265,7 @@ jobs:
           sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}"
 
       - name: Copy the node.x86_64.iso to remove hypervisor
-        run: scp -r node.x86_64.iso root@INBACRNRDL0103:/opt/
+        run: sudo scp -r node.x86_64.iso root@INBACRNRDL0103:/opt/
 
       - name: 🖥️ Create Hub worker VMs 
         run: |
