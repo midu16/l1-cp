@@ -30,7 +30,6 @@ on:
         description: "ArgoCD application name (e.g., rds-hub-operators-argoapps.yaml)"
         required: true
         default: "rds-hub-operators-argoapps.yaml"
-
 defaults:
   run:
     shell: bash
@@ -269,19 +268,20 @@ jobs:
         run: scp -r node.x86_64.iso root@INBACRNRDL0103:/opt/
 
       - name: 🖥️ Create Hub worker VMs 
-        run: ssh root@INBACRNRDL0103 bash -s << 'ENDSSH'
-              for i in 3 4; do
-                MAC="aa:aa:aa:aa:01:0$((i+1))"
-                UUID="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa010$((i+1))"
-                sudo kcli create vm \
-                  -P start=True -P uefi_legacy=true -P plan=hub \
-                  -P memory=71680 -P numcpus=40 -P disks=[200,50,250] \
-                  -P nets="[{'name': 'br0', 'mac': '$MAC'}]" \
-                  -P uuid="$UUID" \
-                  -P name="hub-ctlplane-$i" \
-                  -P iso=/opt/node.x86_64.iso
-              done
-              ENDSSH
+        run: |
+          ssh root@INBACRNRDL0103 bash -s << 'ENDSSH'
+          for i in 3 4; do
+            MAC="aa:aa:aa:aa:01:0$((i+1))"
+            UUID="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa010$((i+1))"
+            sudo kcli create vm \
+              -P start=True -P uefi_legacy=true -P plan=hub \
+              -P memory=71680 -P numcpus=40 -P disks=[200,50,250] \
+              -P nets="[{'name': 'br0', 'mac': '$MAC'}]" \
+              -P uuid="$UUID" \
+              -P name="hub-ctlplane-$i" \
+              -P iso=/opt/node.x86_64.iso
+          done
+          ENDSSH
 
       - name: Monitor the Hub worker deployment
         run: sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" adm node-image monitor --ip-addresses "172.16.30.23","172.16.30.24"
