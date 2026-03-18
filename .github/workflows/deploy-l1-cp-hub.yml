@@ -262,7 +262,6 @@ jobs:
         run: | 
           echo | openssl s_client -connect infra.5g-deployment.lab:8443 -servername infra.5g-deployment.lab 2>/dev/null | openssl x509 -outform PEM -out cert.pem
           sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" adm node-image create nodes-config.yaml --registry-config=/root/.docker/config.json --certificate-authority=./cert.pem
-          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}"
 
       - name: Copy the node.x86_64.iso to remove hypervisor
         run: sudo scp -r node.x86_64.iso root@INBACRNRDL0103:/opt/
@@ -288,3 +287,6 @@ jobs:
 
       - name: Approve all the pending certificates
         run: sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" get csr -o json | jq -r '.items[] | select(.status.conditions == null) | .metadata.name' | xargs -r oc --kubeconfig="${KUBECONFIG_PATH}"adm certificate approve
+
+      - name: Get all the nodes in the cluster
+        run: sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" get nodes
