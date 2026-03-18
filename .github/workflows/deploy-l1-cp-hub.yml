@@ -30,6 +30,7 @@ on:
         description: "ArgoCD application name (e.g., rds-hub-operators-argoapps.yaml)"
         required: true
         default: "rds-hub-operators-argoapps.yaml"
+
 defaults:
   run:
     shell: bash
