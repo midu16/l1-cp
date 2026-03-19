@@ -272,27 +272,34 @@ jobs:
       - name: Copy the node.x86_64.iso to remove hypervisor
         run: sudo scp -r node.x86_64.iso root@INBACRNRDL0103:/opt/
 
+      # MACs / IPs match dnsmasq hub.ipv4: 01:04→.23 (worker-0), 01:05→.24 (worker-1); names match nodes-config.yaml
       - name: 🖥️ Create Hub worker VMs 
         run: |
           sudo ssh root@INBACRNRDL0103 bash -s << 'ENDSSH'
-          for i in 3 4; do
-            MAC="aa:aa:aa:aa:01:0$((i+1))"
-            UUID="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa010$((i+1))"
+          w=0
+          for i in 4 5; do
+            MAC="aa:aa:aa:aa:01:0${i}"
+            UUID="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa010${i}"
             sudo kcli create vm \
               -P start=True -P uefi_legacy=true -P plan=hub \
               -P memory=71680 -P numcpus=40 -P disks=[200,50,250] \
               -P nets="[{'name': 'br0', 'mac': '$MAC'}]" \
               -P uuid="$UUID" \
-              -P name="hub-ctlplane-$i" \
+              -P name="hub-worker-${w}" \
               -P iso=/opt/node.x86_64.iso
+            w=$((w + 1))
           done
           ENDSSH
 
-      - name: Monitor the Hub worker deployment
-        run: sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" adm node-image monitor --ip-addresses "172.16.30.23","172.16.30.24"
-
-      - name: Approve all the pending certificates
-        run: sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" get csr -o json | jq -r '.items[] | select(.status.conditions == null) | .metadata.name' | xargs -r oc --kubeconfig="${KUBECONFIG_PATH}"adm certificate approve
+      - name: Monitor Hub worker deployment and approve certificates (parallel)
+        run: |
+          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" adm node-image monitor --ip-addresses "172.16.30.23","172.16.30.24" &
+          MONITOR_PID=$!
+          while kill -0 $MONITOR_PID 2>/dev/null; do
+            sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" get csr -o json | jq -r '.items[] | select(.status.conditions == null) | .metadata.name' | xargs -r sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" adm certificate approve 2>/dev/null || true
+            sleep 15
+          done
+          wait $MONITOR_PID
 
       - name: Get all the nodes in the cluster
         run: sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" get nodes
