@@ -274,7 +274,7 @@ jobs:
 
       - name: 🖥️ Create Hub worker VMs 
         run: |
-          ssh root@INBACRNRDL0103 bash -s << 'ENDSSH'
+          sudo ssh root@INBACRNRDL0103 bash -s << 'ENDSSH'
           for i in 3 4; do
             MAC="aa:aa:aa:aa:01:0$((i+1))"
             UUID="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa010$((i+1))"
