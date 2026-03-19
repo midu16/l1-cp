@@ -48,7 +48,7 @@ jobs:
 
   clean-hub:
     runs-on: [self-hosted, linux, x64]
-    timeout-minutes: 30
+    timeout-minutes: 90
     env:
       REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
       REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
