@@ -127,7 +127,7 @@ jobs:
 
   build-hub:
     runs-on: [self-hosted, linux, x64]
-    timeout-minutes: 180
+    timeout-minutes: 90
     needs: clean-hub
     env:
       REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
@@ -264,6 +264,18 @@ jobs:
       - name: The compact cluster finished
         run: sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" get nodes
 
+  scale-up-hub:
+    runs-on: [self-hosted, linux, x64]
+    timeout-minutes: 90
+    needs: build-hub
+    env:
+      REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+      REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+      REPO_PATH: ${{ github.workspace }}
+      
+    steps:
+      - uses: actions/checkout@v6
+
       - name: Expand the cluster with 2 additional nodes
         run: | 
           echo | openssl s_client -connect infra.5g-deployment.lab:8443 -servername infra.5g-deployment.lab 2>/dev/null | openssl x509 -outform PEM -out cert.pem
@@ -303,3 +315,10 @@ jobs:
 
       - name: Get all the nodes in the cluster
         run: sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" get nodes
+
+      - name: Label dedicated worker nodes for OpenShift Storage (ODF)
+        run: |
+          # Workers with worker role but not control-plane (excludes compact ctlplane nodes)
+          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" label nodes \
+            -l 'node-role.kubernetes.io/worker,!node-role.kubernetes.io/control-plane' \
+            cluster.ocs.openshift.io/openshift-storage= --overwrite
