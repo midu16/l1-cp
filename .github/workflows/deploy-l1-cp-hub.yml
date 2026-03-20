@@ -274,11 +274,9 @@ jobs:
       REPO_PATH: ${{ github.workspace }}
       
     steps:
-      # build-hub leaves root-owned paths (e.g. .docker/config.json from oc-mirror); checkout clean fails with EACCES without this
-      - name: 🧹 Fix workspace ownership (pre-checkout)
+      # Reuse the same workspace as build-hub (do not run checkout here — checkout clean removes gitignored dirs like bin/ and breaks ./bin/oc).
+      - name: Fix workspace ownership (reuse build-hub artifacts)
         run: sudo chown -R "$(whoami):$(whoami)" "${GITHUB_WORKSPACE}/"
-
-      - uses: actions/checkout@v6
 
       - name: Expand the cluster with 2 additional nodes
         run: | 
