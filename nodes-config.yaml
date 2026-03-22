@@ -26,7 +26,7 @@ hosts:
       - name: br-ex
         type: linux-bridge
         state: up
-        mtu: 1370
+        mtu: 1500
     dns-resolver:
       config:
         server:
@@ -60,7 +60,7 @@ hosts:
       - name: br-ex
         type: linux-bridge
         state: up
-        mtu: 1370
+        mtu: 1500
     dns-resolver:
       config:
         server:
