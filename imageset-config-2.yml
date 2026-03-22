@@ -1,0 +1,16 @@
+---
+kind: ImageSetConfiguration
+apiVersion: mirror.openshift.io/v2alpha1
+mirror:
+  operators:
+  - catalog: registry.redhat.io/redhat/redhat-operator-index:v4.18
+    targetCatalog: openshift-marketplace/redhat-operators-disconnected-2
+    packages:
+    - name: self-node-remediation
+      defaultChannel: stable
+      channels:
+      - name: stable
+    - name: node-healthcheck-operator
+      defaultChannel: stable
+      channels:
+      - name: stable
