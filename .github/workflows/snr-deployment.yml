@@ -1,16 +1,11 @@
-# Manual oc-mirror v2 run for imageset-config-2.yml → air-gapped registry (e.g. hub-demo-2).
-# Local equivalent:
-#   DOCKER_CONFIG=/home/midu/.docker/ oc-mirror -c imageset-config-2.yml --v2 --workspace file://hub-demo/ \
-#     docker://infra.5g-deployment.lab:8443/hub-demo-2 --max-nested-paths 10 --parallel-images 10 --parallel-layers 10 \
-#     --dest-tls-verify=false --log-level debug
 
-name: oc-mirror (imageset-config-2)
+name: Deploy NodeHelthCheck and SelfNodeRemediation Operators on OpenShift Cluster
 
 permissions:
   contents: read
 
 concurrency:
-  group: oc-mirror-imageset-2
+  group: snr-deployment
   cancel-in-progress: false
 
 on:
