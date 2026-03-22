@@ -1,0 +1,123 @@
+# Manual oc-mirror v2 run for imageset-config-2.yml → air-gapped registry (e.g. hub-demo-2).
+# Local equivalent:
+#   DOCKER_CONFIG=/home/midu/.docker/ oc-mirror -c imageset-config-2.yml --v2 --workspace file://hub-demo/ \
+#     docker://infra.5g-deployment.lab:8443/hub-demo-2 --max-nested-paths 10 --parallel-images 10 --parallel-layers 10 \
+#     --dest-tls-verify=false --log-level debug
+
+name: oc-mirror (imageset-config-2)
+
+permissions:
+  contents: read
+
+concurrency:
+  group: oc-mirror-imageset-2
+  cancel-in-progress: false
+
+on:
+  workflow_dispatch:
+    inputs:
+      ocp_version:
+        description: "OpenShift version for oc-mirror binary (make download-oc-tools)"
+        required: true
+        default: "4.18.27"
+      registry_url:
+        description: "Mirror registry host:port (no docker:// prefix)"
+        required: true
+        default: "infra.5g-deployment.lab:8443"
+      dest_namespace:
+        description: "Destination path on registry (e.g. hub-demo-2)"
+        required: true
+        default: "hub-demo-2"
+      imageset_config:
+        description: "Image set config file in repo root"
+        required: true
+        default: "imageset-config-2.yml"
+      workspace_dir:
+        description: "Local workspace directory for oc-mirror (file:// prefix added automatically)"
+        required: true
+        default: "hub-demo"
+      docker_config:
+        description: "Path to Docker config with registry pull secret (runner: often /root/.docker)"
+        required: true
+        default: "/root/.docker"
+      log_level:
+        description: "oc-mirror log level"
+        required: true
+        default: "debug"
+      parallel_images:
+        description: "Parallel images"
+        required: true
+        default: "10"
+      parallel_layers:
+        description: "Parallel layers"
+        required: true
+        default: "10"
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  oc-mirror:
+    runs-on: [self-hosted, linux, x64]
+    timeout-minutes: 180
+
+    steps:
+      - name: Fix workspace ownership
+        run: sudo chown -R "$(whoami):$(whoami)" "${GITHUB_WORKSPACE}/"
+
+      - uses: actions/checkout@v6
+
+      - name: Download oc-mirror (if needed)
+        run: |
+          if [[ ! -x ./bin/oc-mirror ]]; then
+            sudo make download-oc-tools VERSION="${{ github.event.inputs.ocp_version }}"
+          else
+            echo "Using existing ./bin/oc-mirror"
+            ls -la ./bin/oc-mirror
+          fi
+
+      - name: Run oc-mirror v2
+        run: |
+          set -euo pipefail
+          DOCKER_CONFIG="${{ github.event.inputs.docker_config }}"
+          export DOCKER_CONFIG
+          DEST="docker://${{ github.event.inputs.registry_url }}/${{ github.event.inputs.dest_namespace }}"
+          WS="file://${{ github.event.inputs.workspace_dir }}/"
+          CFG="${{ github.event.inputs.imageset_config }}"
+          LOG="${{ github.event.inputs.log_level }}"
+          PI="${{ github.event.inputs.parallel_images }}"
+          PL="${{ github.event.inputs.parallel_layers }}"
+
+          echo "DOCKER_CONFIG=${DOCKER_CONFIG}"
+          echo "Destination: ${DEST}"
+          echo "Workspace: ${WS}"
+          echo "Config: ${CFG}"
+
+          # Registry creds live in DOCKER_CONFIG; use sudo when config is under /root
+          if [[ "${DOCKER_CONFIG}" == /root/* ]]; then
+            sudo -E env DOCKER_CONFIG="${DOCKER_CONFIG}" ./bin/oc-mirror \
+              -c "${CFG}" \
+              --v2 \
+              --workspace "${WS}" \
+              "${DEST}" \
+              --max-nested-paths 10 \
+              --parallel-images "${PI}" \
+              --parallel-layers "${PL}" \
+              --dest-tls-verify=false \
+              --log-level "${LOG}"
+          else
+            ./bin/oc-mirror \
+              -c "${CFG}" \
+              --v2 \
+              --workspace "${WS}" \
+              "${DEST}" \
+              --max-nested-paths 10 \
+              --parallel-images "${PI}" \
+              --parallel-layers "${PL}" \
+              --dest-tls-verify=false \
+              --log-level "${LOG}"
+          fi
