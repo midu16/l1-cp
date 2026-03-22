@@ -23,6 +23,10 @@ hosts:
           dhcp: false
         ipv6:
           enabled: false
+      - name: br-ex
+        type: linux-bridge
+        state: up
+        mtu: 1370
     dns-resolver:
       config:
         server:
@@ -53,6 +57,10 @@ hosts:
           dhcp: false
         ipv6:
           enabled: false
+      - name: br-ex
+        type: linux-bridge
+        state: up
+        mtu: 1370
     dns-resolver:
       config:
         server:
