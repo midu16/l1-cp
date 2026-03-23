@@ -1,0 +1,62 @@
+---
+# NodeHealthCheck for worker MCP nodes.
+# Selects worker-only nodes (excludes control-plane nodes that also carry
+# the worker role). With 2 workers, minHealthy=51% requires at least 1
+# healthy worker before remediation is allowed.
+apiVersion: remediation.medik8s.io/v1alpha1
+kind: NodeHealthCheck
+metadata:
+  name: nhc-worker-self
+spec:
+  selector:
+    matchExpressions:
+      - key: node-role.kubernetes.io/worker
+        operator: Exists
+      - key: node-role.kubernetes.io/control-plane
+        operator: DoesNotExist
+  unhealthyConditions:
+    - type: Ready
+      status: "False"
+      duration: 300s
+    - type: Ready
+      status: Unknown
+      duration: 300s
+  remediationTemplate:
+    apiVersion: self-node-remediation.medik8s.io/v1alpha1
+    kind: SelfNodeRemediationTemplate
+    name: self-node-remediation-automatic-strategy-template
+    namespace: openshift-workload-availability
+  minHealthy: 51%
+---
+# NodeHealthCheck for master/control-plane MCP nodes.
+# Selects only control-plane nodes. maxUnhealthy=2 ensures remediation is
+# blocked only when all 3 masters are unhealthy. This preserves at least
+# 1 control-plane node for etcd read-mode quorum.
+#
+# etcd quorum reference (3-node cluster):
+#   - 3 healthy: full read/write quorum
+#   - 2 healthy: read/write quorum maintained (majority)
+#   - 1 healthy: etcd read-only mode (no write quorum, reads still served)
+#   - 0 healthy: cluster down — remediation blocked by maxUnhealthy
+apiVersion: remediation.medik8s.io/v1alpha1
+kind: NodeHealthCheck
+metadata:
+  name: nhc-master-self
+spec:
+  selector:
+    matchExpressions:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+  unhealthyConditions:
+    - type: Ready
+      status: "False"
+      duration: 300s
+    - type: Ready
+      status: Unknown
+      duration: 300s
+  remediationTemplate:
+    apiVersion: self-node-remediation.medik8s.io/v1alpha1
+    kind: SelfNodeRemediationTemplate
+    name: self-node-remediation-automatic-strategy-template
+    namespace: openshift-workload-availability
+  maxUnhealthy: 2
