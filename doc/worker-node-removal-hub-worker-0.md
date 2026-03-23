@@ -4,6 +4,37 @@
 
 This document provides a step-by-step procedure to gracefully remove worker node `hub-worker-0.hub.5g-deployment.lab` from the cluster while NHC and SNR operators are active. The procedure ensures workload continuity on the remaining worker node (`hub-worker-1`) and prevents NHC from triggering automated remediation during the manual removal.
 
+## Table of Content
+<!-- TOC -->
+
+- [Procedure: Remove hub-worker-0.hub.5g-deployment.lab from the cluster](#procedure-remove-hub-worker-0hub5g-deploymentlab-from-the-cluster)
+    - [1. Overview](#1-overview)
+    - [2. Table of Content](#2-table-of-content)
+        - [2.1. Pre-removal cluster state](#21-pre-removal-cluster-state)
+    - [3. Workflow diagram](#3-workflow-diagram)
+    - [4. Step-by-step procedure](#4-step-by-step-procedure)
+        - [4.1. Step 1 — Verify cluster health](#41-step-1--verify-cluster-health)
+        - [4.2. Step 2 — Pause NHC remediation for workers](#42-step-2--pause-nhc-remediation-for-workers)
+        - [4.3. Step 3 — Cordon the node](#43-step-3--cordon-the-node)
+        - [4.4. Step 4 — Drain the node](#44-step-4--drain-the-node)
+        - [4.5. Step 5 — Verify workloads migrated to hub-worker-1](#45-step-5--verify-workloads-migrated-to-hub-worker-1)
+        - [4.6. Step 6 — Remove ODF storage labels if applicable](#46-step-6--remove-odf-storage-labels-if-applicable)
+        - [4.7. Step 6b — Stop the kubelet on the physical host CRITICAL for bare-metal](#47-step-6b--stop-the-kubelet-on-the-physical-host-critical-for-bare-metal)
+        - [4.8. Step 7 — Delete the node object](#48-step-7--delete-the-node-object)
+        - [4.9. Step 8 — Clean up stale SelfNodeRemediation CRs](#49-step-8--clean-up-stale-selfnoderemediation-crs)
+        - [4.10. Step 9 — Clean up BareMetalHost if applicable](#410-step-9--clean-up-baremetalhost-if-applicable)
+        - [4.11. Step 10 — Verify MCP converges with 1 worker](#411-step-10--verify-mcp-converges-with-1-worker)
+        - [4.12. Step 11 — Update NHC minHealthy for new pool size](#412-step-11--update-nhc-minhealthy-for-new-pool-size)
+        - [4.13. Step 12 — Unpause NHC remediation](#413-step-12--unpause-nhc-remediation)
+        - [4.14. Step 13 — Final validation](#414-step-13--final-validation)
+    - [5. API availability during the procedure](#5-api-availability-during-the-procedure)
+    - [6. Lessons learned from live validation](#6-lessons-learned-from-live-validation)
+        - [6.1. Bare-metal kubelet auto-re-registration](#61-bare-metal-kubelet-auto-re-registration)
+        - [6.2. Procedure validated successfully](#62-procedure-validated-successfully)
+    - [7. Rollback](#7-rollback)
+
+<!-- /TOC -->
+
 ### Pre-removal cluster state
 
 | Item | Value |
