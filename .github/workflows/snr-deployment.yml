@@ -77,7 +77,7 @@ jobs:
     timeout-minutes: 180
     env:
       REPO_PATH: ${{ github.workspace }}
-      KUBECONFIG_PATH: ${{ github.workspace }}/${{ github.event.inputs.kubeconfig_path }}
+      KUBECONFIG_PATH: ${{ github.event.inputs.kubeconfig_path }}
 
     steps:
       - name: Fix workspace ownership
