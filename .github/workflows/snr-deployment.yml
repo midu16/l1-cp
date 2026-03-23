@@ -50,7 +50,7 @@ on:
       kubeconfig_path:
         description: "Path to kubeconfig relative to repo root (for oc apply + monitor)"
         required: false
-        default: "hub/auth/kubeconfig"
+        default: "/root/.kcli/clusters/hub/auth/kubeconfig"
       catalog_source_manifest:
         description: "CatalogSource YAML under <workspace_dir>/working-dir/cluster-resources/"
         required: false
