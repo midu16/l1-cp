@@ -24,6 +24,6 @@ metadata:
 spec:
   channel: "stable"
   name: self-node-remediation
-  source: redhat-operators-disconnected-2
+  source: cs-redhat-operators-disconnected-2-v4-18
   sourceNamespace: openshift-marketplace
   installPlanApproval: Manual

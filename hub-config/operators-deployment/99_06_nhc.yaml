@@ -23,6 +23,6 @@ metadata:
 spec:
   channel: "stable"
   name: node-healthcheck-operator
-  source: redhat-operators-disconnected-2
+  source: cs-redhat-operators-disconnected-2-v4-18
   sourceNamespace: openshift-marketplace
   installPlanApproval: Manual

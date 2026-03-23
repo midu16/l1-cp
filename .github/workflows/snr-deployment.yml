@@ -59,6 +59,14 @@ on:
         description: "ImageDigestMirrorSet YAML under <workspace_dir>/working-dir/cluster-resources/"
         required: false
         default: "idms-oc-mirror.yaml"
+      idms_metadata_name_oc_mirror:
+        description: "metadata.name emitted by oc-mirror in idms-oc-mirror.yaml (only this line is rewritten before apply)"
+        required: false
+        default: "idms-operator-0"
+      idms_metadata_name_cluster:
+        description: "metadata.name to use when applying the ImageDigestMirrorSet"
+        required: false
+        default: "idms-operator-snd-nhc"
       cluster_monitor_stable_for:
         description: "cluster_monitor.py --stable-for (seconds)"
         required: false
@@ -154,7 +162,13 @@ jobs:
           echo "Applying CatalogSource: $CS"
           sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" apply -f "$CS"
           echo "Applying ImageDigestMirrorSet: $IDMS"
-          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" apply -f "$IDMS"
+          IDMS_NAME_FROM="${{ github.event.inputs.idms_metadata_name_oc_mirror }}"
+          IDMS_NAME_TO="${{ github.event.inputs.idms_metadata_name_cluster }}"
+          IDMS_PATCHED="$(mktemp)"
+          trap 'rm -f "${IDMS_PATCHED}"' EXIT
+          # Only rewrite metadata.name (oc-mirror default → cluster name); leave all mirror entries unchanged
+          sed "s|^\([[:space:]]*\)name: ${IDMS_NAME_FROM}$|\1name: ${IDMS_NAME_TO}|" "$IDMS" > "${IDMS_PATCHED}"
+          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" apply -f "${IDMS_PATCHED}"
 
       - name: Apply NHC and SNR operator deployments (99_06, 99_07)
         run: |
