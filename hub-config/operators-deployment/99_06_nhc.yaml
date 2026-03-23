@@ -11,9 +11,7 @@ metadata:
   namespace: openshift-workload-availability
   annotations:
     operatorframework.io/bundle-unpack-min-retry-interval: 10m
-spec:
-  targetNamespaces:
-  - openshift-workload-availability
+spec: {}
 ---
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription

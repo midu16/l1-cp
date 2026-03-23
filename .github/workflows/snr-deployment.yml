@@ -71,6 +71,14 @@ on:
         description: "cluster_monitor.py --stable-for (seconds)"
         required: false
         default: "600"
+      operators_config_nhc:
+        description: "NHC CRs (NodeHealthCheck) after operators are installed"
+        required: false
+        default: "hub-config/operators-config/99_06_nhc.yaml"
+      operators_config_snr:
+        description: "SNR CRs (SelfNodeRemediationConfig/Templates) after operators are installed"
+        required: false
+        default: "hub-config/operators-config/99_07_snr.yaml"
 
 defaults:
   run:
@@ -191,3 +199,17 @@ jobs:
             --installplan \
             --stable-for "${{ github.event.inputs.cluster_monitor_stable_for }}"
           echo "✅ Hub Operators deployment completed successfully"
+
+      - name: Apply NHC and SNR operator configuration (operators-config)
+        run: |
+          set -euo pipefail
+          SNR_CFG="${REPO_PATH}/${{ github.event.inputs.operators_config_snr }}"
+          NHC_CFG="${REPO_PATH}/${{ github.event.inputs.operators_config_nhc }}"
+          for f in "$SNR_CFG" "$NHC_CFG"; do
+            [[ -f "$f" ]] || { echo "::error::Missing $f"; exit 1; }
+          done
+          # SNR Config + Templates first (CRDs ready after operator install); then NodeHealthChecks
+          echo "Applying SNR configuration: $SNR_CFG"
+          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" apply -f "$SNR_CFG"
+          echo "Applying NodeHealthCheck configuration: $NHC_CFG"
+          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" apply -f "$NHC_CFG"

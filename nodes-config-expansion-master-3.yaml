@@ -1,0 +1,38 @@
+# Aligned with dnsmasq hub.ipv4 on INBACRNRDL0102 (e.g. /opt/dnsmasq/include.d/hub.ipv4):
+#   dhcp-host=aa:aa:aa:aa:01:09,ocp-master-3,172.16.30.29
+# DNS / gateway: infra.5g-deployment.lab → 172.16.30.1 (host-record on dnsmasq)
+hosts:
+- hostname: hub-ctlplane-3.hub.5g-deployment.lab
+  interfaces:
+    - name: enp1s0
+      macAddress: aa:aa:aa:aa:01:09
+  rootDeviceHints:
+    deviceName: "/dev/vda"
+  networkConfig:
+    interfaces:
+      - name: enp1s0
+        type: ethernet
+        state: up
+        mac-address: aa:aa:aa:aa:01:09
+        ipv4:
+          enabled: true
+          address:
+            - ip: 172.16.30.29
+              prefix-length: 24
+          dhcp: false
+        ipv6:
+          enabled: false
+      - name: br-ex
+        type: linux-bridge
+        state: up
+        mtu: 1500
+    dns-resolver:
+      config:
+        server:
+          - 172.16.30.1
+    routes:
+      config:
+        - destination: 0.0.0.0/0
+          next-hop-address: 172.16.30.1
+          next-hop-interface: enp1s0
+          table-id: 254
