@@ -564,9 +564,9 @@ mirror:
       channels:
       - name: release-2.17
     - name: multicluster-engine
-      defaultChannel: release-2.17
+      defaultChannel: stable-2.17
       channels:
-      - name: release-2.17
+      - name: stable-2.17
     - name: topology-aware-lifecycle-manager
       channels:
       - name: stable
@@ -658,9 +658,9 @@ mirror:
       channels:
       - name: release-2.17
     - name: multicluster-engine
-      defaultChannel: release-2.17
+      defaultChannel: stable-2.17
       channels:
-      - name: release-2.17
+      - name: stable-2.17
     - name: openshift-gitops-operator
       channels:
       - name: latest
@@ -767,9 +767,9 @@ mirror:
       channels:
       - name: release-2.17
     - name: multicluster-engine
-      defaultChannel: release-2.17
+      defaultChannel: stable-2.17
       channels:
-      - name: release-2.17
+      - name: stable-2.17
     - name: openshift-gitops-operator
       defaultChannel: gitops-1.16
       channels:
@@ -876,9 +876,9 @@ mirror:
       channels:
       - name: release-2.17
     - name: multicluster-engine
-      defaultChannel: release-2.17
+      defaultChannel: stable-2.17
       channels:
-      - name: release-2.17
+      - name: stable-2.17
     - name: openshift-gitops-operator
       defaultChannel: gitops-1.19
       channels:
@@ -997,9 +997,9 @@ mirror:
       channels:
       - name: release-2.17
     - name: multicluster-engine
-      defaultChannel: release-2.17
+      defaultChannel: stable-2.17
       channels:
-      - name: release-2.17
+      - name: stable-2.17
     - name: openshift-gitops-operator
       defaultChannel: gitops-1.20
       channels:
