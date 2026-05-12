@@ -560,13 +560,13 @@ mirror:
     targetCatalog: openshift-marketplace/redhat-operators-disconnected
     packages:
     - name: advanced-cluster-management
-      defaultChannel: release-2.13
+      defaultChannel: release-2.17
       channels:
-      - name: release-2.13
+      - name: release-2.17
     - name: multicluster-engine
-      defaultChannel: stable-2.8
+      defaultChannel: release-2.17
       channels:
-      - name: stable-2.8
+      - name: release-2.17
     - name: topology-aware-lifecycle-manager
       channels:
       - name: stable
@@ -654,13 +654,13 @@ mirror:
     targetCatalog: openshift-marketplace/redhat-operators-disconnected
     packages:
     - name: advanced-cluster-management
-      defaultChannel: release-2.14
+      defaultChannel: release-2.17
       channels:
-      - name: release-2.14
+      - name: release-2.17
     - name: multicluster-engine
-      defaultChannel: stable-2.8
+      defaultChannel: release-2.17
       channels:
-      - name: stable-2.8
+      - name: release-2.17
     - name: openshift-gitops-operator
       channels:
       - name: latest
@@ -763,13 +763,13 @@ mirror:
     targetCatalog: openshift-marketplace/redhat-operators-disconnected
     packages:
     - name: advanced-cluster-management
-      defaultChannel: release-2.14
+      defaultChannel: release-2.17
       channels:
-      - name: release-2.14
+      - name: release-2.17
     - name: multicluster-engine
-      defaultChannel: stable-2.9
+      defaultChannel: release-2.17
       channels:
-      - name: stable-2.9
+      - name: release-2.17
     - name: openshift-gitops-operator
       defaultChannel: gitops-1.16
       channels:
@@ -872,13 +872,13 @@ mirror:
     targetCatalog: openshift-marketplace/redhat-operators-disconnected
     packages:
     - name: advanced-cluster-management
-      defaultChannel: release-2.15
+      defaultChannel: release-2.17
       channels:
-      - name: release-2.15
+      - name: release-2.17
     - name: multicluster-engine
-      defaultChannel: stable-2.10
+      defaultChannel: release-2.17
       channels:
-      - name: stable-2.10
+      - name: release-2.17
     - name: openshift-gitops-operator
       defaultChannel: gitops-1.19
       channels:
@@ -993,13 +993,13 @@ mirror:
     targetCatalog: openshift-marketplace/redhat-operators-disconnected
     packages:
     - name: advanced-cluster-management
-      defaultChannel: release-2.15
+      defaultChannel: release-2.17
       channels:
-      - name: release-2.15
+      - name: release-2.17
     - name: multicluster-engine
-      defaultChannel: stable-2.10
+      defaultChannel: release-2.17
       channels:
-      - name: stable-2.10
+      - name: release-2.17
     - name: openshift-gitops-operator
       defaultChannel: gitops-1.19
       channels:
