@@ -35,4 +35,4 @@ spec:
   name: redhat-oadp-operator
   source: cs-redhat-operator-index
   sourceNamespace: openshift-marketplace
-  installPlanApproval: Automatic
+  installPlanApproval: Manual

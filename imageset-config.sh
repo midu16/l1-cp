@@ -556,7 +556,7 @@ mirror:
       minVersion: ${ocp_version}
       maxVersion: ${ocp_version}
   operators:
-  - catalog: registry.redhat.io/redhat/redhat-operator-index:v4.18
+  - catalog: ${SOURCE_INDEX}
     targetCatalog: openshift-marketplace/redhat-operators-disconnected
     packages:
     - name: advanced-cluster-management
@@ -650,7 +650,7 @@ mirror:
       minVersion: ${ocp_version}
       maxVersion: ${ocp_version}
   operators:
-  - catalog: registry.redhat.io/redhat/redhat-operator-index:v4.19
+  - catalog: ${SOURCE_INDEX}
     targetCatalog: openshift-marketplace/redhat-operators-disconnected
     packages:
     - name: advanced-cluster-management
@@ -759,7 +759,7 @@ mirror:
       minVersion: ${ocp_version}
       maxVersion: ${ocp_version}
   operators:
-  - catalog: registry.redhat.io/redhat/redhat-operator-index:v4.20
+  - catalog: ${SOURCE_INDEX}
     targetCatalog: openshift-marketplace/redhat-operators-disconnected
     packages:
     - name: advanced-cluster-management
@@ -868,7 +868,7 @@ mirror:
       minVersion: ${ocp_version}
       maxVersion: ${ocp_version}
   operators:
-  - catalog: registry.redhat.io/redhat/redhat-operator-index:v4.21
+  - catalog: ${SOURCE_INDEX}
     targetCatalog: openshift-marketplace/redhat-operators-disconnected
     packages:
     - name: advanced-cluster-management
@@ -989,7 +989,7 @@ mirror:
       minVersion: ${ocp_version}
       maxVersion: ${ocp_version}
   operators:
-  - catalog: registry.redhat.io/redhat/redhat-operator-index:v4.22
+  - catalog: ${SOURCE_INDEX}
     targetCatalog: openshift-marketplace/redhat-operators-disconnected
     packages:
     - name: advanced-cluster-management

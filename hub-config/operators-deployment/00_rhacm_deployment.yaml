@@ -30,7 +30,7 @@ metadata:
   namespace: open-cluster-management
 spec:
   channel: release-2.13
-  installPlanApproval: Automatic
+  installPlanApproval: Manual
   name: advanced-cluster-management
   source: cs-redhat-operator-index
   sourceNamespace: openshift-marketplace

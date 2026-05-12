@@ -33,7 +33,7 @@ metadata:
   namespace: openshift-kmm-hub
 spec:
   channel: stable
-  installPlanApproval: Automatic
+  installPlanApproval: Manual
   name: kernel-module-management-hub
   source: cs-redhat-operator-index
   sourceNamespace: openshift-marketplace

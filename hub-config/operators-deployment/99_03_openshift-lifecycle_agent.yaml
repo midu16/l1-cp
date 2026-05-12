@@ -30,4 +30,4 @@ spec:
   name: lifecycle-agent
   source: cs-redhat-operator-index
   sourceNamespace: openshift-marketplace
-  installPlanApproval: Automatic
+  installPlanApproval: Manual

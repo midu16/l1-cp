@@ -32,7 +32,7 @@ metadata:
   name: local-storage-operator
   namespace: openshift-local-storage
 spec:
-  installPlanApproval: Automatic
+  installPlanApproval: Manual
   name: local-storage-operator
   source: cs-redhat-operator-index
   sourceNamespace: openshift-marketplace

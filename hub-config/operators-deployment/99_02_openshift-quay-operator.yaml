@@ -33,4 +33,4 @@ spec:
   name: quay-operator
   source: cs-redhat-operator-index
   sourceNamespace: openshift-marketplace
-  installPlanApproval: Automatic
+  installPlanApproval: Manual

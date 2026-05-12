@@ -39,7 +39,7 @@ spec:
 #    env:
 #    - name: KMM_MANAGED
 #      value: "1"
-  installPlanApproval: Automatic
+  installPlanApproval: Manual
   name: kernel-module-management
   source: cs-redhat-operator-index
   sourceNamespace: openshift-marketplace

@@ -47,7 +47,7 @@ metadata:
   name: amq-streams
   namespace: openshift-amq-streams
 spec:
-  installPlanApproval: Automatic
+  installPlanApproval: Manual
   channel: stable
   name: amq-streams
   source: cs-redhat-operator-index

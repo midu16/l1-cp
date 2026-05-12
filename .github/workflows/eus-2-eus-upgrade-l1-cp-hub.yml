@@ -34,6 +34,11 @@ on:
         description: "ArgoCD application name (e.g., eus-2-eus-upgrade-l1-cp-hub-argoapps.yaml)"
         required: true
         default: "eus-2-eus-upgrade-l1-cp-hub-argoapps.yaml"
+      day2-catalogsource:
+        description: "Optional operator index image for imageset-config (overrides default registry.redhat.io/redhat/redhat-operator-index:v<major.minor>). Examples: registry.redhat.io/redhat/redhat-operator-index:v4.20 or quay.io/prega/prega-operator-index:v4.22.0-rc.3"
+        required: false
+        type: string
+        default: ""
 defaults:
   run:
     shell: bash
@@ -71,16 +76,23 @@ jobs:
         run: sudo make download-oc-tools VERSION="${OCP_VERSION_FROM}"
 
       - name: 📝 Render imageset-config.yml
+        env:
+          DAY2_CATALOGSOURCE: ${{ github.event.inputs['day2-catalogsource'] }}
         run: |
-          # Extract major.minor (e.g., 4.22.0-rc.3 -> 4.22, 4.18.27 -> 4.18)
-          if [[ "${OCP_VERSION_FROM}" =~ ^([0-9]+\.[0-9]+) ]]; then
-            OCP_MAJOR_MINOR="${BASH_REMATCH[1]}"
+          if [[ -n "${DAY2_CATALOGSOURCE}" ]]; then
+            export SOURCE_INDEX="${DAY2_CATALOGSOURCE}"
+            echo "Using day2-catalogsource (SOURCE_INDEX): ${SOURCE_INDEX}"
           else
-            echo "::error::Invalid OCP_VERSION_FROM for major.minor: ${OCP_VERSION_FROM}"
-            exit 1
+            # Extract major.minor (e.g., 4.22.0-rc.3 -> 4.22, 4.18.27 -> 4.18)
+            if [[ "${OCP_VERSION_FROM}" =~ ^([0-9]+\.[0-9]+) ]]; then
+              OCP_MAJOR_MINOR="${BASH_REMATCH[1]}"
+            else
+              echo "::error::Invalid OCP_VERSION_FROM for major.minor: ${OCP_VERSION_FROM}"
+              exit 1
+            fi
+            export SOURCE_INDEX="registry.redhat.io/redhat/redhat-operator-index:v${OCP_MAJOR_MINOR}"
+            echo "Using default SOURCE_INDEX: ${SOURCE_INDEX}"
           fi
-          export SOURCE_INDEX="registry.redhat.io/redhat/redhat-operator-index:v${OCP_MAJOR_MINOR}"
-          echo "Using SOURCE_INDEX: ${SOURCE_INDEX}"
           sudo -E make imageset-config.yml OCP_VERSION="${OCP_VERSION_FROM}" SOURCE_INDEX="${SOURCE_INDEX}"
 
       - name: 🔍 Validate AirGapped registry catalog

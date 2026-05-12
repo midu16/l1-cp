@@ -29,6 +29,7 @@ metadata:
   namespace: multicluster-engine
 spec:
   channel: stable-2.8
+  installPlanApproval: Manual
   name: multicluster-engine
   source: cs-redhat-operator-index
   sourceNamespace: openshift-marketplace
