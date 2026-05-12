@@ -14,7 +14,7 @@ on:
       ocp_version:
         description: "OpenShift version for oc-mirror binary (make download-oc-tools)"
         required: true
-        default: "4.18.27"
+        default: "4.22.0-rc.3"
       registry_url:
         description: "Mirror registry host:port (no docker:// prefix)"
         required: true
@@ -47,6 +47,38 @@ on:
         description: "Parallel layers"
         required: true
         default: "10"
+      kubeconfig_path:
+        description: "Path to kubeconfig relative to repo root (for oc apply + monitor)"
+        required: false
+        default: "/root/.kcli/clusters/hub/auth/kubeconfig"
+      catalog_source_manifest:
+        description: "CatalogSource YAML under <workspace_dir>/working-dir/cluster-resources/"
+        required: false
+        default: "cs-redhat-operators-disconnected-2-v4-22.yaml"
+      idms_manifest:
+        description: "ImageDigestMirrorSet YAML under <workspace_dir>/working-dir/cluster-resources/"
+        required: false
+        default: "idms-oc-mirror.yaml"
+      idms_metadata_name_oc_mirror:
+        description: "metadata.name emitted by oc-mirror in idms-oc-mirror.yaml (only this line is rewritten before apply)"
+        required: false
+        default: "idms-operator-0"
+      idms_metadata_name_cluster:
+        description: "metadata.name to use when applying the ImageDigestMirrorSet"
+        required: false
+        default: "idms-operator-snd-nhc"
+      cluster_monitor_stable_for:
+        description: "cluster_monitor.py --stable-for (seconds)"
+        required: false
+        default: "600"
+      operators_config_nhc:
+        description: "NHC CRs (NodeHealthCheck) after operators are installed"
+        required: false
+        default: "hub-config/operators-config/99_06_nhc.yaml"
+      operators_config_snr:
+        description: "SNR CRs (SelfNodeRemediationConfig/Templates) after operators are installed"
+        required: false
+        default: "hub-config/operators-config/99_07_snr.yaml"
 
 defaults:
   run:
@@ -59,6 +91,9 @@ jobs:
   oc-mirror:
     runs-on: [self-hosted, linux, x64]
     timeout-minutes: 180
+    env:
+      REPO_PATH: ${{ github.workspace }}
+      KUBECONFIG_PATH: ${{ github.event.inputs.kubeconfig_path }}
 
     steps:
       - name: Fix workspace ownership
@@ -66,13 +101,13 @@ jobs:
 
       - uses: actions/checkout@v6
 
-      - name: Download oc-mirror (if needed)
+      - name: Download oc and oc-mirror (if needed)
         run: |
-          if [[ ! -x ./bin/oc-mirror ]]; then
+          if [[ ! -x ./bin/oc-mirror ]] || [[ ! -x ./bin/oc ]]; then
             sudo make download-oc-tools VERSION="${{ github.event.inputs.ocp_version }}"
           else
-            echo "Using existing ./bin/oc-mirror"
-            ls -la ./bin/oc-mirror
+            echo "Using existing ./bin/oc-mirror and ./bin/oc"
+            ls -la ./bin/oc-mirror ./bin/oc
           fi
 
       - name: Run oc-mirror v2
@@ -116,3 +151,65 @@ jobs:
               --dest-tls-verify=false \
               --log-level "${LOG}"
           fi
+
+      - name: Apply CatalogSource and ImageDigestMirrorSet (oc-mirror cluster-resources)
+        run: |
+          set -euo pipefail
+          WS="${{ github.event.inputs.workspace_dir }}"
+          CR="${GITHUB_WORKSPACE}/${WS}/working-dir/cluster-resources"
+          CS="${CR}/${{ github.event.inputs.catalog_source_manifest }}"
+          IDMS="${CR}/${{ github.event.inputs.idms_manifest }}"
+
+          for f in "$CS" "$IDMS"; do
+            if [[ ! -f "$f" ]]; then
+              echo "::error::Expected file missing after oc-mirror: $f"
+              exit 1
+            fi
+          done
+
+          echo "Applying CatalogSource: $CS"
+          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" apply -f "$CS"
+          echo "Applying ImageDigestMirrorSet: $IDMS"
+          IDMS_NAME_FROM="${{ github.event.inputs.idms_metadata_name_oc_mirror }}"
+          IDMS_NAME_TO="${{ github.event.inputs.idms_metadata_name_cluster }}"
+          IDMS_PATCHED="$(mktemp)"
+          trap 'rm -f "${IDMS_PATCHED}"' EXIT
+          # Only rewrite metadata.name (oc-mirror default → cluster name); leave all mirror entries unchanged
+          sed "s|^\([[:space:]]*\)name: ${IDMS_NAME_FROM}$|\1name: ${IDMS_NAME_TO}|" "$IDMS" > "${IDMS_PATCHED}"
+          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" apply -f "${IDMS_PATCHED}"
+
+      - name: Apply NHC and SNR operator deployments (99_06, 99_07)
+        run: |
+          set -euo pipefail
+          NHC="${REPO_PATH}/hub-config/operators-deployment/99_06_nhc.yaml"
+          SNR="${REPO_PATH}/hub-config/operators-deployment/99_07_snr.yaml"
+          for f in "$NHC" "$SNR"; do
+            [[ -f "$f" ]] || { echo "::error::Missing $f"; exit 1; }
+          done
+          # 99_06 first (namespace/OperatorGroup/NHC Sub), then 99_07 (duplicate OG idempotent + SNR Sub)
+          echo "Applying $NHC"
+          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" apply -f "$NHC"
+          echo "Applying $SNR"
+          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" apply -f "$SNR"
+
+      - name: Waiting for Hub Operators deployment (monitor + InstallPlans)
+        run: |
+          sudo python3 "${REPO_PATH}/monitoring/cluster_monitor.py" \
+            --kubeconfig "${KUBECONFIG_PATH}" \
+            --installplan \
+            --stable-for "${{ github.event.inputs.cluster_monitor_stable_for }}"
+          echo "✅ Hub Operators deployment completed successfully"
+
+      - name: Apply NHC and SNR operator configuration (operators-config)
+        run: |
+          set -euo pipefail
+          SNR_CFG="${REPO_PATH}/${{ github.event.inputs.operators_config_snr }}"
+          NHC_CFG="${REPO_PATH}/${{ github.event.inputs.operators_config_nhc }}"
+          for f in "$SNR_CFG" "$NHC_CFG"; do
+            [[ -f "$f" ]] || { echo "::error::Missing $f"; exit 1; }
+          done
+          # SNR Config + Templates first (CRDs ready after operator install); then NodeHealthChecks
+          echo "Applying SNR configuration: $SNR_CFG"
+          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" apply -f "$SNR_CFG"
+          echo "Applying NodeHealthCheck configuration: $NHC_CFG"
+          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" apply -f "$NHC_CFG"

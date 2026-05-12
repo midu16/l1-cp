@@ -11,9 +11,9 @@ on:
   workflow_dispatch:
     inputs:
       ocp_version:
-        description: "OpenShift version (e.g., 4.19.23)"
+        description: "OpenShift version (e.g., 4.22.0-rc.3)"
         required: true
-        default: "4.19.23"
+        default: "4.22.0-rc.3"
       registry_url:
         description: "AirGapped Registry URL"
         required: true
@@ -35,6 +35,8 @@ defaults:
     shell: bash
 
 env:
+  # Opt into Node.js 24 for JavaScript actions (e.g. actions/checkout@v6); avoids Node 20 deprecation warning.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   OCP_VERSION: ${{ github.event.inputs.ocp_version }}
   REGISTRY_URL: ${{ github.event.inputs.registry_url }}
   REMOTE_HOST: ${{ github.event.inputs.remote_host }}
@@ -46,7 +48,7 @@ jobs:
 
   clean-hub:
     runs-on: [self-hosted, linux, x64]
-    timeout-minutes: 30
+    timeout-minutes: 90
     env:
       REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
       REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
@@ -56,7 +58,7 @@ jobs:
         run: |
           sudo chown -R $(whoami):$(whoami) "${GITHUB_WORKSPACE}/"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           repository: midu16/l1-cp
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -75,10 +77,17 @@ jobs:
 
       - name: 🗑️ Clean up previous RHACM Virtual Hub
         run: |
-          if sudo kcli list plan | grep "hub "; then
+          if sudo kcli list plan | grep -q "hub "; then
+            echo "Deleting hub plan on local host..."
             sudo kcli delete plan hub -y
           else
-            echo "Plan hub does not exist — skipping deletion."
+            echo "Plan hub does not exist on local host — skipping."
+          fi
+          if sudo ssh root@INBACRNRDL0103 'sudo kcli list plan | grep -q "hub "'; then
+            echo "Deleting hub plan on remote INBACRNRDL0103..."
+            sudo ssh root@INBACRNRDL0103 'sudo kcli delete plan hub -y'
+          else
+            echo "Plan hub does not exist on remote — skipping."
           fi
 
       - name: 🗑️ Clean up old registry content
@@ -118,7 +127,7 @@ jobs:
 
   build-hub:
     runs-on: [self-hosted, linux, x64]
-    timeout-minutes: 180
+    timeout-minutes: 90
     needs: clean-hub
     env:
       REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
@@ -126,15 +135,20 @@ jobs:
       REPO_PATH: ${{ github.workspace }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: 📥 Download OCP tools
         run: sudo make download-oc-tools VERSION="${OCP_VERSION}"
 
       - name: 📝 Render imageset-config.yml
         run: |
-          # Extract major.minor from OCP_VERSION (e.g., 4.19.23 -> 4.19)
-          OCP_MAJOR_MINOR="${OCP_VERSION%.*}"
+          # Extract major.minor (e.g., 4.22.0-rc.3 -> 4.22, 4.18.27 -> 4.18)
+          if [[ "${OCP_VERSION}" =~ ^([0-9]+\.[0-9]+) ]]; then
+            OCP_MAJOR_MINOR="${BASH_REMATCH[1]}"
+          else
+            echo "::error::Invalid OCP_VERSION for major.minor: ${OCP_VERSION}"
+            exit 1
+          fi
           export SOURCE_INDEX="registry.redhat.io/redhat/redhat-operator-index:v${OCP_MAJOR_MINOR}"
           echo "Using SOURCE_INDEX: ${SOURCE_INDEX}"
           sudo -E make imageset-config.yml OCP_VERSION="${OCP_VERSION}" SOURCE_INDEX="${SOURCE_INDEX}"
@@ -152,26 +166,29 @@ jobs:
 
       - name: 📦 Mirror images to AirGapped registry
         run: |
-          MAX_ATTEMPTS=3
-          DELAY=15
+          max_attempts=5
           attempt=1
-          while true; do
+          while [ $attempt -le $max_attempts ]; do
+            echo "::group::Mirror attempt $attempt of $max_attempts"
             if sudo DOCKER_CONFIG=/root/.docker ./bin/oc-mirror -c imageset-config.yml --v2 \
               --workspace file://hub-demo/ \
               docker://"${REGISTRY_URL}"/hub-demo \
               --max-nested-paths 10 --parallel-images 10 --parallel-layers 10 \
               --dest-tls-verify=false --log-level debug; then
-              echo "✅ Mirror completed successfully on attempt $attempt"
-              break
+              echo "::endgroup::"
+              echo "Mirror completed successfully on attempt $attempt."
+              exit 0
             fi
-            if [[ $attempt -ge $MAX_ATTEMPTS ]]; then
-              echo "❌ Mirror failed after $MAX_ATTEMPTS attempts"
-              exit 1
+            echo "::endgroup::"
+            echo "Attempt $attempt/$max_attempts failed."
+            if [ $attempt -lt $max_attempts ]; then
+              echo "Retrying in 30 seconds..."
+              sleep 30
             fi
-            echo "⚠️ Mirror attempt $attempt failed. Retrying in ${DELAY}s..."
-            sleep $DELAY
             attempt=$((attempt + 1))
           done
+          echo "Mirror failed after $max_attempts attempts."
+          exit 1
 
       - name: 🔍 Verify AirGapped registry content after mirroring
         run: |
@@ -183,7 +200,7 @@ jobs:
           RELEASE_IMAGE="${REGISTRY_URL}/hub-demo/openshift/release-images:${OCP_VERSION}-x86_64"
 
       - name: 💿 Generate agent ISO
-        run: sudo make create-agent-iso OCP_VERSION="${OCP_VERSION}"
+        run: sudo make create-agent-iso
 
       - name: 📤 Copy agent ISO to webcache
         run: |
@@ -229,7 +246,6 @@ jobs:
         run: |
           sudo mkdir -p /root/.kcli/clusters/hub/auth/
           sudo rsync -a --inplace "${KUBECONFIG_PATH}" /root/.kcli/clusters/hub/auth/kubeconfig
-
       - name: ✅ Approve all InstallPlans
         run: |
           sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" get installplan -A -o json | \
@@ -246,5 +262,70 @@ jobs:
       
       - name: 🔄 Waiting for Hub Operators deployment, Monitoring the progress of the deployment and approving InstallPlans
         run: |
-          sudo python3 "${REPO_PATH}/monitoring/cluster_monitor.py" --kubeconfig "${KUBECONFIG_PATH}" --installplan --stable-for 600 
+          sudo python3 "${REPO_PATH}/monitoring/cluster_monitor.py" --kubeconfig "${KUBECONFIG_PATH}" --installplan --stable-for 600
           echo "✅ Hub Operators deployment completed successfully"
+      
+      # https://docs.redhat.com/en/documentation/openshift_container_platform/4.22/html/nodes/working-with-nodes
+      - name: The compact cluster finished
+        run: sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" get nodes
+
+  scale-up-hub:
+    runs-on: [self-hosted, linux, x64]
+    timeout-minutes: 90
+    needs: build-hub
+    env:
+      REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+      REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+      REPO_PATH: ${{ github.workspace }}
+      
+    steps:
+      # Reuse the same workspace as build-hub (do not run checkout here — checkout clean removes gitignored dirs like bin/ and breaks ./bin/oc).
+      - name: Fix workspace ownership (reuse build-hub artifacts)
+        run: sudo chown -R "$(whoami):$(whoami)" "${GITHUB_WORKSPACE}/"
+
+      - name: Expand the cluster with 2 additional nodes
+        run: | 
+          echo | openssl s_client -connect infra.5g-deployment.lab:8443 -servername infra.5g-deployment.lab 2>/dev/null | openssl x509 -outform PEM -out cert.pem
+          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" adm node-image create nodes-config.yaml --registry-config=/root/.docker/config.json --certificate-authority=./cert.pem
+
+      - name: Copy the node.x86_64.iso to remove hypervisor
+        run: sudo scp -r node.x86_64.iso root@INBACRNRDL0103:/opt/
+
+      # MACs / IPs match dnsmasq hub.ipv4: 01:04→.23 (worker-0), 01:05→.24 (worker-1); names match nodes-config.yaml
+      - name: 🖥️ Create Hub worker VMs 
+        run: |
+          sudo ssh root@INBACRNRDL0103 bash -s << 'ENDSSH'
+          w=0
+          for i in 4 5; do
+            MAC="aa:aa:aa:aa:01:0${i}"
+            UUID="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa010${i}"
+            sudo kcli create vm \
+              -P start=True -P uefi_legacy=true -P plan=hub \
+              -P memory=71680 -P numcpus=40 -P disks=[200,50,250] \
+              -P nets="[{'name': 'br0', 'mac': '$MAC'}]" \
+              -P uuid="$UUID" \
+              -P name="hub-worker-${w}" \
+              -P iso=/opt/node.x86_64.iso
+            w=$((w + 1))
+          done
+          ENDSSH
+
+      - name: Monitor Hub worker deployment and approve certificates (parallel)
+        run: |
+          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" adm node-image monitor --ip-addresses "172.16.30.23","172.16.30.24" &
+          MONITOR_PID=$!
+          while kill -0 $MONITOR_PID 2>/dev/null; do
+            sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" get csr -o json | jq -r '.items[] | select(.status.conditions == null) | .metadata.name' | xargs -r sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" adm certificate approve 2>/dev/null || true
+            sleep 15
+          done
+          wait $MONITOR_PID
+
+      - name: Get all the nodes in the cluster
+        run: sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" get nodes
+
+      - name: Label dedicated worker nodes for OpenShift Storage (ODF)
+        run: |
+          # Workers with worker role but not control-plane (excludes compact ctlplane nodes)
+          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" label nodes \
+            -l 'node-role.kubernetes.io/worker,!node-role.kubernetes.io/control-plane' \
+            cluster.ocs.openshift.io/openshift-storage= --overwrite

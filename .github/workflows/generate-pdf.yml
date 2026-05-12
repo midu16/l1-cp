@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - master
+      - release-4.22
     paths:
       - '**.md'
       - '.github/workflows/generate-pdf.yml'
