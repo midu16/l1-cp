@@ -1,175 +1,101 @@
-apiVersion: mirror.openshift.io/v2alpha1
+---
 kind: ImageSetConfiguration
-archiveSize: 4
+apiVersion: mirror.openshift.io/v2alpha1
 mirror:
   platform:
-    architectures:
-    - "amd64"
     channels:
-    - name: stable-4.18
-      minVersion: 4.18.27
-      maxVersion: 4.18.27
+    - name: stable-4.20
       type: ocp
-    graph: true
+      # Adjust minVersion and maxVersion according to your required releases. This allows you to
+      # minimize the mirrored content to only what is needed for your deployment. Note that only
+      # versions which are mirrored to the disconnected registry can be installed, so only versions
+      # listed here should be referenced in installation CRs (eg ClusterImageSet / imageSetRef).
+      minVersion: 4.20.6
+      maxVersion: 4.20.6
   operators:
-  - catalog: registry.redhat.io/redhat/redhat-operator-index:v4.18
+  - catalog: registry.redhat.io/redhat/redhat-operator-index:v4.20
     targetCatalog: openshift-marketplace/redhat-operators-disconnected
-    full: false
     packages:
-    - name: 'advanced-cluster-management'
-    - name: 'multicluster-engine'
-    - name: 'topology-aware-lifecycle-manager'
+    - name: advanced-cluster-management
+      defaultChannel: release-2.17
       channels:
-        - name: 'stable'
-          minVersion: 'v4.18.3'
-          maxVersion: 'v4.18.3'
-    - name: 'openshift-gitops-operator'
+      - name: release-2.17
+    - name: multicluster-engine
+      defaultChannel: stable-2.17
       channels:
-        - name: 'latest'
-          minVersion: 'v1.19.1'
-          maxVersion: 'v1.19.1'
-    - name: 'lvms-operator'
+      - name: stable-2.17
+    - name: openshift-gitops-operator
+      defaultChannel: gitops-1.16
       channels:
-        - name: 'stable-4.18'
-          minVersion: 'v4.18.4'
-          maxVersion: 'v4.18.4'
-    - name: 'odf-operator'
+      - name: gitops-1.16
+    - name: redhat-oadp-operator
       channels:
-        - name: 'stable-4.18'
-          minVersion: 'v4.18.15-rhodf'
-          maxVersion: 'v4.18.15-rhodf'
-    - name: 'odf-dependencies'
+      - name: stable
+    - name: topology-aware-lifecycle-manager
       channels:
-        - name: 'stable-4.18'
-          minVersion: 'v4.18.15-rhodf'
-          maxVersion: 'v4.18.15-rhodf'
-    - name: 'rook-ceph-operator'
+      - name: stable
+    - name: local-storage-operator
       channels:
-        - name: 'stable-4.18'
-          minVersion: 'v4.18.15-rhodf'
-          maxVersion: 'v4.18.15-rhodf'
-    - name: 'ocs-operator'
+      - name: stable
+    - name: odf-operator
+      defaultChannel: stable-4.20
       channels:
-        - name: 'stable-4.18'
-          minVersion: 'v4.18.15-rhodf'
-          maxVersion: 'v4.18.15-rhodf'
-    - name: 'mcg-operator'
+      - name: stable-4.20
+    - name: odf-external-snapshotter-operator
+      defaultChannel: stable-4.20
       channels:
-        - name: 'stable-4.18'
-          minVersion: 'v4.18.15-rhodf'
-          maxVersion: 'v4.18.15-rhodf'
-    - name: 'odf-prometheus-operator'
+      - name: stable-4.20
+    - name: odf-dependencies
+      defaultChannel: stable-4.20
       channels:
-        - name: 'stable-4.18'
-          minVersion: 'v4.18.15-rhodf'
-          maxVersion: 'v4.18.15-rhodf'
-    - name: 'cephcsi-operator'
+      - name: stable-4.20
+    - name: odf-csi-addons-operator
+      defaultChannel: stable-4.20
       channels:
-        - name: 'stable-4.18'
-          minVersion: 'v4.18.15-rhodf'
-          maxVersion: 'v4.18.15-rhodf'
-    - name: 'odf-csi-addons-operator'
+      - name: stable-4.20
+    - name: ocs-client-operator
+      defaultChannel: stable-4.20
       channels:
-        - name: 'stable-4.18'
-          minVersion: 'v4.18.15-rhodf'
-          maxVersion: 'v4.18.15-rhodf'
-    - name: 'odf-multicluster-orchestrator'
+      - name: stable-4.20
+    - name: cephcsi-operator
+      defaultChannel: stable-4.20
       channels:
-        - name: 'stable-4.18'
-          minVersion: 'v4.18.15-rhodf'
-          maxVersion: 'v4.18.15-rhodf'
-    - name: 'ocs-client-operator'
+      - name: stable-4.20
+    - name: odf-prometheus-operator
+      defaultChannel: stable-4.20
       channels:
-        - name: 'stable-4.18'
-          minVersion: 'v4.18.15-rhodf'
-          maxVersion: 'v4.18.15-rhodf'
-    - name: 'odr-cluster-operator'
+      - name: stable-4.20
+    - name: odf-multicluster-orchestrator
+      defaultChannel: stable-4.20
       channels:
-        - name: 'stable-4.18'
-          minVersion: 'v4.18.15-rhodf'
-          maxVersion: 'v4.18.15-rhodf'
-    - name: 'recipe'
+      - name: stable-4.20
+    - name: ocs-operator
+      defaultChannel: stable-4.20
       channels:
-        - name: 'stable-4.18'
-          minVersion: 'v4.18.15-rhodf'
-          maxVersion: 'v4.18.15-rhodf'
-    - name: 'odf-csi-addons-operator'
+      - name: stable-4.20
+    - name: rook-ceph-operator
+      defaultChannel: stable-4.20
       channels:
-        - name: 'stable-4.18'
-          minVersion: 'v4.18.15-rhodf'
-          maxVersion: 'v4.18.15-rhodf'
-    - name: 'local-storage-operator'
+      - name: stable-4.20
+    - name: mcg-operator
+      defaultChannel: stable-4.20
       channels:
-        - name: 'stable'
-          minVersion: 'v4.18.0-202601302238'
-          maxVersion: 'v4.18.0-202601302238'
-    - name: 'mcg-operator'
+      - name: stable-4.20
+    - name: odr-hub-operator
+      defaultChannel: stable-4.20
       channels:
-        - name: 'stable-4.18'
-          minVersion: 'v4.18.15-rhodf'
-          maxVersion: 'v4.18.15-rhodf'
-    - name: 'ptp-operator'
+      - name: stable-4.20
+    - name: odr-cluster-operator
+      defaultChannel: stable-4.20
       channels:
-        - name: 'stable'
-          minVersion: 'v4.18.0-202602040315'
-          maxVersion: 'v4.18.0-202602040315'
-    - name: 'sriov-network-operator'
+      - name: stable-4.20
+    - name: recipe
+      defaultChannel: stable-4.20
       channels:
-        - name: 'stable'
-          minVersion: 'v4.18.0-202601302238'
-          maxVersion: 'v4.18.0-202601302238'
-    - name: 'cluster-logging'
-      channels:
-        - name: 'stable-6.4'
-          minVersion: 'v6.4.2'
-          maxVersion: 'v6.4.2'
-    - name: 'file-integrity-operator'
-      channels:
-        - name: 'stable'
-          minVersion: 'v1.3.8'
-          maxVersion: 'v1.3.8'
-    - name: 'compliance-operator'
-      channels:
-        - name: 'stable'
-          minVersion: 'v1.8.2'
-          maxVersion: 'v1.8.2'
-    - name: 'kernel-module-management'
-      channels:
-        - name: 'stable'
-          minVersion: 'v2.5.1'
-          maxVersion: 'v2.5.1'
-    - name: 'kernel-module-management-hub'
-      channels:
-        - name: 'stable'
-          minVersion: 'v2.5.1'
-          maxVersion: 'v2.5.1'
-    - name: 'node-maintenance-operator'
-      channels:
-        - name: 'stable'
-          minVersion: 'v5.5.0'
-          maxVersion: 'v5.5.0'
-    - name: 'amq-streams'
-      channels:
-        - name: 'stable'
-          minVersion: 'v3.1.0-11'
-          maxVersion: 'v3.1.0-11'
-    - name: 'quay-operator'
-      channels:
-        - name: 'stable-3.16'
-          minVersion: 'v3.16.2'
-          maxVersion: 'v3.16.2'
-    - name: 'redhat-oadp-operator'
-      channels:
-        - name: 'stable-1.4'
-          minVersion: 'v1.4.8'
-          maxVersion: 'v1.4.8'
-    - name: 'rhbk-operator'
-      channels:
-        - name: 'stable-v26.4'
-          minVersion: 'v26.4.8-opr.1'
-          maxVersion: 'v26.4.8-opr.1'
-    - name: 'lifecycle-agent'
-      channels:
-        - name: 'stable'
-          minVersion: 'v4.18.2'
-          maxVersion: 'v4.18.2'
+      - name: stable-4.20
+  additionalImages:
+  - name: registry.redhat.io/ubi8/ubi:latest
+  - name: registry.redhat.io/openshift4/ztp-site-generate-rhel8:v4.20
+  - name: registry.redhat.io/rhel8/support-tools:latest
+  - name: registry.redhat.io/rhacm2/multicluster-operators-subscription-rhel9:2.14.0-1
+  helm: {}

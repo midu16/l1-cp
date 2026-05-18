@@ -896,12 +896,12 @@ create-agent-iso: ## Create agent ISO image - copies workingdir to ./hub/ and ru
 	fi; \
 	echo "$(GREEN)✓ Done. Agent ISO generation completed$(NC)"
 
-imageset-config.yml: ## Generate templated imageset-config.yml (requires OCP_VERSION, e.g. 4.22.0-rc.3 or 4.18.27)
+imageset-config.yml: ## Generate templated imageset-config.yml (requires OCP_VERSION, e.g. 4.20.6 or 4.18.27)
 	@echo "$(GREEN)Generating imageset-config.yml...$(NC)"
 	@if [ -z "$(OCP_VERSION)" ]; then \
 		echo "$(RED)✗ Error: OCP_VERSION variable is not set.$(NC)"; \
-		echo "$(YELLOW)Usage: make imageset-config.yml OCP_VERSION=4.22.0-rc.3$(NC)"; \
-		echo "$(YELLOW)Or export OCP_VERSION before running: export OCP_VERSION=4.22.0-rc.3 && make imageset-config.yml$(NC)"; \
+		echo "$(YELLOW)Usage: make imageset-config.yml OCP_VERSION=4.20.6$(NC)"; \
+		echo "$(YELLOW)Or export OCP_VERSION before running: export OCP_VERSION=4.20.6 && make imageset-config.yml$(NC)"; \
 		exit 1; \
 	fi; \
 	if [ ! -f ./imageset-config.sh ]; then \

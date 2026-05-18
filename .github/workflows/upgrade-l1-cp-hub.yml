@@ -11,9 +11,9 @@ on:
   workflow_dispatch:
     inputs:
       ocp_version:
-        description: "OpenShift version (e.g., 4.22.0-rc.3)"
+        description: "OpenShift version (e.g., 4.20.6)"
         required: true
-        default: "4.22.0-rc.3"
+        default: "4.20.6"
       registry_url:
         description: "AirGapped Registry URL"
         required: true
@@ -31,7 +31,7 @@ on:
         required: true
         default: "rds-hub-upgrade-argoapps.yaml"
       day2-catalogsource:
-        description: "Optional operator index image for imageset-config (overrides default registry.redhat.io/redhat/redhat-operator-index:v<major.minor>). Examples: registry.redhat.io/redhat/redhat-operator-index:v4.20 or quay.io/prega/prega-operator-index:v4.22.0-rc.3"
+        description: "Optional operator index image for imageset-config (overrides default registry.redhat.io/redhat/redhat-operator-index:v<major.minor>). Examples: registry.redhat.io/redhat/redhat-operator-index:v4.20 or quay.io/prega/prega-operator-index:v4.20.6"
         required: false
         type: string
         default: ""
@@ -79,7 +79,7 @@ jobs:
             export SOURCE_INDEX="${DAY2_CATALOGSOURCE}"
             echo "Using day2-catalogsource (SOURCE_INDEX): ${SOURCE_INDEX}"
           else
-            # Extract major.minor (e.g., 4.22.0-rc.3 -> 4.22, 4.18.27 -> 4.18)
+            # Extract major.minor (e.g., 4.20.6 -> 4.20, 4.18.27 -> 4.18)
             if [[ "${OCP_VERSION}" =~ ^([0-9]+\.[0-9]+) ]]; then
               OCP_MAJOR_MINOR="${BASH_REMATCH[1]}"
             else
@@ -135,7 +135,7 @@ jobs:
 
       - name: Apply the upgrade CGU
         run: |
-          git clone -b release-4.22 http://infra.5g-deployment.lab:3000/student/telco-reference.git
+          git clone -b release-4.20 http://infra.5g-deployment.lab:3000/student/telco-reference.git
           sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" apply -f ./telco-reference/telco-hub/upgrade/${ARGOCD_APP}
 
       - name: 🔄 Waiting for Hub Operators upgrade, Monitoring the progress of the upgrade and approving InstallPlans

@@ -14,7 +14,7 @@ on:
       ocp_version:
         description: "OpenShift version for oc-mirror binary (make download-oc-tools)"
         required: true
-        default: "4.22.0-rc.3"
+        default: "4.20.6"
       registry_url:
         description: "Mirror registry host:port (no docker:// prefix)"
         required: true
@@ -54,7 +54,7 @@ on:
       catalog_source_manifest:
         description: "CatalogSource YAML under <workspace_dir>/working-dir/cluster-resources/"
         required: false
-        default: "cs-redhat-operators-disconnected-2-v4-22.yaml"
+        default: "cs-redhat-operators-disconnected-2-v4-20.yaml"
       idms_manifest:
         description: "ImageDigestMirrorSet YAML under <workspace_dir>/working-dir/cluster-resources/"
         required: false
