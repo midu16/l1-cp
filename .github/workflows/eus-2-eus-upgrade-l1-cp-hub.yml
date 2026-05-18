@@ -11,13 +11,13 @@ on:
   workflow_dispatch:
     inputs:
       ocp_version_from:
-        description: "OpenShift version from (e.g., 4.19.23 — use the cluster’s current z-stream before the 4.20 hop)"
-        required: true
-        default: "4.19.23"
-      ocp_version_to:
-        description: "OpenShift version to (e.g., 4.20.6 — target after EUS hop)"
+        description: "OpenShift version from (e.g., 4.20.6 — use the cluster’s current z-stream before the 4.21 hop)"
         required: true
         default: "4.20.6"
+      ocp_version_to:
+        description: "OpenShift version to (e.g., 4.21.6 — target after EUS hop)"
+        required: true
+        default: "4.21.6"
       registry_url:
         description: "AirGapped Registry URL"
         required: true
@@ -35,7 +35,7 @@ on:
         required: true
         default: "eus-2-eus-upgrade-l1-cp-hub-argoapps.yaml"
       day2-catalogsource:
-        description: "Optional operator index image for imageset-config (overrides default registry.redhat.io/redhat/redhat-operator-index:v<major.minor>). Examples: registry.redhat.io/redhat/redhat-operator-index:v4.19 or quay.io/prega/prega-operator-index:v4.20.6"
+        description: "Optional operator index image for imageset-config (overrides default registry.redhat.io/redhat/redhat-operator-index:v<major.minor>). Examples: registry.redhat.io/redhat/redhat-operator-index:v4.20 or quay.io/prega/prega-operator-index:v4.21.6"
         required: false
         type: string
         default: ""
@@ -83,7 +83,7 @@ jobs:
             export SOURCE_INDEX="${DAY2_CATALOGSOURCE}"
             echo "Using day2-catalogsource (SOURCE_INDEX): ${SOURCE_INDEX}"
           else
-            # Extract major.minor (e.g., 4.19.23 -> 4.19, 4.20.6 -> 4.20)
+            # Extract major.minor (e.g., 4.20.6 -> 4.20, 4.21.6 -> 4.21)
             if [[ "${OCP_VERSION_FROM}" =~ ^([0-9]+\.[0-9]+) ]]; then
               OCP_MAJOR_MINOR="${BASH_REMATCH[1]}"
             else
@@ -131,7 +131,7 @@ jobs:
 
       - name: Apply the upgrade CGU
         run: |
-          git clone -b release-4.20 http://infra.5g-deployment.lab:3000/student/telco-reference.git
+          git clone -b release-4.21 http://infra.5g-deployment.lab:3000/student/telco-reference.git
           sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" apply -f ./telco-reference/telco-hub/upgrade/${ARGOCD_APP}
 
       - name: 🔄 Waiting for Hub Operators upgrade, Monitoring the progress of the upgrade and approving InstallPlans

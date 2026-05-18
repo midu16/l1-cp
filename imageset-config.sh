@@ -876,13 +876,13 @@ mirror:
     targetCatalog: openshift-marketplace/redhat-operators-disconnected
     packages:
     - name: advanced-cluster-management
-      defaultChannel: release-2.17
+      defaultChannel: release-2.16
       channels:
-      - name: release-2.17
+      - name: release-2.16
     - name: multicluster-engine
-      defaultChannel: stable-2.17
+      defaultChannel: stable-2.11
       channels:
-      - name: stable-2.17
+      - name: stable-2.11
     - name: openshift-gitops-operator
       defaultChannel: gitops-1.19
       channels:
@@ -900,61 +900,61 @@ mirror:
       channels:
       - name: stable-6.4
     - name: odf-operator
-      defaultChannel: stable-4.20
+      defaultChannel: stable-4.21
       channels:
-      - name: stable-4.20
+      - name: stable-4.21
     - name: odf-external-snapshotter-operator
-      defaultChannel: stable-4.20
+      defaultChannel: stable-4.21
       channels:
-      - name: stable-4.20
+      - name: stable-4.21
     - name: odf-dependencies
-      defaultChannel: stable-4.20
+      defaultChannel: stable-4.21
       channels:
-      - name: stable-4.20
+      - name: stable-4.21
     - name: odf-csi-addons-operator
-      defaultChannel: stable-4.20
+      defaultChannel: stable-4.21
       channels:
-      - name: stable-4.20
+      - name: stable-4.21
     - name: ocs-client-operator
-      defaultChannel: stable-4.20
+      defaultChannel: stable-4.21
       channels:
-      - name: stable-4.20
+      - name: stable-4.21
     - name: cephcsi-operator
-      defaultChannel: stable-4.20
+      defaultChannel: stable-4.21
       channels:
-      - name: stable-4.20
+      - name: stable-4.21
     - name: odf-prometheus-operator
-      defaultChannel: stable-4.20
+      defaultChannel: stable-4.21
       channels:
-      - name: stable-4.20
+      - name: stable-4.21
     - name: odf-multicluster-orchestrator
-      defaultChannel: stable-4.20
+      defaultChannel: stable-4.21
       channels:
-      - name: stable-4.20
+      - name: stable-4.21
     - name: ocs-operator
-      defaultChannel: stable-4.20
+      defaultChannel: stable-4.21
       channels:
-      - name: stable-4.20
+      - name: stable-4.21
     - name: rook-ceph-operator
-      defaultChannel: stable-4.20
+      defaultChannel: stable-4.21
       channels:
-      - name: stable-4.20
+      - name: stable-4.21
     - name: mcg-operator
-      defaultChannel: stable-4.20
+      defaultChannel: stable-4.21
       channels:
-      - name: stable-4.20
+      - name: stable-4.21
     - name: odr-hub-operator
-      defaultChannel: stable-4.20
+      defaultChannel: stable-4.21
       channels:
-      - name: stable-4.20
+      - name: stable-4.21
     - name: odr-cluster-operator
-      defaultChannel: stable-4.20
+      defaultChannel: stable-4.21
       channels:
-      - name: stable-4.20
+      - name: stable-4.21
     - name: recipe
-      defaultChannel: stable-4.20
+      defaultChannel: stable-4.21
       channels:
-      - name: stable-4.20
+      - name: stable-4.21
     - name: openshift-cert-manager-operator
       defaultChannel: stable-v1
       channels:
@@ -963,7 +963,7 @@ mirror:
   - name: registry.redhat.io/ubi8/ubi:latest
   - name: registry.redhat.io/openshift4/ztp-site-generate-rhel8:v4.21
   - name: registry.redhat.io/rhel8/support-tools:latest
-  - name: registry.redhat.io/rhacm2/multicluster-operators-subscription-rhel9:v2.15.0-1
+  - name: registry.redhat.io/rhacm2/multicluster-operators-subscription-rhel9:v2.16.0-1
   helm: {}
 EOF
 }
@@ -973,8 +973,14 @@ _generate_imageset_config_422() {
   local ocp_version="$1"
   local output_file="$2"
   local platform_channel="stable-4.22"
+  # ODF/related operator channel must match what exists in redhat-operator-index for this phase:
+  # RC/EC/FC payloads align with candidate-4.22; GA z-stream uses stable-4.22. Using stable ODF
+  # channels with a candidate platform (or vice versa) breaks oc-mirror with errors like
+  # "default channel ... stable-4.22 does not exist in the filtered output" for odf-dependencies.
+  local odf_channel="stable-4.22"
   if [[ "$ocp_version" =~ -(rc|ec|fc)\. ]]; then
     platform_channel="candidate-4.22"
+    odf_channel="candidate-4.22"
   fi
   cat > "$output_file" <<EOF
 ---
@@ -1021,65 +1027,65 @@ mirror:
       channels:
       - name: stable-6.6
     - name: odf-operator
-      defaultChannel: stable-4.22
+      defaultChannel: ${odf_channel}
       channels:
-      - name: stable-4.22
+      - name: ${odf_channel}
     - name: odf-external-snapshotter-operator
-      defaultChannel: stable-4.22
+      defaultChannel: ${odf_channel}
       channels:
-      - name: stable-4.22
+      - name: ${odf_channel}
     - name: odf-dependencies
-      defaultChannel: stable-4.22
+      defaultChannel: ${odf_channel}
       channels:
-      - name: stable-4.22
+      - name: ${odf_channel}
     - name: odf-csi-addons-operator
-      defaultChannel: stable-4.22
+      defaultChannel: ${odf_channel}
       channels:
-      - name: stable-4.22
+      - name: ${odf_channel}
     - name: ocs-client-operator
-      defaultChannel: stable-4.22
+      defaultChannel: ${odf_channel}
       channels:
-      - name: stable-4.22
+      - name: ${odf_channel}
     - name: cephcsi-operator
-      defaultChannel: stable-4.22
+      defaultChannel: ${odf_channel}
       channels:
-      - name: stable-4.22
+      - name: ${odf_channel}
     - name: odf-prometheus-operator
-      defaultChannel: stable-4.22
+      defaultChannel: ${odf_channel}
       channels:
-      - name: stable-4.22
+      - name: ${odf_channel}
     - name: odf-multicluster-orchestrator
-      defaultChannel: stable-4.22
+      defaultChannel: ${odf_channel}
       channels:
-      - name: stable-4.22
+      - name: ${odf_channel}
     - name: ocs-operator
-      defaultChannel: stable-4.22
+      defaultChannel: ${odf_channel}
       channels:
-      - name: stable-4.22
+      - name: ${odf_channel}
     - name: rook-ceph-operator
-      defaultChannel: stable-4.22
+      defaultChannel: ${odf_channel}
       channels:
-      - name: stable-4.22
+      - name: ${odf_channel}
     - name: mcg-operator
-      defaultChannel: stable-4.22
+      defaultChannel: ${odf_channel}
       channels:
-      - name: stable-4.22
+      - name: ${odf_channel}
     - name: odr-hub-operator
-      defaultChannel: stable-4.22
+      defaultChannel: ${odf_channel}
       channels:
-      - name: stable-4.22
+      - name: ${odf_channel}
     - name: odr-cluster-operator
-      defaultChannel: stable-4.22
+      defaultChannel: ${odf_channel}
       channels:
-      - name: stable-4.22
+      - name: ${odf_channel}
     - name: recipe
-      defaultChannel: stable-4.22
+      defaultChannel: ${odf_channel}
       channels:
-      - name: stable-4.22
+      - name: ${odf_channel}
     - name: ocs-tls-profiles
-      defaultChannel: stable-4.22
+      defaultChannel: ${odf_channel}
       channels:
-      - name: stable-4.22
+      - name: ${odf_channel}
     - name: openshift-cert-manager-operator
       defaultChannel: stable-v1
       channels:

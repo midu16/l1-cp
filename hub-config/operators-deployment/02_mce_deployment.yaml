@@ -28,7 +28,7 @@ metadata:
   name: multicluster-engine
   namespace: multicluster-engine
 spec:
-  channel: stable-2.10
+  channel: stable-2.11
   installPlanApproval: Manual
   name: multicluster-engine
   source: cs-redhat-operator-index

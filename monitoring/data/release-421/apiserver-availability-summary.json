@@ -1,0 +1,21 @@
+{
+  "monitoring_window": {
+    "start": "",
+    "end": ""
+  },
+  "total_samples": 0,
+  "api_server_availability": {
+    "full_3_of_3": 0,
+    "partial_2_of_3": 0,
+    "degraded_1_or_less": 0,
+    "total_outage_0_of_3": 0
+  },
+  "request_success_rate": {
+    "minimum": null,
+    "average": null
+  },
+  "request_latency_p99": {
+    "max_seconds": null,
+    "avg_seconds": null
+  }
+}
