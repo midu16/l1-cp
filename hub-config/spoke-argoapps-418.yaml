@@ -1,0 +1,57 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cluster-deployment-418
+  namespace: openshift-gitops
+spec:
+  destination:
+    name: ''
+    namespace: ''
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    path: site-configs
+    repoURL: 'http://infra.5g-deployment.lab:3000/student/ztp-repository.git'
+    targetRevision: common-418
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      backoff:
+        duration: 5s
+        factor: 1
+        maxDuration: 3m0s
+      limit: 1000
+    syncOptions:
+    - CreateNamespace=true
+    - PrunePropagationPolicy=background
+    - RespectIgnoreDifferences=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: policies-418
+  namespace: openshift-gitops
+spec:
+  destination:
+    namespace: policies-sub
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    path: site-policies
+    repoURL: 'http://infra.5g-deployment.lab:3000/student/ztp-repository.git'
+    targetRevision: common-418
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      backoff:
+        duration: 5s
+        factor: 1
+        maxDuration: 3m0s
+      limit: 1000
+    syncOptions:
+      - CreateNamespace=true
