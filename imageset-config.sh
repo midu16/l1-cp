@@ -613,6 +613,12 @@ mirror:
     - name: redhat-oadp-operator
       channels:
       - name: stable-1.4
+    - name: quay-operator
+      defaultChannel: stable-3.17
+      channels:
+      - name: stable-3.17
+        minVersion: v3.17.2
+        maxVersion: v3.17.2
     - name: cluster-logging
       defaultChannel: stable-6.2
       channels: 
