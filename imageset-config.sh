@@ -57,17 +57,72 @@ get_operator_head_version_fallback() {
 }
 
 # Resolve OCP platform channel for 4.22.z (override with PLATFORM_CHANNEL).
+REDHAT_GRAPH_API="${REDHAT_GRAPH_API:-https://api.openshift.com/api/upgrades_info/v1/graph}"
+
+fetch_redhat_graph() {
+  local channel="$1"
+  local cache_file="$TMPDIR/redhat-graph-${channel}.json"
+  if [[ -s "$cache_file" ]]; then
+    echo "$cache_file"
+    return 0
+  fi
+  if retry 3 5 curl -sf "${REDHAT_GRAPH_API}?channel=${channel}&arch=amd64" -o "${cache_file}.tmp"; then
+    mv "${cache_file}.tmp" "$cache_file"
+    echo "$cache_file"
+    return 0
+  fi
+  rm -f "${cache_file}.tmp"
+  return 1
+}
+
+ocp_release_in_redhat_graph() {
+  local channel="$1"
+  local version="$2"
+  local graph_file
+  graph_file="$(fetch_redhat_graph "$channel")" || return 2
+  python3 - "$graph_file" "$version" <<'PY'
+import json, sys
+with open(sys.argv[1]) as f:
+    graph = json.load(f)
+versions = {node.get("version") for node in graph.get("nodes", []) if node.get("version")}
+sys.exit(0 if sys.argv[2] in versions else 1)
+PY
+}
+
 resolve_platform_channel_422() {
   local ocp_version="$1"
   if [[ -n "${PLATFORM_CHANNEL:-}" ]]; then
     echo "${PLATFORM_CHANNEL}"
     return 0
   fi
-  if [[ "$ocp_version" =~ -(rc|ec|fc)\. ]]; then
+
+  if ocp_release_in_redhat_graph "stable-4.22" "$ocp_version"; then
+    echo "Using stable-4.22 for OCP ${ocp_version} (present in Red Hat update graph)" >&2
+    echo "stable-4.22"
+    return 0
+  fi
+
+  if ocp_release_in_redhat_graph "candidate-4.22" "$ocp_version"; then
+    echo "OCP ${ocp_version} is not on stable-4.22; using candidate-4.22 for mirroring" >&2
     echo "candidate-4.22"
     return 0
   fi
-  echo "stable-4.22"
+
+  # Graph unavailable — fall back to legacy heuristics.
+  if ! fetch_redhat_graph "stable-4.22" >/dev/null 2>&1; then
+    if [[ "$ocp_version" =~ -(rc|ec|fc)\. ]]; then
+      echo "Warning: Red Hat update graph unavailable; defaulting to candidate-4.22 for prerelease ${ocp_version}" >&2
+      echo "candidate-4.22"
+      return 0
+    fi
+    echo "Warning: Red Hat update graph unavailable; defaulting to stable-4.22 for ${ocp_version}" >&2
+    echo "stable-4.22"
+    return 0
+  fi
+
+  echo "Error: OCP version ${ocp_version} not found on stable-4.22 or candidate-4.22 in the Red Hat update graph" >&2
+  echo "Hint: stable-4.22 currently ships 4.22.0; z-streams like 4.22.1 are on candidate-4.22 until promoted." >&2
+  return 1
 }
 
 # Operators from registry.stage.redhat.io/redhat/redhat-operator-index:v4.20 that should NOT have version constraints
@@ -1086,7 +1141,7 @@ _generate_imageset_config_422() {
   local ocp_version="$1"
   local output_file="$2"
   local platform_channel
-  platform_channel="$(resolve_platform_channel_422 "$ocp_version")"
+  platform_channel="$(resolve_platform_channel_422 "$ocp_version")" || return 1
   local -a operators_422=(
     "advanced-cluster-management|release-2.17|true|true"
     "multicluster-engine|stable-2.17|true|true"

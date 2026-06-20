@@ -162,10 +162,6 @@ jobs:
             export SOURCE_INDEX="registry.redhat.io/redhat/redhat-operator-index:v4.22"
             echo "Using default SOURCE_INDEX: ${SOURCE_INDEX}"
           fi
-          if [[ "${OCP_VERSION}" =~ -(rc|ec|fc)\. ]] && [[ -z "${PLATFORM_CHANNEL}" ]]; then
-            export PLATFORM_CHANNEL="candidate-4.22"
-            echo "Prerelease OCP_VERSION detected; using PLATFORM_CHANNEL=${PLATFORM_CHANNEL}"
-          fi
           sudo -E env \
             DOCKER_CONFIG=/root/.docker \
             OC_MIRROR="${GITHUB_WORKSPACE}/bin/oc-mirror" \
@@ -173,6 +169,9 @@ jobs:
             make imageset-config.yml OCP_VERSION="${OCP_VERSION}" SOURCE_INDEX="${SOURCE_INDEX}"
           echo "Generated platform/operator pins:"
           grep -E 'name: (candidate|stable)-4\.22|minVersion|maxVersion' imageset-config.yml | head -40
+          PLATFORM_CH=$(awk '/platform:/{p=1} p && /- name:/{print $3; exit}' imageset-config.yml)
+          OCP_PIN=$(awk '/minVersion:/{print $2; exit}' imageset-config.yml | tr -d "'")
+          echo "Platform channel: ${PLATFORM_CH}, pinned OCP: ${OCP_PIN}"
 
       - name: 🔍 Validate AirGapped registry catalog
         run: |
