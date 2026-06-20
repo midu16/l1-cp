@@ -32,6 +32,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "2"
     argocd.argoproj.io/healthcheck: None
 spec:
+  channel: stable
   name: redhat-oadp-operator
   source: cs-redhat-operator-index
   sourceNamespace: openshift-marketplace

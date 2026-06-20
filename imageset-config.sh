@@ -80,6 +80,51 @@ retry() {
   done
 }
 
+# Resolve operator HEAD CSV from oc-mirror v1 catalog listing for a specific channel.
+get_operator_head_csv_v1() {
+  local pkg="$1"
+  local channel="$2"
+  local out head
+  out=$(retry 3 10 bash -c "
+    oc-mirror list operators --v1 --catalog \"${SOURCE_INDEX}\" --package=\"${pkg}\" 2>/dev/null
+  ")
+  head=$(echo "$out" | awk -v p="$pkg" -v c="$channel" '
+    /^PACKAGE/ { in_table=1; next }
+    in_table && $1==p && $2==c { print $NF; exit }
+  ')
+  echo "$head"
+}
+
+# Render one operator package stanza; pin minVersion/maxVersion to catalog HEAD unless skip_pin=true.
+render_imageset_operator_entry() {
+  local pkg="$1"
+  local channel="$2"
+  local skip_pin="${3:-false}"
+  local use_default_channel="${4:-false}"
+
+  echo "    - name: ${pkg}"
+  if [[ "$use_default_channel" == "true" ]]; then
+    echo "      defaultChannel: ${channel}"
+  fi
+  echo "      channels:"
+  echo "      - name: ${channel}"
+
+  if [[ "$skip_pin" == "true" ]]; then
+    return 0
+  fi
+
+  local head_csv version
+  echo "  Resolving HEAD for ${pkg} (channel ${channel})..." >&2
+  head_csv=$(get_operator_head_csv_v1 "$pkg" "$channel")
+  version=$(extract_version "$head_csv")
+  if [[ -n "$version" && "$version" != "1.0.0" ]]; then
+    echo "        minVersion: '${version}'"
+    echo "        maxVersion: '${version}'"
+  else
+    echo "  Warning: could not resolve HEAD for ${pkg}/${channel} (raw: ${head_csv})" >&2
+  fi
+}
+
 # Version parsing and comparison functions
 extract_version() {
   local version_string="$1"
@@ -964,15 +1009,46 @@ mirror:
 EOF
 }
 
-# Static template for OCP 4.22.z (prerelease builds use candidate-4.22; GA uses stable-4.22)
+# OCP 4.22.z imageset: channels from redhat-operator-index:v4.22; versions pinned to HEAD.
+# Operator entries: package|channel|skip_pin|use_default_channel
 _generate_imageset_config_422() {
   local ocp_version="$1"
   local output_file="$2"
   local platform_channel="stable-4.22"
+  local -a operators_422=(
+    "advanced-cluster-management|release-2.17|true|true"
+    "multicluster-engine|stable-2.17|true|true"
+    "openshift-gitops-operator|latest|false|true"
+    "redhat-oadp-operator|stable|false|false"
+    "topology-aware-lifecycle-manager|stable|false|false"
+    "local-storage-operator|stable|false|false"
+    "cluster-logging|stable-6.5|false|false"
+    "amq-streams|stable|false|false"
+    "quay-operator|stable-3.16|false|false"
+    "lifecycle-agent|stable|false|false"
+    "odf-operator|stable-4.21|false|true"
+    "odf-external-snapshotter-operator|stable-4.21|false|true"
+    "odf-dependencies|stable-4.21|false|true"
+    "odf-csi-addons-operator|stable-4.21|false|true"
+    "ocs-client-operator|stable-4.21|false|true"
+    "cephcsi-operator|stable-4.21|false|true"
+    "odf-prometheus-operator|stable-4.21|false|true"
+    "odf-multicluster-orchestrator|stable-4.21|false|true"
+    "ocs-operator|stable-4.21|false|true"
+    "rook-ceph-operator|stable-4.21|false|true"
+    "mcg-operator|stable-4.21|false|true"
+    "odr-hub-operator|stable-4.21|false|true"
+    "odr-cluster-operator|stable-4.21|false|true"
+    "recipe|stable-4.21|false|true"
+    "openshift-cert-manager-operator|stable-v1|false|true"
+  )
+
   if [[ "$ocp_version" =~ -(rc|ec|fc)\. ]]; then
     platform_channel="candidate-4.22"
   fi
-  cat > "$output_file" <<EOF
+
+  {
+    cat <<EOF
 ---
 kind: ImageSetConfiguration
 apiVersion: mirror.openshift.io/v2alpha1
@@ -981,110 +1057,25 @@ mirror:
     channels:
     - name: ${platform_channel}
       type: ocp
-      # Adjust minVersion and maxVersion according to your required releases. This allows you to
-      # minimize the mirrored content to only what is needed for your deployment. Note that only
-      # versions which are mirrored to the disconnected registry can be installed, so only versions
-      # listed here should be referenced in installation CRs (eg ClusterImageSet / imageSetRef).
-      # Prerelease payloads (e.g. 4.22.0-rc.n) are typically on candidate-4.22.
       minVersion: ${ocp_version}
       maxVersion: ${ocp_version}
   operators:
   - catalog: ${SOURCE_INDEX}
     targetCatalog: openshift-marketplace/redhat-operators-disconnected
     packages:
-    - name: advanced-cluster-management
-      defaultChannel: release-2.17
-      channels:
-      - name: release-2.17
-    - name: multicluster-engine
-      defaultChannel: stable-2.17
-      channels:
-      - name: stable-2.17
-    - name: openshift-gitops-operator
-      defaultChannel: gitops-1.20
-      channels:
-      - name: gitops-1.20
-    - name: redhat-oadp-operator
-      channels:
-      - name: stable
-    - name: topology-aware-lifecycle-manager
-      channels:
-      - name: stable
-    - name: local-storage-operator
-      channels:
-      - name: stable
-    - name: cluster-logging
-      channels:
-      - name: stable-6.6
-    - name: odf-operator
-      defaultChannel: stable-4.22
-      channels:
-      - name: stable-4.22
-    - name: odf-external-snapshotter-operator
-      defaultChannel: stable-4.22
-      channels:
-      - name: stable-4.22
-    - name: odf-dependencies
-      defaultChannel: stable-4.22
-      channels:
-      - name: stable-4.22
-    - name: odf-csi-addons-operator
-      defaultChannel: stable-4.22
-      channels:
-      - name: stable-4.22
-    - name: ocs-client-operator
-      defaultChannel: stable-4.22
-      channels:
-      - name: stable-4.22
-    - name: cephcsi-operator
-      defaultChannel: stable-4.22
-      channels:
-      - name: stable-4.22
-    - name: odf-prometheus-operator
-      defaultChannel: stable-4.22
-      channels:
-      - name: stable-4.22
-    - name: odf-multicluster-orchestrator
-      defaultChannel: stable-4.22
-      channels:
-      - name: stable-4.22
-    - name: ocs-operator
-      defaultChannel: stable-4.22
-      channels:
-      - name: stable-4.22
-    - name: rook-ceph-operator
-      defaultChannel: stable-4.22
-      channels:
-      - name: stable-4.22
-    - name: mcg-operator
-      defaultChannel: stable-4.22
-      channels:
-      - name: stable-4.22
-    - name: odr-hub-operator
-      defaultChannel: stable-4.22
-      channels:
-      - name: stable-4.22
-    - name: odr-cluster-operator
-      defaultChannel: stable-4.22
-      channels:
-      - name: stable-4.22
-    - name: recipe
-      defaultChannel: stable-4.22
-      channels:
-      - name: stable-4.22
-    - name: ocs-tls-profiles
-      defaultChannel: stable-4.22
-      channels:
-      - name: stable-4.22
-    - name: openshift-cert-manager-operator
-      defaultChannel: stable-v1
-      channels:
-      - name: stable-v1
+EOF
+    local entry pkg channel skip_pin use_default_channel
+    for entry in "${operators_422[@]}"; do
+      IFS='|' read -r pkg channel skip_pin use_default_channel <<< "$entry"
+      render_imageset_operator_entry "$pkg" "$channel" "$skip_pin" "$use_default_channel"
+    done
+    cat <<EOF
   additionalImages:
   - name: registry.redhat.io/ubi8/ubi:latest
   - name: registry.redhat.io/rhel8/support-tools:latest
   helm: {}
 EOF
+  } > "$output_file"
 }
 
 # Help function

@@ -38,6 +38,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 spec:
+  channel: stable-6.5
   name: cluster-logging
   source: cs-redhat-operator-index
   sourceNamespace: openshift-marketplace

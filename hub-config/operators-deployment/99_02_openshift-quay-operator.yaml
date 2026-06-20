@@ -30,6 +30,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "3"
     argocd.argoproj.io/healthcheck: None
 spec:
+  channel: stable-3.16
   name: quay-operator
   source: cs-redhat-operator-index
   sourceNamespace: openshift-marketplace
