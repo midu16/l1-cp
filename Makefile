@@ -909,7 +909,12 @@ imageset-config.yml: ## Generate templated imageset-config.yml (requires OCP_VER
 		exit 1; \
 	fi; \
 	chmod +x ./imageset-config.sh; \
-	OCP_VERSION="$(OCP_VERSION)" SOURCE_INDEX="$${SOURCE_INDEX:-registry.redhat.io/redhat/redhat-operator-index:v4.22}" IMAGESET_OUTPUT_FILE="imageset-config.yml" ./imageset-config.sh -g || { \
+	OCP_VERSION="$(OCP_VERSION)" \
+	SOURCE_INDEX="$${SOURCE_INDEX:-registry.redhat.io/redhat/redhat-operator-index:v4.22}" \
+	DOCKER_CONFIG="$${DOCKER_CONFIG:-}" \
+	OC_MIRROR="$${OC_MIRROR:-./bin/oc-mirror}" \
+	PLATFORM_CHANNEL="$${PLATFORM_CHANNEL:-}" \
+	IMAGESET_OUTPUT_FILE="imageset-config.yml" ./imageset-config.sh -g || { \
 		echo "$(RED)✗ Failed to generate imageset-config.yml$(NC)"; \
 		exit 1; \
 	}; \

@@ -3,11 +3,14 @@ kind: ImageSetConfiguration
 apiVersion: mirror.openshift.io/v2alpha1
 mirror:
   platform:
+    architectures:
+    - amd64
     channels:
     - name: candidate-4.22
       type: ocp
       minVersion: 4.22.0-rc.3
       maxVersion: 4.22.0-rc.3
+    graph: true
   operators:
   - catalog: registry.redhat.io/redhat/redhat-operator-index:v4.22
     targetCatalog: openshift-marketplace/redhat-operators-disconnected

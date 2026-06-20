@@ -12,6 +12,64 @@ OCP_VERSION="${OCP_VERSION:-}"
 TMPDIR="$(mktemp -d)"
 trap 'rm -rf "$TMPDIR"' EXIT
 
+# Prefer repo-local oc-mirror (from make download-oc-tools) when available.
+resolve_oc_mirror_bin() {
+  if [[ -n "${OC_MIRROR:-}" && -x "${OC_MIRROR}" ]]; then
+    echo "${OC_MIRROR}"
+  elif [[ -x "./bin/oc-mirror" ]]; then
+    echo "./bin/oc-mirror"
+  else
+    echo "oc-mirror"
+  fi
+}
+OC_MIRROR_BIN="$(resolve_oc_mirror_bin)"
+
+# Known HEAD versions from registry.redhat.io/redhat/redhat-operator-index:v4.22 (offline fallback).
+get_operator_head_version_fallback() {
+  local pkg="$1"
+  local channel="$2"
+  case "${pkg}@${channel}" in
+    openshift-gitops-operator@latest) echo "v1.20.4" ;;
+    redhat-oadp-operator@stable) echo "v1.6.0" ;;
+    topology-aware-lifecycle-manager@stable) echo "v4.22.0" ;;
+    local-storage-operator@stable) echo "v4.22.0-202606081658" ;;
+    cluster-logging@stable-6.5) echo "v6.5.1" ;;
+    amq-streams@stable) echo "v3.2.0-16" ;;
+    quay-operator@stable-3.16) echo "v3.16.4" ;;
+    lifecycle-agent@stable) echo "v4.22.0" ;;
+    odf-operator@stable-4.21) echo "v4.21.8-rhodf" ;;
+    odf-external-snapshotter-operator@stable-4.21) echo "v4.21.8-rhodf" ;;
+    odf-dependencies@stable-4.21) echo "v4.21.8-rhodf" ;;
+    odf-csi-addons-operator@stable-4.21) echo "v4.21.8-rhodf" ;;
+    ocs-client-operator@stable-4.21) echo "v4.21.8-rhodf" ;;
+    cephcsi-operator@stable-4.21) echo "v4.21.8-rhodf" ;;
+    odf-prometheus-operator@stable-4.21) echo "v4.21.8-rhodf" ;;
+    odf-multicluster-orchestrator@stable-4.21) echo "v4.21.8-rhodf" ;;
+    ocs-operator@stable-4.21) echo "v4.21.8-rhodf" ;;
+    rook-ceph-operator@stable-4.21) echo "v4.21.8-rhodf" ;;
+    mcg-operator@stable-4.21) echo "v4.21.8-rhodf" ;;
+    odr-hub-operator@stable-4.21) echo "v4.21.8-rhodf" ;;
+    odr-cluster-operator@stable-4.21) echo "v4.21.8-rhodf" ;;
+    recipe@stable-4.21) echo "v4.21.8-rhodf" ;;
+    openshift-cert-manager-operator@stable-v1) echo "v1.19.0" ;;
+    *) echo "" ;;
+  esac
+}
+
+# Resolve OCP platform channel for 4.22.z (override with PLATFORM_CHANNEL).
+resolve_platform_channel_422() {
+  local ocp_version="$1"
+  if [[ -n "${PLATFORM_CHANNEL:-}" ]]; then
+    echo "${PLATFORM_CHANNEL}"
+    return 0
+  fi
+  if [[ "$ocp_version" =~ -(rc|ec|fc)\. ]]; then
+    echo "candidate-4.22"
+    return 0
+  fi
+  echo "stable-4.22"
+}
+
 # Operators from registry.stage.redhat.io/redhat/redhat-operator-index:v4.20 that should NOT have version constraints
 REDHAT_REGISTRY_OPERATORS=(
   "mta-operator"
@@ -85,8 +143,12 @@ get_operator_head_csv_v1() {
   local pkg="$1"
   local channel="$2"
   local out head
+  local mirror_bin
+  mirror_bin="$(resolve_oc_mirror_bin)"
+  local docker_config="${DOCKER_CONFIG:-}"
   out=$(retry 3 10 bash -c "
-    oc-mirror list operators --v1 --catalog \"${SOURCE_INDEX}\" --package=\"${pkg}\" 2>/dev/null
+    ${docker_config:+DOCKER_CONFIG=\"${docker_config}\"} \
+    \"${mirror_bin}\" list operators --v1 --catalog \"${SOURCE_INDEX}\" --package=\"${pkg}\" 2>/dev/null
   ")
   head=$(echo "$out" | awk -v p="$pkg" -v c="$channel" '
     /^PACKAGE/ { in_table=1; next }
@@ -113,15 +175,24 @@ render_imageset_operator_entry() {
     return 0
   fi
 
-  local head_csv version
+  local head_csv="" version="" fallback_version=""
   echo "  Resolving HEAD for ${pkg} (channel ${channel})..." >&2
-  head_csv=$(get_operator_head_csv_v1 "$pkg" "$channel")
-  version=$(extract_version "$head_csv")
+  if [[ "${SKIP_HEAD_LOOKUP:-false}" != "true" ]]; then
+    head_csv=$(get_operator_head_csv_v1 "$pkg" "$channel")
+    version=$(extract_version "$head_csv")
+  fi
+  if [[ -z "$version" || "$version" == "1.0.0" ]]; then
+    fallback_version=$(get_operator_head_version_fallback "$pkg" "$channel")
+    if [[ -n "$fallback_version" ]]; then
+      version="$fallback_version"
+      echo "  Using baked-in HEAD fallback for ${pkg}/${channel}: ${version}" >&2
+    fi
+  fi
   if [[ -n "$version" && "$version" != "1.0.0" ]]; then
     echo "        minVersion: '${version}'"
     echo "        maxVersion: '${version}'"
   else
-    echo "  Warning: could not resolve HEAD for ${pkg}/${channel} (raw: ${head_csv})" >&2
+    echo "  Warning: could not resolve HEAD for ${pkg}/${channel} (raw: ${head_csv:-<skipped>})" >&2
   fi
 }
 
@@ -1014,7 +1085,8 @@ EOF
 _generate_imageset_config_422() {
   local ocp_version="$1"
   local output_file="$2"
-  local platform_channel="stable-4.22"
+  local platform_channel
+  platform_channel="$(resolve_platform_channel_422 "$ocp_version")"
   local -a operators_422=(
     "advanced-cluster-management|release-2.17|true|true"
     "multicluster-engine|stable-2.17|true|true"
@@ -1043,10 +1115,6 @@ _generate_imageset_config_422() {
     "openshift-cert-manager-operator|stable-v1|false|true"
   )
 
-  if [[ "$ocp_version" =~ -(rc|ec|fc)\. ]]; then
-    platform_channel="candidate-4.22"
-  fi
-
   {
     cat <<EOF
 ---
@@ -1054,11 +1122,14 @@ kind: ImageSetConfiguration
 apiVersion: mirror.openshift.io/v2alpha1
 mirror:
   platform:
+    architectures:
+    - amd64
     channels:
     - name: ${platform_channel}
       type: ocp
       minVersion: ${ocp_version}
       maxVersion: ${ocp_version}
+    graph: true
   operators:
   - catalog: ${SOURCE_INDEX}
     targetCatalog: openshift-marketplace/redhat-operators-disconnected
