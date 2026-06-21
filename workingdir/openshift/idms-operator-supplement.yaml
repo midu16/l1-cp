@@ -17,3 +17,12 @@ imageDigestMirrors:
   - source: registry.redhat.io/odf4/mcg-core-rhel9
     mirrors:
       - ${MIRROR_REGISTRY_PREFIX}/odf4/mcg-core-rhel9
+  - source: registry.redhat.io/odf4/odf-cloudnative-pg-rhel9-operator
+    mirrors:
+      - ${MIRROR_REGISTRY_PREFIX}/odf4/odf-cloudnative-pg-rhel9-operator
+  - source: registry.redhat.io/odf4/odf-external-snapshotter-rhel9-operator
+    mirrors:
+      - ${MIRROR_REGISTRY_PREFIX}/odf4/odf-external-snapshotter-rhel9-operator
+  - source: registry.redhat.io/odf4/odf-external-snapshotter-sidecar-rhel9
+    mirrors:
+      - ${MIRROR_REGISTRY_PREFIX}/odf4/odf-external-snapshotter-sidecar-rhel9

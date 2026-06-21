@@ -720,3 +720,12 @@ spec:
   - mirrors:
     - infra.5g-deployment.lab:8443/hub-demo/rhel9/postgresql-16
     source: registry.redhat.io/rhel9/postgresql-16
+  - mirrors:
+    - infra.5g-deployment.lab:8443/hub-demo/odf4/odf-cloudnative-pg-rhel9-operator
+    source: registry.redhat.io/odf4/odf-cloudnative-pg-rhel9-operator
+  - mirrors:
+    - infra.5g-deployment.lab:8443/hub-demo/odf4/odf-external-snapshotter-rhel9-operator
+    source: registry.redhat.io/odf4/odf-external-snapshotter-rhel9-operator
+  - mirrors:
+    - infra.5g-deployment.lab:8443/hub-demo/odf4/odf-external-snapshotter-sidecar-rhel9
+    source: registry.redhat.io/odf4/odf-external-snapshotter-sidecar-rhel9

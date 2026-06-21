@@ -888,7 +888,7 @@ sync-oc-mirror-manifests: ## Copy oc-mirror cluster-resources IDMS into workingd
 	./scripts/merge-idms-supplement.sh "$$REGISTRY/hub-demo" "$$IDMS_DST"; \
 	IDMS_DOCS=$$(grep -c '^kind: ImageDigestMirrorSet' "$$IDMS_DST" || true); \
 	echo "$(BLUE)  ImageDigestMirrorSet documents: $$IDMS_DOCS$(NC)"; \
-	for needle in rhceph-9-rhel9 argocd-rhel9 odf-blackbox-exporter-rhel9; do \
+	for needle in rhceph-9-rhel9 argocd-rhel9 odf-blackbox-exporter-rhel9 odf-cloudnative-pg-rhel9-operator odf-external-snapshotter-rhel9-operator odf-external-snapshotter-sidecar-rhel9; do \
 		if grep -q "$$needle" "$$IDMS_DST"; then \
 			echo "$(GREEN)✓ IDMS includes $$needle$(NC)"; \
 		else \

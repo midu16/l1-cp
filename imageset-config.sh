@@ -720,6 +720,9 @@ _render_additional_images_operator_deps() {
   - name: registry.redhat.io/odf4/odf-blackbox-exporter-rhel9@sha256:b96743b551f72038a8118236c3938cf40d90f33cb02d7a3df8b3f0096b1d0a9d
   - name: registry.redhat.io/rhel9/postgresql-16@sha256:9f17bf583be2d40cd62fc628abccbe9b292cad109632ed82deb89459101a0fea
   - name: registry.redhat.io/odf4/mcg-core-rhel9@sha256:b4f8bddde48803724fe76e5aef59958b201c9a512b0499c1c7def78555c3b40c
+  - name: registry.redhat.io/odf4/odf-cloudnative-pg-rhel9-operator@sha256:d3b47c5c46bf56164b198a1f1a7c9f1af04a502d45e98ef09776a63410d7ddd4
+  - name: registry.redhat.io/odf4/odf-external-snapshotter-rhel9-operator@sha256:a5b40b8bc5a33b566ca394cc093184b8ab2debbe9110b04f1ca5f340c4cd87ff
+  - name: registry.redhat.io/odf4/odf-external-snapshotter-sidecar-rhel9@sha256:0aa53aa3aa8ce7b47df52a39a565bbfc4d59b9658701fefd5b6af1b312fbc0a0
 EOF
 }
 
