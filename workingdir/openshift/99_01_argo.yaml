@@ -15,8 +15,8 @@ metadata:
   name: openshift-gitops-operator-zx75z
   namespace: openshift-gitops-operator
 spec:
-  targetNamespaces:
-  - openshift-gitops-operator
+  # openshift-gitops-operator v1.20+ supports AllNamespaces only (not OwnNamespace).
+  # Omit targetNamespaces so OLM selects AllNamespaces install mode.
   upgradeStrategy: Default
 ---
 apiVersion: operators.coreos.com/v1alpha1
