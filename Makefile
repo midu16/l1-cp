@@ -1,4 +1,4 @@
-.PHONY: help pdf clean install-deps check-deps pdf-readme pdf-management pdf-all all list-markdown fetch-certificate update-certificate registry-pull-secret update-pull-secret download-oc-tools generate-openshift-install render-hub-manifests create-agent-iso imageset-config.yml
+.PHONY: help pdf clean install-deps check-deps pdf-readme pdf-management pdf-all all list-markdown fetch-certificate update-certificate registry-pull-secret update-pull-secret download-oc-tools generate-openshift-install render-hub-manifests sync-oc-mirror-manifests create-agent-iso imageset-config.yml
 
 # Default target
 .DEFAULT_GOAL := help
@@ -867,6 +867,30 @@ render-hub-manifests: ## Template hub ABI manifests (CatalogSource tag/registry 
 	echo "$(GREEN)✓ CatalogSource image: $$CATALOG_IMAGE$(NC)"; \
 	grep '^  image:' "$$CATALOG_FILE"
 
+OC_MIRROR_WORKSPACE ?= hub-demo
+
+sync-oc-mirror-manifests: ## Copy oc-mirror cluster-resources IDMS into workingdir/openshift/ (requires successful mirror)
+	@CR="$(OC_MIRROR_WORKSPACE)/working-dir/cluster-resources"; \
+	IDMS_SRC="$$CR/idms-oc-mirror.yaml"; \
+	IDMS_DST="./workingdir/openshift/idms-oc-mirror.yaml"; \
+	if [ ! -d "./workingdir/openshift" ]; then \
+		mkdir -p ./workingdir/openshift; \
+	fi; \
+	if [ ! -f "$$IDMS_SRC" ]; then \
+		echo "$(RED)✗ Error: $$IDMS_SRC not found — run oc-mirror first (workspace: $(OC_MIRROR_WORKSPACE))$(NC)"; \
+		ls -la "$$CR" 2>/dev/null || ls -la "$(OC_MIRROR_WORKSPACE)/working-dir" 2>/dev/null || true; \
+		exit 1; \
+	fi; \
+	cp -a "$$IDMS_SRC" "$$IDMS_DST"; \
+	echo "$(GREEN)✓ Synced IDMS from oc-mirror: $$IDMS_SRC -> $$IDMS_DST$(NC)"; \
+	IDMS_DOCS=$$(grep -c '^kind: ImageDigestMirrorSet' "$$IDMS_DST" || true); \
+	echo "$(BLUE)  ImageDigestMirrorSet documents: $$IDMS_DOCS$(NC)"; \
+	if grep -q 'gitops-rhel9' "$$IDMS_DST"; then \
+		echo "$(GREEN)✓ IDMS includes openshift-gitops rhel9 mirror entries$(NC)"; \
+	else \
+		echo "$(YELLOW)⚠ IDMS has no gitops-rhel9 entries — verify mirror included openshift-gitops-operator$(NC)"; \
+	fi
+
 create-agent-iso: ## Create agent ISO image - copies workingdir to ./hub/ and runs openshift-install agent create image
 	@echo "$(GREEN)Creating agent ISO image...$(NC)"
 	@if [ ! -f ./bin/openshift-install ]; then \
@@ -879,6 +903,7 @@ create-agent-iso: ## Create agent ISO image - copies workingdir to ./hub/ and ru
 		echo "$(YELLOW)Ensure ./workingdir exists with required configuration files$(NC)"; \
 		exit 1; \
 	fi; \
+	$(MAKE) sync-oc-mirror-manifests OC_MIRROR_WORKSPACE="$(OC_MIRROR_WORKSPACE)"; \
 	$(MAKE) render-hub-manifests HUB_DIR=./workingdir OCP_VERSION="$(OCP_VERSION)" REGISTRY_URL="$(REGISTRY_URL)"; \
 	echo "$(BLUE)Creating ./hub/ directory...$(NC)"; \
 	rm -rf ./hub; \

@@ -15,6 +15,8 @@ metadata:
   name: openshift-gitops-operator-zx75z
   namespace: openshift-gitops-operator
 spec:
+  targetNamespaces:
+  - openshift-gitops-operator
   upgradeStrategy: Default
 ---
 apiVersion: operators.coreos.com/v1alpha1
@@ -23,8 +25,9 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "0"
   name: openshift-gitops-operator
-  namespace: openshift-gitops-operator 
+  namespace: openshift-gitops-operator
 spec:
+  channel: latest
   installPlanApproval: Automatic
   name: openshift-gitops-operator
   source: redhat-operators-disconnected

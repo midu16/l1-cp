@@ -215,6 +215,12 @@ jobs:
           curl -sk -u "${REGISTRY_USERNAME}:${REGISTRY_PASSWORD}" \
               "https://${REGISTRY_URL}/v2/_catalog" | jq . || echo "⚠️ Registry check failed"
 
+      - name: 📋 Sync oc-mirror IDMS into workingdir
+        run: |
+          make sync-oc-mirror-manifests OC_MIRROR_WORKSPACE=hub-demo
+          echo "IDMS preview (gitops entries):"
+          grep gitops workingdir/openshift/idms-oc-mirror.yaml | head -20
+
       - name: 🔧 Generate openshift-install binary
         run: sudo make generate-openshift-install \
           RELEASE_IMAGE="${REGISTRY_URL}/hub-demo/openshift/release-images:${OCP_VERSION}-x86_64"
@@ -224,7 +230,7 @@ jobs:
           sudo make create-agent-iso \
             OCP_VERSION="${OCP_VERSION}" \
             REGISTRY_URL="${REGISTRY_URL}"
-          sudo chown -R "$(whoami):$(whoami)" ./hub/
+          sudo chown -R "$(whoami):$(whoami)" ./hub/ ./workingdir/
           ls -la ./hub/agent*.iso
 
       - name: 📤 Copy agent ISO to webcache
