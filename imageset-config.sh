@@ -712,6 +712,17 @@ generate_imageset_config() {
   debug_log "Output file: $output_file"
 }
 
+# RelatedImages oc-mirror pulls with ODF 4.21 / GitOps 1.20+ but may omit from IDMS.
+_render_additional_images_operator_deps() {
+  cat <<'EOF'
+  - name: registry.redhat.io/rhceph/rhceph-9-rhel9@sha256:f4b62376735ee7698c087717ee69450050eab3cec9700995f75b1be57b1cde58
+  - name: registry.redhat.io/openshift-gitops-1/argocd-rhel9@sha256:62a2577609912b37a2a85729f442eb6ccf12a94a7a9e9602a3ef6934b1b8478e
+  - name: registry.redhat.io/odf4/odf-blackbox-exporter-rhel9@sha256:b96743b551f72038a8118236c3938cf40d90f33cb02d7a3df8b3f0096b1d0a9d
+  - name: registry.redhat.io/rhel9/postgresql-16@sha256:9f17bf583be2d40cd62fc628abccbe9b292cad109632ed82deb89459101a0fea
+  - name: registry.redhat.io/odf4/mcg-core-rhel9@sha256:b4f8bddde48803724fe76e5aef59958b201c9a512b0499c1c7def78555c3b40c
+EOF
+}
+
 # Static template for OCP 4.18.z
 _generate_imageset_config_418() {
   local ocp_version="$1"
@@ -1260,6 +1271,7 @@ mirror:
   - name: registry.redhat.io/openshift4/ztp-site-generate-rhel8:v4.22
   - name: registry.redhat.io/rhel8/support-tools:latest
   - name: registry.redhat.io/rhacm2/multicluster-operators-subscription-rhel9:v2.17.0-1
+$(_render_additional_images_operator_deps)
   helm: {}
 EOF
 }

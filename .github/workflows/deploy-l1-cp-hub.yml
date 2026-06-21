@@ -217,9 +217,9 @@ jobs:
 
       - name: 📋 Sync oc-mirror IDMS into workingdir
         run: |
-          make sync-oc-mirror-manifests OC_MIRROR_WORKSPACE=hub-demo
-          echo "IDMS preview (gitops entries):"
-          grep gitops workingdir/openshift/idms-oc-mirror.yaml | head -20
+          make sync-oc-mirror-manifests OC_MIRROR_WORKSPACE=hub-demo REGISTRY_URL="${REGISTRY_URL}"
+          echo "IDMS preview (ODF/GitOps supplement entries):"
+          grep -E 'rhceph-9-rhel9|argocd-rhel9|odf-blackbox-exporter-rhel9' workingdir/openshift/idms-oc-mirror.yaml | head -20
 
       - name: 🔧 Generate openshift-install binary
         run: sudo make generate-openshift-install \
@@ -286,6 +286,10 @@ jobs:
               sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" -n "$ns" patch installplan "$name" --type merge -p '{"spec":{"approved":true}}'
             done
           echo "✅ InstallPlan approval complete"
+
+      - name: 🔐 Grant Argo CD cluster-admin for operator PreSync hooks
+        run: |
+          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" apply -f "${REPO_PATH}/hub-config/operators-config/05_gitopsServiceClusterConfig.yaml"
 
       - name: 📋 Hub Argo Application
         run: |

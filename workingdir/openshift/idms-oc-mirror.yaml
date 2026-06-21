@@ -1,4 +1,3 @@
----
 apiVersion: config.openshift.io/v1
 kind: ImageDigestMirrorSet
 metadata:
@@ -94,6 +93,9 @@ spec:
   - mirrors:
     - infra.5g-deployment.lab:8443/hub-demo/odf4/odf-console-rhel9
     source: registry.redhat.io/odf4/odf-console-rhel9
+  - mirrors:
+    - infra.5g-deployment.lab:8443/hub-demo/odf4/odf-blackbox-exporter-rhel9
+    source: registry.redhat.io/odf4/odf-blackbox-exporter-rhel9
   - mirrors:
     - infra.5g-deployment.lab:8443/hub-demo/multicluster-engine/cluster-image-set-controller-rhel9
     source: registry.redhat.io/multicluster-engine/cluster-image-set-controller-rhel9
@@ -395,6 +397,9 @@ spec:
     - infra.5g-deployment.lab:8443/hub-demo/rhceph/rhceph-8-rhel9
     source: registry.redhat.io/rhceph/rhceph-8-rhel9
   - mirrors:
+    - infra.5g-deployment.lab:8443/hub-demo/rhceph/rhceph-9-rhel9
+    source: registry.redhat.io/rhceph/rhceph-9-rhel9
+  - mirrors:
     - infra.5g-deployment.lab:8443/hub-demo/rhacm2/observatorium-rhel9-operator
     source: registry.redhat.io/rhacm2/observatorium-rhel9-operator
   - mirrors:
@@ -569,6 +574,9 @@ spec:
     - infra.5g-deployment.lab:8443/hub-demo/openshift-gitops-1/argocd-rhel8
     source: registry.redhat.io/openshift-gitops-1/argocd-rhel8
   - mirrors:
+    - infra.5g-deployment.lab:8443/hub-demo/openshift-gitops-1/argocd-rhel9
+    source: registry.redhat.io/openshift-gitops-1/argocd-rhel9
+  - mirrors:
     - infra.5g-deployment.lab:8443/hub-demo/rhacm2/insights-metrics-rhel9
     source: registry.redhat.io/rhacm2/insights-metrics-rhel9
   - mirrors:
@@ -709,3 +717,6 @@ spec:
   - mirrors:
     - infra.5g-deployment.lab:8443/hub-demo/multicluster-engine/hypershift-rhel9-operator
     source: registry.redhat.io/multicluster-engine/hypershift-rhel9-operator
+  - mirrors:
+    - infra.5g-deployment.lab:8443/hub-demo/rhel9/postgresql-16
+    source: registry.redhat.io/rhel9/postgresql-16

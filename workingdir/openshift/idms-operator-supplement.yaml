@@ -1,0 +1,19 @@
+# Entries merged into idms-operator-0 after oc-mirror sync (see scripts/merge-idms-supplement.sh).
+# oc-mirror often mirrors these as operator relatedImages but omits IDMS mappings.
+# ${MIRROR_REGISTRY_PREFIX} is replaced at merge time (default: infra.5g-deployment.lab:8443/hub-demo).
+imageDigestMirrors:
+  - source: registry.redhat.io/rhceph/rhceph-9-rhel9
+    mirrors:
+      - ${MIRROR_REGISTRY_PREFIX}/rhceph/rhceph-9-rhel9
+  - source: registry.redhat.io/openshift-gitops-1/argocd-rhel9
+    mirrors:
+      - ${MIRROR_REGISTRY_PREFIX}/openshift-gitops-1/argocd-rhel9
+  - source: registry.redhat.io/odf4/odf-blackbox-exporter-rhel9
+    mirrors:
+      - ${MIRROR_REGISTRY_PREFIX}/odf4/odf-blackbox-exporter-rhel9
+  - source: registry.redhat.io/rhel9/postgresql-16
+    mirrors:
+      - ${MIRROR_REGISTRY_PREFIX}/rhel9/postgresql-16
+  - source: registry.redhat.io/odf4/mcg-core-rhel9
+    mirrors:
+      - ${MIRROR_REGISTRY_PREFIX}/odf4/mcg-core-rhel9

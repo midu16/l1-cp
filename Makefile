@@ -883,13 +883,19 @@ sync-oc-mirror-manifests: ## Copy oc-mirror cluster-resources IDMS into workingd
 	fi; \
 	cp -a "$$IDMS_SRC" "$$IDMS_DST"; \
 	echo "$(GREEN)✓ Synced IDMS from oc-mirror: $$IDMS_SRC -> $$IDMS_DST$(NC)"; \
+	REGISTRY="$${REGISTRY_URL:-infra.5g-deployment.lab:8443}"; \
+	chmod +x ./scripts/merge-idms-supplement.sh; \
+	./scripts/merge-idms-supplement.sh "$$REGISTRY/hub-demo" "$$IDMS_DST"; \
 	IDMS_DOCS=$$(grep -c '^kind: ImageDigestMirrorSet' "$$IDMS_DST" || true); \
 	echo "$(BLUE)  ImageDigestMirrorSet documents: $$IDMS_DOCS$(NC)"; \
-	if grep -q 'gitops-rhel9' "$$IDMS_DST"; then \
-		echo "$(GREEN)✓ IDMS includes openshift-gitops rhel9 mirror entries$(NC)"; \
-	else \
-		echo "$(YELLOW)⚠ IDMS has no gitops-rhel9 entries — verify mirror included openshift-gitops-operator$(NC)"; \
-	fi
+	for needle in rhceph-9-rhel9 argocd-rhel9 odf-blackbox-exporter-rhel9; do \
+		if grep -q "$$needle" "$$IDMS_DST"; then \
+			echo "$(GREEN)✓ IDMS includes $$needle$(NC)"; \
+		else \
+			echo "$(RED)✗ IDMS missing $$needle after supplement merge$(NC)"; \
+			exit 1; \
+		fi; \
+	done
 
 create-agent-iso: ## Create agent ISO image - copies workingdir to ./hub/ and runs openshift-install agent create image
 	@echo "$(GREEN)Creating agent ISO image...$(NC)"
