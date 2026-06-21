@@ -220,7 +220,11 @@ jobs:
           RELEASE_IMAGE="${REGISTRY_URL}/hub-demo/openshift/release-images:${OCP_VERSION}-x86_64"
 
       - name: 💿 Generate agent ISO
-        run: sudo make create-agent-iso
+        run: |
+          sudo make create-agent-iso \
+            OCP_VERSION="${OCP_VERSION}" \
+            REGISTRY_URL="${REGISTRY_URL}"
+          grep '^  image:' ./hub/openshift/catalogSource-cs-redhat-operator-index.yaml
 
       - name: 📤 Copy agent ISO to webcache
         run: |

@@ -5,5 +5,6 @@ metadata:
   name: redhat-operators-disconnected
   namespace: openshift-marketplace
 spec:
-  image: infra.5g-deployment.lab:8443/hub-demo/openshift-marketplace/redhat-operators-disconnected:v4.18
+  # Rendered by: make render-hub-manifests OCP_VERSION=<ver> REGISTRY_URL=<host:port>
+  image: infra.5g-deployment.lab:8443/hub-demo/openshift-marketplace/redhat-operators-disconnected:v4.22
   sourceType: grpc

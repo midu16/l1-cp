@@ -1,4 +1,4 @@
-.PHONY: help pdf clean install-deps check-deps pdf-readme pdf-management pdf-all all list-markdown fetch-certificate update-certificate registry-pull-secret update-pull-secret download-oc-tools generate-openshift-install create-agent-iso imageset-config.yml
+.PHONY: help pdf clean install-deps check-deps pdf-readme pdf-management pdf-all all list-markdown fetch-certificate update-certificate registry-pull-secret update-pull-secret download-oc-tools generate-openshift-install render-hub-manifests create-agent-iso imageset-config.yml
 
 # Default target
 .DEFAULT_GOAL := help
@@ -847,6 +847,26 @@ generate-openshift-install: ## Generate openshift-install from CatalogSource or 
 	fi; \
 	echo "$(GREEN)✓ Done. openshift-install extracted to $$(pwd)/bin$(NC)"
 
+render-hub-manifests: ## Template hub ABI manifests (CatalogSource tag/registry from OCP_VERSION + REGISTRY_URL)
+	@if [ -z "$(OCP_VERSION)" ]; then \
+		echo "$(RED)✗ Error: OCP_VERSION is required (e.g. 4.22.1)$(NC)"; \
+		exit 1; \
+	fi; \
+	HUB_DIR="$${HUB_DIR:-./workingdir}"; \
+	CATALOG_FILE="$$HUB_DIR/openshift/catalogSource-cs-redhat-operator-index.yaml"; \
+	if [ ! -f "$$CATALOG_FILE" ]; then \
+		echo "$(RED)✗ Error: $$CATALOG_FILE not found$(NC)"; \
+		exit 1; \
+	fi; \
+	OCP_MAJOR_MINOR=$$(echo "$(OCP_VERSION)" | cut -d. -f1,2); \
+	REGISTRY="$${REGISTRY_URL:-infra.5g-deployment.lab:8443}"; \
+	CATALOG_IMAGE="$$REGISTRY/hub-demo/openshift-marketplace/redhat-operators-disconnected:v$$OCP_MAJOR_MINOR"; \
+	echo "$(BLUE)Rendering CatalogSource in $$CATALOG_FILE$(NC)"; \
+	echo "$(BLUE)  OCP_VERSION=$(OCP_VERSION) -> v$$OCP_MAJOR_MINOR, REGISTRY_URL=$$REGISTRY$(NC)"; \
+	sed -i "s|^  image: .*redhat-operators-disconnected:v[0-9][0-9]*\.[0-9][0-9]*|  image: $$CATALOG_IMAGE|" "$$CATALOG_FILE"; \
+	echo "$(GREEN)✓ CatalogSource image: $$CATALOG_IMAGE$(NC)"; \
+	grep '^  image:' "$$CATALOG_FILE"
+
 create-agent-iso: ## Create agent ISO image - copies workingdir to ./hub/ and runs openshift-install agent create image
 	@echo "$(GREEN)Creating agent ISO image...$(NC)"
 	@if [ ! -f ./bin/openshift-install ]; then \
@@ -859,6 +879,7 @@ create-agent-iso: ## Create agent ISO image - copies workingdir to ./hub/ and ru
 		echo "$(YELLOW)Ensure ./workingdir exists with required configuration files$(NC)"; \
 		exit 1; \
 	fi; \
+	$(MAKE) render-hub-manifests HUB_DIR=./workingdir OCP_VERSION="$(OCP_VERSION)" REGISTRY_URL="$(REGISTRY_URL)"; \
 	echo "$(BLUE)Creating ./hub/ directory...$(NC)"; \
 	rm -rf ./hub; \
 	mkdir -p ./hub; \
@@ -871,17 +892,7 @@ create-agent-iso: ## Create agent ISO image - copies workingdir to ./hub/ and ru
 		cp -r ./workingdir/.[!.]* ./hub/ 2>/dev/null || true; \
 	fi; \
 	echo "$(GREEN)✓ Copied content to ./hub/$(NC)"; \
-	if [ -n "$(OCP_VERSION)" ] && [ -f ./hub/openshift/catalogSource-cs-redhat-operator-index.yaml ]; then \
-		OCP_MAJOR_MINOR=$$(echo "$(OCP_VERSION)" | cut -d. -f1,2); \
-		echo "$(BLUE)Updating catalogSource image tag to v$$OCP_MAJOR_MINOR (from OCP_VERSION=$(OCP_VERSION))...$(NC)"; \
-		sed -i "s|redhat-operators-disconnected:v[0-9]*\.[0-9]*|redhat-operators-disconnected:v$$OCP_MAJOR_MINOR|g" \
-			./hub/openshift/catalogSource-cs-redhat-operator-index.yaml; \
-		echo "$(GREEN)✓ Updated catalogSource to use redhat-operators-disconnected:v$$OCP_MAJOR_MINOR$(NC)"; \
-	else \
-		if [ -f ./hub/openshift/catalogSource-cs-redhat-operator-index.yaml ]; then \
-			echo "$(YELLOW)⚠ OCP_VERSION not set — catalogSource image tag left unchanged (set OCP_VERSION for correct tag)$(NC)"; \
-		fi; \
-	fi; \
+	grep '^  image:' ./hub/openshift/catalogSource-cs-redhat-operator-index.yaml || true; \
 	echo "$(BLUE)Running openshift-install agent create image...$(NC)"; \
 	./bin/openshift-install agent create image --dir ./hub/. --log-level debug || { \
 		echo "$(RED)✗ Failed to create agent ISO image$(NC)"; \
