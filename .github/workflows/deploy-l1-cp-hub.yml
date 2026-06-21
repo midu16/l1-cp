@@ -224,7 +224,8 @@ jobs:
           sudo make create-agent-iso \
             OCP_VERSION="${OCP_VERSION}" \
             REGISTRY_URL="${REGISTRY_URL}"
-          grep '^  image:' ./hub/openshift/catalogSource-cs-redhat-operator-index.yaml
+          sudo chown -R "$(whoami):$(whoami)" ./hub/
+          ls -la ./hub/agent*.iso
 
       - name: 📤 Copy agent ISO to webcache
         run: |

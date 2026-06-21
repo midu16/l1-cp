@@ -885,25 +885,33 @@ create-agent-iso: ## Create agent ISO image - copies workingdir to ./hub/ and ru
 	mkdir -p ./hub; \
 	echo "$(GREEN)✓ Created ./hub/ directory$(NC)"; \
 	echo "$(BLUE)Copying content from ./workingdir/ to ./hub/...$(NC)"; \
-	cp -r ./workingdir/* ./hub/ 2>/dev/null || { \
-		echo "$(YELLOW)Warning: Some files may not have been copied$(NC)"; \
+	cp -a ./workingdir/. ./hub/ || { \
+		echo "$(RED)✗ Failed to copy ./workingdir/ to ./hub/$(NC)"; \
+		exit 1; \
 	}; \
-	if [ -d ./workingdir/. ]; then \
-		cp -r ./workingdir/.[!.]* ./hub/ 2>/dev/null || true; \
-	fi; \
 	echo "$(GREEN)✓ Copied content to ./hub/$(NC)"; \
-	grep '^  image:' ./hub/openshift/catalogSource-cs-redhat-operator-index.yaml || true; \
+	if [ ! -f ./hub/openshift/catalogSource-cs-redhat-operator-index.yaml ]; then \
+		echo "$(RED)✗ Error: CatalogSource manifest missing under ./hub/openshift/$(NC)"; \
+		exit 1; \
+	fi; \
+	echo "$(BLUE)CatalogSource image (before openshift-install consumes manifests):$(NC)"; \
+	grep '^  image:' ./hub/openshift/catalogSource-cs-redhat-operator-index.yaml; \
 	echo "$(BLUE)Running openshift-install agent create image...$(NC)"; \
 	./bin/openshift-install agent create image --dir ./hub/. --log-level debug || { \
 		echo "$(RED)✗ Failed to create agent ISO image$(NC)"; \
 		echo "$(YELLOW)Check the logs above for details$(NC)"; \
 		exit 1; \
 	}; \
-	if [ -f ./hub/agent.iso ]; then \
-		echo "$(GREEN)✓ Agent ISO created successfully: ./hub/agent.iso$(NC)"; \
+	AGENT_ISO=""; \
+	for candidate in ./hub/agent.x86_64.iso ./hub/agent.iso ./hub/agent.aarch64.iso; do \
+		if [ -f "$$candidate" ]; then AGENT_ISO="$$candidate"; break; fi; \
+	done; \
+	if [ -n "$$AGENT_ISO" ]; then \
+		echo "$(GREEN)✓ Agent ISO created successfully: $$AGENT_ISO$(NC)"; \
 	else \
-		echo "$(YELLOW)Warning: agent.iso not found in ./hub/ directory$(NC)"; \
-		echo "$(YELLOW)Check the output above for any errors$(NC)"; \
+		echo "$(RED)✗ Error: no agent ISO found under ./hub/ (expected agent.x86_64.iso)$(NC)"; \
+		ls -la ./hub/*.iso 2>/dev/null || ls -la ./hub/ || true; \
+		exit 1; \
 	fi; \
 	echo "$(GREEN)✓ Done. Agent ISO generation completed$(NC)"
 
