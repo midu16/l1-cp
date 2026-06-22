@@ -24,3 +24,20 @@ spec:
         factor: 1
         maxDuration: 3m0s
       limit: 1000
+  ignoreDifferences:
+  - group: operator.open-cluster-management.io
+    kind: MultiClusterHub
+    jqPathExpressions:
+    - .spec.overrides
+    - .spec.ingress
+    - .spec.enableClusterBackup
+    - .spec.localClusterName
+    - .spec.separateCertificateManagement
+    - .metadata.annotations
+  - group: multicluster.openshift.io
+    kind: MultiClusterEngine
+    jqPathExpressions:
+    - .spec.overrides
+    - .spec.tolerations
+    - .metadata.annotations
+    - .metadata.labels
