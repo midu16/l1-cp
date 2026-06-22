@@ -316,6 +316,17 @@ jobs:
             done
           echo "✅ InstallPlan approval complete"
 
+      - name: 🏷️ Label compact control-plane nodes for OpenShift Storage (ODF)
+        run: |
+          # Compact hub: ctlplane nodes also carry the worker role, so the scale-up
+          # worker-only label step never matches. ODF/LSO need this label before ArgoCD sync.
+          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" label nodes \
+            -l 'node-role.kubernetes.io/control-plane' \
+            cluster.ocs.openshift.io/openshift-storage="" \
+            node.ocs.openshift.io/storage=true --overwrite
+          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" get nodes \
+            -L cluster.ocs.openshift.io/openshift-storage,node.ocs.openshift.io/storage
+
       - name: 🔐 Grant Argo CD cluster-admin for operator PreSync hooks
         run: |
           sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" apply -f "${REPO_PATH}/hub-config/operators-config/05_gitopsServiceClusterConfig.yaml"
@@ -389,7 +400,10 @@ jobs:
 
       - name: Label dedicated worker nodes for OpenShift Storage (ODF)
         run: |
-          # Workers with worker role but not control-plane (excludes compact ctlplane nodes)
+          # Label scale-out workers when present; compact ctlplane nodes were labeled in build-hub.
           sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" label nodes \
             -l 'node-role.kubernetes.io/worker,!node-role.kubernetes.io/control-plane' \
-            cluster.ocs.openshift.io/openshift-storage= --overwrite
+            cluster.ocs.openshift.io/openshift-storage="" \
+            node.ocs.openshift.io/storage=true --overwrite
+          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" get nodes \
+            -L cluster.ocs.openshift.io/openshift-storage,node.ocs.openshift.io/storage

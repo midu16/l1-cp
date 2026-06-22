@@ -25,4 +25,5 @@ resources:
 ##  - 99_03_openshiftClusterLoggingv604.yaml
   - ./s3_bucket/01_ibu-odf-s3-storage.yaml
   - ./s3_bucket/01_backup-odf-s3-storage.yaml
+  - ./s3_bucket/02_acm_backup_schedule.yaml
   - ./s3_bucket/04_thanos_objectbucketclaim.yaml

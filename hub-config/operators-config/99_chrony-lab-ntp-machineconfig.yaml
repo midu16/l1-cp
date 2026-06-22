@@ -1,0 +1,36 @@
+---
+apiVersion: machineconfiguration.openshift.io/v1
+kind: MachineConfig
+metadata:
+  labels:
+    machineconfiguration.openshift.io/role: master
+  name: 99-master-chrony-lab-ntp
+spec:
+  config:
+    ignition:
+      version: 3.2.0
+    storage:
+      files:
+      - contents:
+          source: data:text/plain;charset=utf-8,%23%20Lab%20NTP%20via%20gateway%20and%20secondary%20hypervisor%0Aserver%20172.16.30.1%20iburst%20prefer%0Aserver%20172.16.30.2%20iburst%0Amakestep%201.0%203%0Artcsync%0Adriftfile%20%2Fvar%2Flib%2Fchrony%2Fdrift%0Alogdir%20%2Fvar%2Flog%2Fchrony%0A
+        mode: 420
+        overwrite: true
+        path: /etc/chrony.conf
+---
+apiVersion: machineconfiguration.openshift.io/v1
+kind: MachineConfig
+metadata:
+  labels:
+    machineconfiguration.openshift.io/role: worker
+  name: 99-worker-chrony-lab-ntp
+spec:
+  config:
+    ignition:
+      version: 3.2.0
+    storage:
+      files:
+      - contents:
+          source: data:text/plain;charset=utf-8,%23%20Lab%20NTP%20via%20gateway%20and%20secondary%20hypervisor%0Aserver%20172.16.30.1%20iburst%20prefer%0Aserver%20172.16.30.2%20iburst%0Amakestep%201.0%203%0Artcsync%0Adriftfile%20%2Fvar%2Flib%2Fchrony%2Fdrift%0Alogdir%20%2Fvar%2Flog%2Fchrony%0A
+        mode: 420
+        overwrite: true
+        path: /etc/chrony.conf
