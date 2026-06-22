@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-04-01T00:00:00.000Z" agent="Converted from Mermaid" version="24.0.0">
+  <diagram name="Worker Node Removal Workflow" id="workflow">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="1700">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        
+        <!-- Start Node -->
+        <mxCell id="A" value="Start: Remove hub-worker-0" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2196F3;fontColor=#FFFFFF;strokeColor=#0D47A1;" vertex="1" parent="1">
+          <mxGeometry x="440" y="40" width="220" height="60" as="geometry"/>
+        </mxCell>
+        
+        <!-- Step 1 -->
+        <mxCell id="B" value="Step 1: Verify cluster health" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="440" y="140" width="220" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="A-B" edge="1" parent="1" source="A" target="B">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- Decision: Cluster Health -->
+        <mxCell id="C" value="All nodes Ready?&lt;br&gt;MCPs Updated?&lt;br&gt;etcd healthy?" style="rhombus;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="420" y="240" width="260" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="B-C" edge="1" parent="1" source="B" target="C">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- STOP Node -->
+        <mxCell id="STOP" value="STOP — Fix cluster first" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F44336;fontColor=#FFFFFF;strokeColor=#C62828;" vertex="1" parent="1">
+          <mxGeometry x="140" y="270" width="200" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="C-STOP" value="No" edge="1" parent="1" source="C" target="STOP">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- Step 2 -->
+        <mxCell id="D" value="Step 2: Pause NHC for workers" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="440" y="400" width="220" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="C-D" value="Yes" edge="1" parent="1" source="C" target="D">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- Step 3 -->
+        <mxCell id="E" value="Step 3: Cordon the node" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="440" y="500" width="220" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="D-E" edge="1" parent="1" source="D" target="E">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- Step 4 -->
+        <mxCell id="F" value="Step 4: Drain the node" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="440" y="600" width="220" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="E-F" edge="1" parent="1" source="E" target="F">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- Decision: Drain Successful -->
+        <mxCell id="G" value="Drain successful?" style="rhombus;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="460" y="700" width="180" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="F-G" edge="1" parent="1" source="F" target="G">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- PDB Blocker Handler -->
+        <mxCell id="H" value="Investigate PDB blockers&lt;br&gt;Resolve or force drain" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FF9800;fontColor=#FFFFFF;strokeColor=#E65100;" vertex="1" parent="1">
+          <mxGeometry x="740" y="720" width="200" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="G-H" value="No / PDB blocked" edge="1" parent="1" source="G" target="H">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="H-F" edge="1" parent="1" source="H" target="F">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="840" y="630"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Step 5 -->
+        <mxCell id="I" value="Step 5: Verify workloads&lt;br&gt;migrated to hub-worker-1" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="440" y="840" width="220" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="G-I" value="Yes" edge="1" parent="1" source="G" target="I">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- Step 6 -->
+        <mxCell id="J" value="Step 6: Remove ODF storage&lt;br&gt;labels if applicable" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="440" y="940" width="220" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="I-J" edge="1" parent="1" source="I" target="J">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- Step 6b - CRITICAL -->
+        <mxCell id="J2" value="Step 6b: CRITICAL — Stop kubelet&lt;br&gt;on host or power off machine" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FF5722;fontColor=#FFFFFF;strokeColor=#D84315;" vertex="1" parent="1">
+          <mxGeometry x="420" y="1040" width="260" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="J-J2" edge="1" parent="1" source="J" target="J2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- Step 7 -->
+        <mxCell id="K" value="Step 7: Delete the node object" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="440" y="1140" width="220" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="J2-K" edge="1" parent="1" source="J2" target="K">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- Step 8 -->
+        <mxCell id="L" value="Step 8: Clean up stale&lt;br&gt;SNR CRs" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="440" y="1240" width="220" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="K-L" edge="1" parent="1" source="K" target="L">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- Step 9 -->
+        <mxCell id="M" value="Step 9: Clean up BMH&lt;br&gt;if applicable" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="440" y="1340" width="220" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="L-M" edge="1" parent="1" source="L" target="M">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- Step 10 -->
+        <mxCell id="N" value="Step 10: Verify MCP&lt;br&gt;converges with 1 worker&lt;br&gt;and node stays removed" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="420" y="1440" width="260" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="M-N" edge="1" parent="1" source="M" target="N">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- Step 11 -->
+        <mxCell id="O" value="Step 11: Update NHC&lt;br&gt;minHealthy for new pool size" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="440" y="1550" width="220" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="N-O" edge="1" parent="1" source="N" target="O">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- Step 12 -->
+        <mxCell id="P" value="Step 12: Unpause NHC" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="440" y="1650" width="220" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="O-P" edge="1" parent="1" source="O" target="P">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- Step 13 -->
+        <mxCell id="Q" value="Step 13: Final validation" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="440" y="1750" width="220" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="P-Q" edge="1" parent="1" source="P" target="Q">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- Done Node -->
+        <mxCell id="R" value="Done: hub-worker-0&lt;br&gt;permanently removed" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4CAF50;fontColor=#FFFFFF;strokeColor=#2E7D32;" vertex="1" parent="1">
+          <mxGeometry x="440" y="1850" width="220" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="Q-R" edge="1" parent="1" source="Q" target="R">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

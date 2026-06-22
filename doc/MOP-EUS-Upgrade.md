@@ -18,16 +18,57 @@ The purpose of this document is to provide a validated procedure for upgrading a
   - [EUS Upgrade Path](#eus-upgrade-path)
   - [Method of Procedure](#method-of-procedure)
     - [Phase 0: Pre-Upgrade Validation](#phase-0-pre-upgrade-validation)
+      - [0.1 Verify Cluster Health](#01-verify-cluster-health)
+      - [0.2 Verify ACM and Managed Clusters](#02-verify-acm-and-managed-clusters)
+      - [0.3 Verify Storage Health](#03-verify-storage-health)
+      - [0.4 Verify GitOps Health](#04-verify-gitops-health)
+      - [0.5 Create Backup](#05-create-backup)
     - [Phase 1: Prepare the Target EUS Configuration in Git](#phase-1-prepare-the-target-eus-configuration-in-git)
+      - [1.1 Create Target EUS Branch](#11-create-target-eus-branch)
+      - [1.2 Update Operator Channels](#12-update-operator-channels)
+      - [1.3 Update Operator Index Reference](#13-update-operator-index-reference)
+      - [1.4 Commit and Push Target Configuration](#14-commit-and-push-target-configuration)
     - [Phase 2: Mirror Required Content](#phase-2-mirror-required-content)
+      - [2.1 Mirror OpenShift Release Images](#21-mirror-openshift-release-images)
+      - [2.2 Mirror Operator Catalog](#22-mirror-operator-catalog)
+      - [2.3 Verify Mirrored Content](#23-verify-mirrored-content)
     - [Phase 3: Pause Spoke Cluster Operations](#phase-3-pause-spoke-cluster-operations)
+      - [3.1 Pause ClusterGroupUpgrades (if using TALM)](#31-pause-clustergroupupgrades-if-using-talm)
+      - [3.2 Pause ArgoCD Spoke Applications](#32-pause-argocd-spoke-applications)
+      - [3.3 Verify Spoke Clusters Stable](#33-verify-spoke-clusters-stable)
     - [Phase 4: Upgrade ACM and Operators](#phase-4-upgrade-acm-and-operators)
+      - [4.1 Upgrade Operator Catalog](#41-upgrade-operator-catalog)
+      - [4.2 Upgrade ACM](#42-upgrade-acm)
+      - [4.3 Upgrade Other Operators (Sequenced)](#43-upgrade-other-operators-sequenced)
+      - [4.4 Verify All Operators Healthy](#44-verify-all-operators-healthy)
     - [Phase 5: Upgrade OpenShift Platform (EUS-to-EUS)](#phase-5-upgrade-openshift-platform-eus-to-eus)
+      - [5.1 Pause Worker MachineConfigPools](#51-pause-worker-machineconfigpools)
+      - [5.2 Acknowledge Admin Gates (if required)](#52-acknowledge-admin-gates-if-required)
+      - [5.3 Upgrade to Intermediate Release](#53-upgrade-to-intermediate-release)
+      - [5.4 Upgrade to Target EUS Release](#54-upgrade-to-target-eus-release)
+      - [5.5 Unpause MachineConfigPools](#55-unpause-machineconfigpools)
     - [Phase 6: Update ArgoCD to Target EUS Configuration](#phase-6-update-argocd-to-target-eus-configuration)
+      - [6.1 Update ArgoCD Application to Target EUS Branch](#61-update-argocd-application-to-target-eus-branch)
+      - [6.2 Sync ArgoCD Application](#62-sync-argocd-application)
+      - [6.3 Verify GitOps Sync](#63-verify-gitops-sync)
     - [Phase 7: Post-Upgrade Validation](#phase-7-post-upgrade-validation)
+      - [7.1 Verify Cluster Version](#71-verify-cluster-version)
+      - [7.2 Verify All Cluster Operators](#72-verify-all-cluster-operators)
+      - [7.3 Verify All Operators](#73-verify-all-operators)
+      - [7.4 Verify ACM and Managed Clusters](#74-verify-acm-and-managed-clusters)
+      - [7.5 Verify Storage](#75-verify-storage)
+      - [7.6 Verify GitOps](#76-verify-gitops)
     - [Phase 8: Resume Spoke Cluster Operations](#phase-8-resume-spoke-cluster-operations)
+      - [8.1 Re-enable ArgoCD Auto-Sync for Spoke Applications](#81-re-enable-argocd-auto-sync-for-spoke-applications)
+      - [8.2 Re-enable ClusterGroupUpgrades (if using TALM)](#82-re-enable-clustergroupupgrades-if-using-talm)
+      - [8.3 Verify Spoke Clusters](#83-verify-spoke-clusters)
   - [Rollback Procedure](#rollback-procedure)
+    - [Configuration Rollback via GitOps](#configuration-rollback-via-gitops)
+    - [Full Rollback via Backup Restore](#full-rollback-via-backup-restore)
   - [Troubleshooting](#troubleshooting)
+    - [Upgrade Stuck at Intermediate Version](#upgrade-stuck-at-intermediate-version)
+    - [ACM Upgrade Fails](#acm-upgrade-fails)
+    - [ArgoCD Application Out of Sync](#argocd-application-out-of-sync)
   - [Appendix](#appendix)
     - [A. Component Upgrade Order](#a-component-upgrade-order)
     - [B. EUS Release Matrix](#b-eus-release-matrix)
@@ -706,18 +747,51 @@ argocd app diff hub-operators
 
 ### A. Component Upgrade Order
 
-The recommended upgrade sequence for Hub components:
+The upgrade sequence is implemented by the **ClusterGroupUpgrade (CGU)** and its `managedPolicies` list. The authoritative policy order is defined in the telco-reference repository:
+
+**Reference:** `telco-reference/telco-hub/upgrade/cgu-hub-upgrade.yaml`
+
+TALM applies the policies in the order they appear under `spec.managedPolicies`. The diagram below reflects the policy-level implementation order of the CGU (each node is one managed policy step):
 
 ```mermaid
 graph TD
-    A[1. Mirror Content] --> B[2. Upgrade Operator Catalog]
-    B --> C[3. Upgrade ACM]
-    C --> D[4. Upgrade ODF]
-    D --> E[5. Upgrade GitOps]
-    E --> F[6. Upgrade Other Operators]
-    F --> G[7. Upgrade OpenShift Platform]
-    G --> H[8. Update GitOps to Target EUS Config]
+    subgraph CGU["ClusterGroupUpgrade – managedPolicies order"]
+        P0[0. Cluster Backup]
+        P1[1. Operator catalog policy]
+        P2[2. ACM / MCE upgrade policies]
+        P3[3. ODF upgrade policy]
+        P4[4. GitOps operator upgrade policy]
+        P5[5. Other operators policies]
+        P6[6. OpenShift platform upgrade policy]
+        P7[7. GitOps-to-target-EUS policy]
+    end
+
+    P0 --> P1
+    P1 --> P2
+    P2 --> P3
+    P3 --> P4
+    P4 --> P5
+    P5 --> P6
+    P6 --> P7
+
+    style P0 fill:#f9f,stroke:#333
+    style P1 fill:#bbf,stroke:#333
+    style P2 fill:#bfb,stroke:#333
+    style P7 fill:#fbb,stroke:#333
 ```
+
+| Step | Purpose |
+|------|---------|
+| **0** | Cluster Backup |
+| **1** | Update Cluster Release ImageDigestMirrorSet |
+| **2** | Upgrade ACM and MCE operators (before platform). |
+| **3** | Upgrade ODF. |
+| **4** | Upgrade OpenShift GitOps operator. |
+| **5** | Upgrade remaining operators (LSO, logging, etc.). |
+| **6** | Upgrade OpenShift platform (ClusterVersion) EUS-to-EUS. |
+| **7** | Update ArgoCD application to target EUS branch (final GitOps config). |
+
+For the exact policy names and order, inspect `spec.managedPolicies` in `cgu-hub-upgrade.yaml`.
 
 ### B. EUS Release Matrix
 

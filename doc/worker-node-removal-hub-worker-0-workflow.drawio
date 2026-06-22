@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-04-01T00:00:00.000Z" agent="Mermaid Converter" version="1.0">
+  <diagram name="Workflow" id="workflow">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <!-- Mermaid Source (for reference) -->
+        <mxCell id="mermaid-source" value="flowchart TD
+    A[Start: Remove hub-worker-0] --&gt; B[Step 1: Verify cluster health]
+    B --&gt; C{All nodes Ready?&lt;br/&gt;MCPs Updated?&lt;br/&gt;etcd healthy?}
+    C -- No --&gt; STOP[STOP — Fix cluster first]
+    C -- Yes --&gt; D[Step 2: Pause NHC for workers]
+    D --&gt; E[Step 3: Cordon the node]
+    E --&gt; F[Step 4: Drain the node]
+    F --&gt; G{Drain successful?}
+    G -- No / PDB blocked --&gt; H[Investigate PDB blockers&lt;br/&gt;Resolve or force drain]
+    H --&gt; F
+    G -- Yes --&gt; I[Step 5: Verify workloads&lt;br/&gt;migrated to hub-worker-1]
+    I --&gt; J[Step 6: Remove ODF storage&lt;br/&gt;labels if applicable]
+    J --&gt; J2[Step 6b: CRITICAL — Stop kubelet&lt;br/&gt;on host or power off machine]
+    J2 --&gt; K[Step 7: Delete the node object]
+    K --&gt; L[Step 8: Clean up stale&lt;br/&gt;SNR CRs]
+    L --&gt; M[Step 9: Clean up BMH&lt;br/&gt;if applicable]
+    M --&gt; N[Step 10: Verify MCP&lt;br/&gt;converges with 1 worker&lt;br/&gt;and node stays removed]
+    N --&gt; O[Step 11: Update NHC&lt;br/&gt;minHealthy for new pool size]
+    O --&gt; P[Step 12: Unpause NHC]
+    P --&gt; Q[Step 13: Final validation]
+    Q --&gt; R[Done: hub-worker-0&lt;br/&gt;permanently removed]
+
+    style A fill:#2196F3,color:#fff
+    style R fill:#4CAF50,color:#fff
+    style STOP fill:#F44336,color:#fff
+    style H fill:#FF9800,color:#fff
+    style J2 fill:#FF5722,color:#fff" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="10" y="10" width="830" height="40" as="geometry"/>
+        </mxCell>
+        <!-- Note: Manual recreation required -->
+        <mxCell id="note" value="This diagram was generated from Mermaid code. Please recreate the flowchart using Draw.io tools.&#xa;&#xa;The original Mermaid source is included in this file for reference." 
+          style="text;html=1;strokeColor=#666666;fillColor=#f5f5f5;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="175" y="100" width="500" height="80" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
