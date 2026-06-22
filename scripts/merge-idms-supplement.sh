@@ -4,7 +4,7 @@ set -euo pipefail
 
 MIRROR_PREFIX="${1:-infra.5g-deployment.lab:8443/hub-demo}"
 IDMS_FILE="${2:-./workingdir/openshift/idms-oc-mirror.yaml}"
-SUPPLEMENT_FILE="${3:-./workingdir/openshift/idms-operator-supplement.yaml}"
+SUPPLEMENT_FILE="${3:-./workingdir/idms-operator-supplement.yaml}"
 
 if [[ ! -f "$IDMS_FILE" ]]; then
   echo "Error: IDMS file not found: $IDMS_FILE" >&2

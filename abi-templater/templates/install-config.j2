@@ -42,8 +42,8 @@ platform:
     {% endfor %}
 pullSecret: '{{ pull_secret }}'
 sshKey: '{{ ssh_key }}'
-imageContentSources:
-{% for source in image_content_sources %}
+imageDigestSources:
+{% for source in image_digest_sources %}
   - mirrors:
     {% for mirror in source.mirrors %}
     - {{ mirror }}

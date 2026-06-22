@@ -27,14 +27,16 @@ platform:
     ingress_vips: ['10.17.113.98'] 
 pull_secret: '{"auths":{"10.16.33.251:30050":{"auth":"<redacted>"}}}'
 ssh_key: 'ssh-rsa AAAA<redacted> user@work'
-image_content_sources:
+image_digest_sources:
   - mirrors:
     - quay-2.l1pz-espoo.example.com/unbox/openshift/release
     source: quay.io/openshift-release-dev/ocp-v4.0-art-dev
   - mirrors:
     - quay-2.l1pz-espoo.example.com/unbox/openshift/release-images
     source: quay.io/openshift-release-dev/ocp-release
-    
+  - mirrors:
+    - quay-2.l1pz-espoo.example.com/unbox/openshift/release-images
+    source: quay-2.l1pz-espoo.example.com/unbox/openshift/release-images
 additional_trust_bundle: |
   -----BEGIN CERTIFICATE-----
   <redacted>

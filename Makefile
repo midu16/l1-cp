@@ -865,7 +865,13 @@ render-hub-manifests: ## Template hub ABI manifests (CatalogSource tag/registry 
 	echo "$(BLUE)  OCP_VERSION=$(OCP_VERSION) -> v$$OCP_MAJOR_MINOR, REGISTRY_URL=$$REGISTRY$(NC)"; \
 	sed -i "s|^  image: .*redhat-operators-disconnected:v[0-9][0-9]*\.[0-9][0-9]*|  image: $$CATALOG_IMAGE|" "$$CATALOG_FILE"; \
 	echo "$(GREEN)✓ CatalogSource image: $$CATALOG_IMAGE$(NC)"; \
-	grep '^  image:' "$$CATALOG_FILE"
+	grep '^  image:' "$$CATALOG_FILE"; \
+	INSTALL_CONFIG="$$HUB_DIR/install-config.yaml"; \
+	if [ -f "$$INSTALL_CONFIG" ]; then \
+		echo "$(BLUE)Rendering imageDigestSources registry in $$INSTALL_CONFIG$(NC)"; \
+		sed -i "s|infra.5g-deployment.lab:8443|$$REGISTRY|g" "$$INSTALL_CONFIG"; \
+		grep -A2 'imageDigestSources:' "$$INSTALL_CONFIG" | head -6; \
+	fi
 
 OC_MIRROR_WORKSPACE ?= hub-demo
 
@@ -921,12 +927,24 @@ create-agent-iso: ## Create agent ISO image - copies workingdir to ./hub/ and ru
 		exit 1; \
 	}; \
 	echo "$(GREEN)✓ Copied content to ./hub/$(NC)"; \
+	rm -f ./hub/openshift/idms-operator-supplement.yaml; \
 	if [ ! -f ./hub/openshift/catalogSource-cs-redhat-operator-index.yaml ]; then \
 		echo "$(RED)✗ Error: CatalogSource manifest missing under ./hub/openshift/$(NC)"; \
 		exit 1; \
 	fi; \
 	echo "$(BLUE)CatalogSource image (before openshift-install consumes manifests):$(NC)"; \
 	grep '^  image:' ./hub/openshift/catalogSource-cs-redhat-operator-index.yaml; \
+	REGISTRY="$${REGISTRY_URL:-infra.5g-deployment.lab:8443}"; \
+	if [ -n "$(OCP_VERSION)" ] && [ -x ./bin/oc ]; then \
+		RELEASE_IMAGE="$$REGISTRY/hub-demo/openshift/release-images:$(OCP_VERSION)-x86_64"; \
+		RELEASE_DIGEST=$$(./bin/oc adm release info "$$RELEASE_IMAGE" --registry-config=.docker/config.json --insecure=true -o jsonpath='{.digest}' 2>/dev/null || true); \
+		if [ -n "$$RELEASE_DIGEST" ]; then \
+			export OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE="$$REGISTRY/hub-demo/openshift/release-images@$${RELEASE_DIGEST}"; \
+			echo "$(GREEN)✓ OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE=$$OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE$(NC)"; \
+		else \
+			echo "$(YELLOW)⚠ Could not resolve release digest for $$RELEASE_IMAGE; agent install may fail in disconnected env$(NC)"; \
+		fi; \
+	fi; \
 	echo "$(BLUE)Running openshift-install agent create image...$(NC)"; \
 	./bin/openshift-install agent create image --dir ./hub/. --log-level debug || { \
 		echo "$(RED)✗ Failed to create agent ISO image$(NC)"; \

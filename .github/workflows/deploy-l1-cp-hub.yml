@@ -233,6 +233,19 @@ jobs:
           sudo chown -R "$(whoami):$(whoami)" ./hub/ ./workingdir/
           ls -la ./hub/agent*.iso
 
+      - name: 🔎 Verify agent install mirror config
+        run: |
+          INSTALL_CONFIG="./workingdir/install-config.yaml"
+          if [ ! -f "$INSTALL_CONFIG" ] && [ -f ./hub/install-config.yaml.bak ]; then
+            INSTALL_CONFIG="./hub/install-config.yaml.bak"
+          fi
+          grep -A12 'imageDigestSources:' "$INSTALL_CONFIG" | head -15
+          if grep -q 'imageContentSources:' "$INSTALL_CONFIG"; then
+            echo "❌ install-config still uses deprecated imageContentSources"
+            exit 1
+          fi
+          echo "✅ install-config uses imageDigestSources"
+
       - name: 📤 Copy agent ISO to webcache
         run: |
           SRC=$(ls hub/agent*.iso | head -n1 || true)
@@ -257,7 +270,14 @@ jobs:
           done
 
       - name: ⏱️ Wait for installation to complete
-        run: sudo ./bin/openshift-install --dir ./hub/ agent wait-for install-complete --log-level=info
+        run: |
+          RELEASE_IMAGE="${REGISTRY_URL}/hub-demo/openshift/release-images:${OCP_VERSION}-x86_64"
+          RELEASE_DIGEST=$(sudo ./bin/oc adm release info "${RELEASE_IMAGE}" \
+            --registry-config=/root/.docker/config.json --insecure=true \
+            -o jsonpath='{.digest}')
+          export OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE="${REGISTRY_URL}/hub-demo/openshift/release-images@${RELEASE_DIGEST}"
+          echo "OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE=${OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE}"
+          sudo -E ./bin/openshift-install --dir ./hub/ agent wait-for install-complete --log-level=info
 
       - name: ⏱️ Wait for Cluster Operators
         run: sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" wait --for=condition=Available clusteroperators --all --timeout=1800s
