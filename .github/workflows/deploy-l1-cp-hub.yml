@@ -239,9 +239,18 @@ jobs:
           if [ ! -f "$INSTALL_CONFIG" ] && [ -f ./hub/install-config.yaml.bak ]; then
             INSTALL_CONFIG="./hub/install-config.yaml.bak"
           fi
-          grep -A12 'imageDigestSources:' "$INSTALL_CONFIG" | head -15
+          if [ ! -f "$INSTALL_CONFIG" ]; then
+            echo "❌ install-config not found at workingdir or hub backup"
+            exit 1
+          fi
+          echo "Checking ${INSTALL_CONFIG}"
+          grep -A12 'imageDigestSources:' "$INSTALL_CONFIG" | head -15 || true
           if grep -q 'imageContentSources:' "$INSTALL_CONFIG"; then
             echo "❌ install-config still uses deprecated imageContentSources"
+            exit 1
+          fi
+          if ! grep -q 'imageDigestSources:' "$INSTALL_CONFIG"; then
+            echo "❌ install-config missing imageDigestSources"
             exit 1
           fi
           echo "✅ install-config uses imageDigestSources"

@@ -29,13 +29,17 @@ platform:
     - 172.16.30.11
 pullSecret: '{"auths":{"infra.5g-deployment.lab:8443":{"auth":"<redacted>"}}}'
 sshKey: 'ssh-ed25519 <redacted>'
-imageContentSources:
+imageDigestSources:
   - mirrors:
     - infra.5g-deployment.lab:8443/hub-demo/openshift/release
     source: quay.io/openshift-release-dev/ocp-v4.0-art-dev
   - mirrors:
     - infra.5g-deployment.lab:8443/hub-demo/openshift/release-images
     source: quay.io/openshift-release-dev/ocp-release
+  # Required for OCP 4.22+ agent install: source must match the mirrored release image repo.
+  - mirrors:
+    - infra.5g-deployment.lab:8443/hub-demo/openshift/release-images
+    source: infra.5g-deployment.lab:8443/hub-demo/openshift/release-images
 additionalTrustBundle: |
   -----BEGIN CERTIFICATE-----
   <redacted>
