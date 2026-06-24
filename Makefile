@@ -1,4 +1,4 @@
-.PHONY: help pdf clean install-deps check-deps pdf-readme pdf-management pdf-all all list-markdown fetch-certificate update-certificate registry-pull-secret update-pull-secret download-oc-tools generate-openshift-install render-hub-manifests sync-oc-mirror-manifests create-agent-iso imageset-config.yml
+.PHONY: help pdf clean install-deps check-deps pdf-readme pdf-management pdf-all all list-markdown fetch-certificate update-certificate registry-pull-secret update-pull-secret download-oc-tools generate-openshift-install render-hub-manifests sync-oc-mirror-manifests validate-idms-template render-idms-oc-mirror validate-idms-rendered create-agent-iso imageset-config.yml
 
 # Default target
 .DEFAULT_GOAL := help
@@ -814,9 +814,13 @@ generate-openshift-install: ## Generate openshift-install from CatalogSource or 
 		echo "$(YELLOW)Warning: ./workingdir/openshift/idms-oc-mirror.yaml not found, creating empty file$(NC)"; \
 		touch ./workingdir/openshift/idms-oc-mirror.yaml; \
 	fi; \
+	IDMS_RENDERED=$$(mktemp); \
+	cp ./workingdir/openshift/idms-oc-mirror.yaml "$$IDMS_RENDERED"; \
+	chmod +x ./scripts/render-idms-oc-mirror.sh; \
+	./scripts/render-idms-oc-mirror.sh "$$REGISTRY_HOST_PORT/$$REPO_BASE" "$$IDMS_RENDERED"; \
 	echo "$(BLUE)Extracting openshift-install from release image: $$RELEASE_IMAGE_URL$(NC)"; \
 	./bin/oc adm release extract --registry-config=.docker/config.json \
-		--idms-file=./workingdir/openshift/idms-oc-mirror.yaml \
+		--idms-file="$$IDMS_RENDERED" \
 		--command=openshift-install \
 		--to=./bin \
 		"$$RELEASE_IMAGE_URL" || { \
@@ -839,6 +843,7 @@ generate-openshift-install: ## Generate openshift-install from CatalogSource or 
 		fi; \
 		exit 1; \
 	}; \
+	rm -f "$$IDMS_RENDERED"; \
 	if [ -f ./bin/openshift-install ]; then \
 		chmod +x ./bin/openshift-install; \
 		echo "$(GREEN)✓ Generated and made executable: ./bin/openshift-install$(NC)"; \
@@ -875,6 +880,8 @@ render-hub-manifests: ## Template hub ABI manifests (CatalogSource tag/registry 
 
 OC_MIRROR_WORKSPACE ?= hub-demo
 
+IDMS_NEEDLES := rhceph-9-rhel9 argocd-rhel9 dex-rhel9 console-plugin-rhel9 gitops-rhel9 gitops-rhel9-operator cluster-permission-rhel9 oadp-cli-binaries-rhel9 oadp-vmdp-binaries-rhel9 odf-blackbox-exporter-rhel9 odf-cloudnative-pg-rhel9-operator odf-external-snapshotter-rhel9-operator odf-external-snapshotter-sidecar-rhel9 ztp-site-generate-rhel8 support-tools
+
 sync-oc-mirror-manifests: ## Copy oc-mirror cluster-resources IDMS into workingdir/openshift/ (requires successful mirror)
 	@CR="$(OC_MIRROR_WORKSPACE)/working-dir/cluster-resources"; \
 	IDMS_SRC="$$CR/idms-oc-mirror.yaml"; \
@@ -887,14 +894,16 @@ sync-oc-mirror-manifests: ## Copy oc-mirror cluster-resources IDMS into workingd
 		ls -la "$$CR" 2>/dev/null || ls -la "$(OC_MIRROR_WORKSPACE)/working-dir" 2>/dev/null || true; \
 		exit 1; \
 	fi; \
-	cp -a "$$IDMS_SRC" "$$IDMS_DST"; \
+	chmod +x ./scripts/sync-idms-from-oc-mirror.sh; \
+	./scripts/sync-idms-from-oc-mirror.sh "$$IDMS_SRC" "$$IDMS_DST"; \
 	echo "$(GREEN)✓ Synced IDMS from oc-mirror: $$IDMS_SRC -> $$IDMS_DST$(NC)"; \
-	REGISTRY="$${REGISTRY_URL:-infra.5g-deployment.lab:8443}"; \
-	chmod +x ./scripts/merge-idms-supplement.sh; \
-	./scripts/merge-idms-supplement.sh "$$REGISTRY/hub-demo" "$$IDMS_DST"; \
 	IDMS_DOCS=$$(grep -c '^kind: ImageDigestMirrorSet' "$$IDMS_DST" || true); \
 	echo "$(BLUE)  ImageDigestMirrorSet documents: $$IDMS_DOCS$(NC)"; \
-	for needle in rhceph-9-rhel9 argocd-rhel9 odf-blackbox-exporter-rhel9 odf-cloudnative-pg-rhel9-operator odf-external-snapshotter-rhel9-operator odf-external-snapshotter-sidecar-rhel9; do \
+	if ! grep -Fq '$${MIRROR_REGISTRY_PREFIX}' "$$IDMS_DST"; then \
+		echo "$(RED)✗ IDMS missing \$${MIRROR_REGISTRY_PREFIX} placeholders after sync$(NC)"; \
+		exit 1; \
+	fi; \
+	for needle in $(IDMS_NEEDLES); do \
 		if grep -q "$$needle" "$$IDMS_DST"; then \
 			echo "$(GREEN)✓ IDMS includes $$needle$(NC)"; \
 		else \
@@ -902,6 +911,75 @@ sync-oc-mirror-manifests: ## Copy oc-mirror cluster-resources IDMS into workingd
 			exit 1; \
 		fi; \
 	done
+
+validate-idms-template: ## Verify workingdir/openshift/idms-oc-mirror.yaml template before hub copy
+	@IDMS="$${IDMS:-./workingdir/openshift/idms-oc-mirror.yaml}"; \
+	if [ ! -s "$$IDMS" ]; then \
+		echo "$(RED)✗ Error: $$IDMS missing or empty — run make sync-oc-mirror-manifests$(NC)"; \
+		exit 1; \
+	fi; \
+	if ! grep -Fq '$${MIRROR_REGISTRY_PREFIX}' "$$IDMS"; then \
+		echo "$(RED)✗ Error: $$IDMS must contain \$${MIRROR_REGISTRY_PREFIX} placeholders (template was rendered in-place?)$(NC)"; \
+		echo "$(YELLOW)Restore from git or re-run: make sync-oc-mirror-manifests$(NC)"; \
+		exit 1; \
+	fi; \
+	if ! grep -q 'name: idms-release-0' "$$IDMS" || ! grep -q 'name: idms-operator-0' "$$IDMS"; then \
+		echo "$(RED)✗ Error: $$IDMS must define idms-release-0 and idms-operator-0 ImageDigestMirrorSet documents$(NC)"; \
+		exit 1; \
+	fi; \
+	IDMS_DOCS=$$(grep -c '^kind: ImageDigestMirrorSet' "$$IDMS" || true); \
+	if [ "$$IDMS_DOCS" -lt 2 ]; then \
+		echo "$(RED)✗ Error: $$IDMS has $$IDMS_DOCS ImageDigestMirrorSet document(s); expected at least 2$(NC)"; \
+		exit 1; \
+	fi; \
+	for needle in $(IDMS_NEEDLES); do \
+		if grep -q "$$needle" "$$IDMS"; then \
+			echo "$(GREEN)✓ IDMS template includes $$needle$(NC)"; \
+		else \
+			echo "$(RED)✗ IDMS template missing $$needle$(NC)"; \
+			exit 1; \
+		fi; \
+	done; \
+	echo "$(GREEN)✓ IDMS template valid: $$IDMS$(NC)"
+
+render-idms-oc-mirror: ## Render \$${MIRROR_REGISTRY_PREFIX} in idms-oc-mirror.yaml (HUB_DIR, REGISTRY_URL)
+	@IDMS="$${HUB_DIR:-./workingdir}/openshift/idms-oc-mirror.yaml"; \
+	REGISTRY="$${REGISTRY_URL:-infra.5g-deployment.lab:8443}"; \
+	if [ ! -f "$$IDMS" ]; then \
+		echo "$(RED)✗ Error: $$IDMS not found$(NC)"; \
+		exit 1; \
+	fi; \
+	chmod +x ./scripts/render-idms-oc-mirror.sh; \
+	./scripts/render-idms-oc-mirror.sh "$$REGISTRY/hub-demo" "$$IDMS"
+
+validate-idms-rendered: ## Verify rendered idms-oc-mirror.yaml has no placeholders (HUB_DIR)
+	@IDMS="$${HUB_DIR:-./hub}/openshift/idms-oc-mirror.yaml"; \
+	if [ ! -s "$$IDMS" ]; then \
+		echo "$(RED)✗ Error: rendered $$IDMS missing or empty$(NC)"; \
+		exit 1; \
+	fi; \
+	if grep -Fq '$${MIRROR_REGISTRY_PREFIX}' "$$IDMS"; then \
+		echo "$(RED)✗ Error: $$IDMS still contains unreplaced \$${MIRROR_REGISTRY_PREFIX} placeholders$(NC)"; \
+		echo "$(YELLOW)Run: make render-idms-oc-mirror HUB_DIR=$${HUB_DIR:-./hub} REGISTRY_URL=$${REGISTRY_URL:-...}$(NC)"; \
+		exit 1; \
+	fi; \
+	REGISTRY="$${REGISTRY_URL:-infra.5g-deployment.lab:8443}"; \
+	if ! grep -q "$$REGISTRY/hub-demo" "$$IDMS"; then \
+		echo "$(RED)✗ Error: $$IDMS does not reference mirror prefix $$REGISTRY/hub-demo$(NC)"; \
+		exit 1; \
+	fi; \
+	IDMS_DOCS=$$(grep -c '^kind: ImageDigestMirrorSet' "$$IDMS" || true); \
+	if [ "$$IDMS_DOCS" -lt 2 ]; then \
+		echo "$(RED)✗ Error: rendered $$IDMS has $$IDMS_DOCS ImageDigestMirrorSet document(s); expected at least 2$(NC)"; \
+		exit 1; \
+	fi; \
+	for needle in $(IDMS_NEEDLES); do \
+		if ! grep -q "$$needle" "$$IDMS"; then \
+			echo "$(RED)✗ Error: rendered $$IDMS missing $$needle$(NC)"; \
+			exit 1; \
+		fi; \
+	done; \
+	echo "$(GREEN)✓ Rendered IDMS valid for install: $$IDMS$(NC)"
 
 create-agent-iso: ## Create agent ISO image - copies workingdir to ./hub/ and runs openshift-install agent create image
 	@echo "$(GREEN)Creating agent ISO image...$(NC)"
@@ -917,6 +995,7 @@ create-agent-iso: ## Create agent ISO image - copies workingdir to ./hub/ and ru
 	fi; \
 	$(MAKE) sync-oc-mirror-manifests OC_MIRROR_WORKSPACE="$(OC_MIRROR_WORKSPACE)"; \
 	$(MAKE) render-hub-manifests HUB_DIR=./workingdir OCP_VERSION="$(OCP_VERSION)" REGISTRY_URL="$(REGISTRY_URL)"; \
+	$(MAKE) validate-idms-template; \
 	echo "$(BLUE)Creating ./hub/ directory...$(NC)"; \
 	rm -rf ./hub; \
 	mkdir -p ./hub; \
@@ -927,7 +1006,9 @@ create-agent-iso: ## Create agent ISO image - copies workingdir to ./hub/ and ru
 		exit 1; \
 	}; \
 	echo "$(GREEN)✓ Copied content to ./hub/$(NC)"; \
-	rm -f ./hub/openshift/idms-operator-supplement.yaml; \
+	echo "$(BLUE)Rendering IDMS for install (workingdir template → hub install dir)...$(NC)"; \
+	$(MAKE) render-idms-oc-mirror HUB_DIR=./hub REGISTRY_URL="$(REGISTRY_URL)"; \
+	$(MAKE) validate-idms-rendered HUB_DIR=./hub REGISTRY_URL="$(REGISTRY_URL)"; \
 	if [ ! -f ./hub/openshift/catalogSource-cs-redhat-operator-index.yaml ]; then \
 		echo "$(RED)✗ Error: CatalogSource manifest missing under ./hub/openshift/$(NC)"; \
 		exit 1; \

@@ -17,8 +17,13 @@ Stability criteria:
 - No pod in non-Running/Completed state for more than 10 minutes (transient state)
 - No CSV (ClusterServiceVersion) in Installing state, or in Installing for more than 10 minutes (stuck)
 - All ACM policies in namespace local-cluster Compliant (no NonCompliant or Pending)
+- No cluster operators Degraded (airgap/day-2 rollout health)
 
 When all criteria pass for at least --stable-for seconds, the program exits with rc 0.
+
+When stability checks fail, a troubleshooting report is printed (disable with --no-troubleshoot)
+covering common disconnected-hub issues: ImagePullBackOff / missing IDMS, ArgoCD init images,
+AgentServiceConfig RHCOS URLs, MCP node rolls, stale installer/debug pods, and degraded operators.
 
 Optional --apiserver-metrics: collect Prometheus API server metrics (same format as
 collect-apiserver-metrics.sh / collect-apiserver-metrics-day2.sh) under ./data/release-XXX/
@@ -43,6 +48,45 @@ CSV_INSTALLING_MAX_SECONDS = 10 * 60  # 10 minutes (Installing longer = stuck)
 
 # Policy evaluation scope: only policies in this namespace are checked for stability
 POLICY_NAMESPACE = "local-cluster"
+
+# Supplemental IDMS sources (must match scripts/sync-idms-from-oc-mirror.sh SUPPLEMENT_SOURCES).
+SUPPLEMENTAL_IDMS_SOURCES = frozenset({
+    "registry.redhat.io/rhceph/rhceph-9-rhel9",
+    "registry.redhat.io/openshift-gitops-1/argocd-rhel9",
+    "registry.redhat.io/openshift-gitops-1/dex-rhel9",
+    "registry.redhat.io/openshift-gitops-1/console-plugin-rhel9",
+    "registry.redhat.io/openshift-gitops-1/gitops-rhel9",
+    "registry.redhat.io/odf4/odf-blackbox-exporter-rhel9",
+    "registry.redhat.io/rhel9/postgresql-16",
+    "registry.redhat.io/odf4/mcg-core-rhel9",
+    "registry.redhat.io/odf4/odf-cloudnative-pg-rhel9-operator",
+    "registry.redhat.io/odf4/odf-external-snapshotter-rhel9-operator",
+    "registry.redhat.io/odf4/odf-external-snapshotter-sidecar-rhel9",
+    "registry.redhat.io/openshift4/ztp-site-generate-rhel8",
+    "registry.redhat.io/rhel8/support-tools",
+    "registry.redhat.io/rhel9/support-tools",
+    "registry.redhat.io/multicluster-engine/cluster-permission-rhel9",
+    "registry.redhat.io/oadp/oadp-cli-binaries-rhel9",
+    "registry.redhat.io/oadp/oadp-vmdp-binaries-rhel9",
+    "registry.redhat.io/openshift-gitops-1/gitops-rhel9-operator",
+})
+
+# Hostnames that indicate misconfigured assisted-service / AgentServiceConfig osImages.
+BAD_OS_IMAGE_HOSTS = ("mirror.example.com", "mirror.example", "<http-server-address:port>")
+
+# Namespaces where ImagePullBackOff is most often an airgap mirror/IDMS issue during hub rollout.
+AIRGAP_WATCH_NAMESPACES = frozenset({
+    "openshift-gitops",
+    "openshift-gitops-operator",
+    "multicluster-engine",
+    "open-cluster-management-backup",
+    "openshift-storage",
+    "openshift-adp",
+})
+
+PULL_FAILURE_REASONS = frozenset({
+    "ImagePullBackOff", "ErrImagePull", "Init:ImagePullBackOff", "Init:ErrImagePull",
+})
 
 # API server metrics (Prometheus/Thanos)
 PROM_NS = "openshift-monitoring"
@@ -555,6 +599,17 @@ def check_mcp(kubeconfig, updating_since):
     return True, "MCP stable or not updating beyond threshold"
 
 
+def _pod_check_ignore(ns, name):
+    """Skip pods that are benign leftovers and should not block stability checks."""
+    # Static pod installer jobs can leave Failed pods after a later retry succeeds.
+    if ns.startswith("openshift-kube-") and name.startswith("installer-"):
+        return True
+    # Assisted installer node debug pods are optional post-install leftovers.
+    if ns == "assisted-installer" and ("-debug-" in name or name.endswith("-debug")):
+        return True
+    return False
+
+
 def check_pods(kubeconfig):
     """Return (stable, message). Stable if no pod in transient state (not Running/Completed) for > POD_STUCK_SECONDS."""
     data, err = oc_get_json("pods", None, kubeconfig)
@@ -566,6 +621,8 @@ def check_pods(kubeconfig):
     for pod in items:
         ns = pod.get("metadata", {}).get("namespace", "?")
         name = pod.get("metadata", {}).get("name", "?")
+        if _pod_check_ignore(ns, name):
+            continue
         phase = pod.get("status", {}).get("phase", "Unknown")
         if phase in ("Running", "Succeeded"):
             continue
@@ -583,7 +640,11 @@ def check_pods(kubeconfig):
         except Exception:
             age = 0
         if age > POD_STUCK_SECONDS:
-            stuck.append(f"{ns}/{name} ({phase}, {int(age)}s)")
+            entry = f"{ns}/{name} ({phase}, {int(age)}s)"
+            pull = _pod_pull_failure(pod)
+            if pull:
+                entry += f" [{pull['reason']}: {pull['image']}]"
+            stuck.append(entry)
     if stuck:
         return False, f"Pods not Running/Completed > {POD_STUCK_SECONDS // 60} min: " + "; ".join(stuck[:5]) + ("..." if len(stuck) > 5 else "")
     return True, "No stuck pods"
@@ -795,6 +856,321 @@ def print_policy_violations(kubeconfig):
         print()
 
 
+def _image_source_repo(image):
+    """Normalize container image to repository (strip tag/digest)."""
+    if not image:
+        return ""
+    repo = image.split("@", 1)[0]
+    if "/" in repo:
+        last_segment = repo.rsplit("/", 1)[-1]
+        if ":" in last_segment:
+            repo = repo.rsplit(":", 1)[0]
+    return repo
+
+
+def _pod_container_states(pod):
+    """Yield (container_name, state_dict, image) for init and regular containers."""
+    spec = pod.get("spec") or {}
+    status = pod.get("status") or {}
+    init_by_name = {c.get("name"): c for c in spec.get("initContainers") or []}
+    cont_by_name = {c.get("name"): c for c in spec.get("containers") or []}
+    for cs in (status.get("initContainerStatuses") or []) + (status.get("containerStatuses") or []):
+        name = cs.get("name", "?")
+        image = cs.get("image") or ""
+        if not image:
+            image = (init_by_name.get(name) or cont_by_name.get(name) or {}).get("image", "")
+        for key in ("waiting", "terminated"):
+            state = (cs.get("state") or {}).get(key)
+            if state:
+                yield name, state, image
+
+
+def _pod_pull_failure(pod):
+    """Return dict with pull failure details or None."""
+    for cname, state, image in _pod_container_states(pod):
+        reason = state.get("reason", "")
+        if reason not in ("ImagePullBackOff", "ErrImagePull"):
+            continue
+        message = (state.get("message") or "")[:240]
+        return {
+            "container": cname,
+            "image": image,
+            "source": _image_source_repo(image),
+            "reason": reason,
+            "message": message,
+        }
+    return None
+
+
+def collect_ignored_pods(kubeconfig):
+    """Return list of ns/name for pods skipped by stability checks."""
+    data, err = oc_get_json("pods", None, kubeconfig)
+    if err or not data:
+        return []
+    ignored = []
+    for pod in data.get("items") or []:
+        ns = pod.get("metadata", {}).get("namespace", "?")
+        name = pod.get("metadata", {}).get("name", "?")
+        if _pod_check_ignore(ns, name):
+            phase = pod.get("status", {}).get("phase", "Unknown")
+            ignored.append(f"{ns}/{name} ({phase})")
+    return ignored
+
+
+def collect_pull_failure_pods(kubeconfig):
+    """Return pull-failure pod details for troubleshooting."""
+    data, err = oc_get_json("pods", None, kubeconfig)
+    if err or not data:
+        return []
+    failures = []
+    for pod in data.get("items") or []:
+        ns = pod.get("metadata", {}).get("namespace", "?")
+        name = pod.get("metadata", {}).get("name", "?")
+        if _pod_check_ignore(ns, name):
+            continue
+        phase = pod.get("status", {}).get("phase", "Unknown")
+        if phase in ("Running", "Succeeded"):
+            continue
+        pull = _pod_pull_failure(pod)
+        if not pull:
+            continue
+        failures.append({
+            "ns": ns,
+            "name": name,
+            "phase": phase,
+            **pull,
+        })
+    return failures
+
+
+def get_idms_operator_sources(kubeconfig):
+    """Return set of source registries configured in idms-operator-0."""
+    data, err = oc_get_json("imagedigestmirrorset.config.openshift.io", "", kubeconfig)
+    if err or not data:
+        data, err = oc_get_json("imagedigestmirrorset", "", kubeconfig)
+    if err or not data:
+        return set()
+    for doc in data.get("items") or []:
+        if doc.get("metadata", {}).get("name") != "idms-operator-0":
+            continue
+        return {
+            e.get("source")
+            for e in (doc.get("spec") or {}).get("imageDigestMirrors") or []
+            if e.get("source")
+        }
+    return set()
+
+
+def get_missing_supplemental_idms(kubeconfig):
+    """Supplemental sources from repo template that are absent on the cluster."""
+    configured = get_idms_operator_sources(kubeconfig)
+    if not configured:
+        return sorted(SUPPLEMENTAL_IDMS_SOURCES)
+    return sorted(SUPPLEMENTAL_IDMS_SOURCES - configured)
+
+
+def check_degraded_cluster_operators(kubeconfig):
+    """Return (stable, message). Stable if no CO is Degraded."""
+    data, err = oc_get_json("co", "", kubeconfig)
+    if err or not data:
+        return True, "could not get CO for Degraded check (skipped)"
+    degraded = []
+    for co in data.get("items") or []:
+        name = co.get("metadata", {}).get("name", "?")
+        for c in co.get("status", {}).get("conditions", []) or []:
+            if c.get("type") == "Degraded" and c.get("status") == "True":
+                msg = (c.get("message") or "").replace("\n", " ")[:80]
+                degraded.append(f"{name} ({msg})" if msg else name)
+                break
+    if degraded:
+        tail = "..." if len(degraded) > 5 else ""
+        return False, "Degraded cluster operators: " + ", ".join(degraded[:5]) + tail
+    return True, "No degraded cluster operators"
+
+
+def get_mcp_status_detail(kubeconfig):
+    """Return list of (name, updating, ready, total, config) tuples."""
+    data, err = oc_get_json("mcp", "", kubeconfig)
+    if err or not data:
+        return []
+    rows = []
+    for pool in data.get("items") or []:
+        name = pool.get("metadata", {}).get("name", "?")
+        status = pool.get("status") or {}
+        spec = pool.get("spec") or {}
+        ready = int(status.get("readyMachineCount") or 0)
+        total = int(status.get("machineCount") or 0)
+        updating = any(
+            c.get("type") == "Updating" and c.get("status") == "True"
+            for c in status.get("conditions") or []
+        )
+        if not updating and total and ready < total:
+            updating = True
+        config = spec.get("configuration", {}).get("name", "?")
+        rows.append((name, updating, ready, total, config))
+    return rows
+
+
+def check_argocd_init_images(kubeconfig):
+    """Return list of problem strings for ArgoCD repo initContainers on registry.redhat.io."""
+    data, err = oc_get_json("argocd", "openshift-gitops", kubeconfig)
+    if err or not data:
+        return []
+    items = data.get("items") or []
+    if not items:
+        return []
+    problems = []
+    inits = ((items[0].get("spec") or {}).get("repo") or {}).get("initContainers") or []
+    for ic in inits:
+        image = ic.get("image", "")
+        name = ic.get("name", "?")
+        if image.startswith("registry.redhat.io/") or image.startswith("quay.io/redhat"):
+            problems.append(f"initContainer {name}: {image}")
+    return problems
+
+
+def check_agentserviceconfig_os_images(kubeconfig):
+    """Return list of problem strings for bad assisted-service RHCOS URLs."""
+    data, err = oc_get_json("agentserviceconfig.agent-install.openshift.io", "multicluster-engine", kubeconfig)
+    if err or not data:
+        data, err = oc_get_json("agentserviceconfig", "multicluster-engine", kubeconfig)
+    if err or not data:
+        return []
+    items = data.get("items") or []
+    if not items:
+        return []
+    problems = []
+    for entry in (items[0].get("spec") or {}).get("osImages") or []:
+        url = entry.get("url") or ""
+        version = entry.get("openshiftVersion", "?")
+        for bad in BAD_OS_IMAGE_HOSTS:
+            if bad in url:
+                problems.append(f"osImages {version}: url={url}")
+                break
+    return problems
+
+
+def check_assisted_image_service(kubeconfig):
+    """Return list of problem strings for assisted-image-service crash/backoff."""
+    data, err = oc_get_json("pods", "multicluster-engine", kubeconfig)
+    if err or not data:
+        return []
+    problems = []
+    for pod in data.get("items") or []:
+        name = pod.get("metadata", {}).get("name", "")
+        if name != "assisted-image-service-0":
+            continue
+        phase = pod.get("status", {}).get("phase", "")
+        for cs in (pod.get("status") or {}).get("containerStatuses") or []:
+            waiting = (cs.get("state") or {}).get("waiting") or {}
+            if waiting.get("reason") in ("CrashLoopBackOff", "Error"):
+                problems.append(
+                    "assisted-image-service-0: CrashLoopBackOff – check AgentServiceConfig osImages (webcache URLs)"
+                )
+            elif phase != "Running":
+                pull = _pod_pull_failure(pod)
+                if pull:
+                    problems.append(f"assisted-image-service-0: {pull['reason']} on {pull['image']}")
+    return problems
+
+
+def _remediation_for_pull(failure, missing_idms):
+    """Return short remediation hints for a pull failure."""
+    source = failure.get("source", "")
+    image = failure.get("image", "")
+    hints = []
+    if source in missing_idms:
+        hints.append(
+            f"add IDMS mapping for {source} (workingdir/openshift/idms-oc-mirror.yaml supplemental section)"
+        )
+        hints.append("apply idms-operator-0 and wait for MCP master pool (oc get mcp -w)")
+    if image.startswith("registry.redhat.io/") or image.startswith("quay.io/"):
+        hints.append("node pulls public registry; verify ImageDigestMirrorSet and airgap mirror")
+    if "openshift-gitops" in failure.get("ns", "") and "ztp-site-generate" in image:
+        hints.append("patch ArgoCD initContainers to airgap path; update addPluginsPolicy.yaml")
+    if "cluster-permission" in image or "oadp-" in image:
+        hints.append("ensure oc-mirror copied image and IDMS includes repository path")
+    if not hints:
+        hints.append(f"oc describe pod -n {failure['ns']} {failure['name']} | tail -20")
+    return hints
+
+
+def print_troubleshooting_report(kubeconfig):
+    """Print airgap/day-2 troubleshooting guidance when stability checks fail."""
+    print_section("Troubleshooting (disconnected hub / day-2 operators)")
+
+    mcp_rows = get_mcp_status_detail(kubeconfig)
+    if mcp_rows:
+        print("  MCP (MachineConfigPool) status:")
+        for name, updating, ready, total, config in mcp_rows:
+            state = "UPDATING" if updating else "stable"
+            print(f"    - {name}: {state} ready={ready}/{total} config={config}")
+        if any(r[1] for r in mcp_rows):
+            print("    → IDMS changes trigger MCP node rolls; ImagePullBackOff during roll is often transient.")
+            print("    → Wait for: oc get mcp master -w  (UPDATED=True, readyMachineCount=machineCount)")
+
+    missing_idms = get_missing_supplemental_idms(kubeconfig)
+    if missing_idms:
+        print(f"  Missing supplemental IDMS entries ({len(missing_idms)}):")
+        for src in missing_idms[:8]:
+            print(f"    - {src}")
+        if len(missing_idms) > 8:
+            print(f"    ... and {len(missing_idms) - 8} more")
+        print("    → Fix: make sync-oc-mirror-manifests")
+        print("    → Then: scripts/render-idms-oc-mirror.sh <registry>/hub-demo workingdir/openshift/idms-oc-mirror.yaml")
+        print("    → Apply idms-operator-0 from rendered idms-oc-mirror.yaml")
+
+    pull_failures = collect_pull_failure_pods(kubeconfig)
+    if pull_failures:
+        print(f"  Image pull failures ({len(pull_failures)}):")
+        for f in pull_failures[:8]:
+            print(f"    - {f['ns']}/{f['name']} ({f['reason']}): {f['image']}")
+            for hint in _remediation_for_pull(f, missing_idms)[:2]:
+                print(f"        → {hint}")
+        if len(pull_failures) > 8:
+            print(f"    ... and {len(pull_failures) - 8} more")
+
+    argocd_issues = check_argocd_init_images(kubeconfig)
+    if argocd_issues:
+        print("  ArgoCD repo initContainers still reference public registry:")
+        for line in argocd_issues:
+            print(f"    - {line}")
+        print("    → Patch argocd openshift-gitops initContainer images to airgap registry")
+        print("    → Update telco-reference addPluginsPolicy.yaml so ACM policy does not revert")
+
+    asc_issues = check_agentserviceconfig_os_images(kubeconfig)
+    if asc_issues:
+        print("  AgentServiceConfig osImages misconfigured:")
+        for line in asc_issues:
+            print(f"    - {line}")
+        print("    → Point osImages at webcache (http://<host>:8080/rhcos-*.iso)")
+        print("    → See acmAgentServiceConfig.yaml / hub-config/operators-config/01_aiConfig.yaml")
+
+    for line in check_assisted_image_service(kubeconfig):
+        print(f"  Assisted image service: {line}")
+
+    ignored = collect_ignored_pods(kubeconfig)
+    stale_installers = [p for p in ignored if "openshift-kube-" in p and "installer-" in p]
+    stale_debug = [p for p in ignored if "assisted-installer" in p and "debug" in p]
+    if stale_installers or stale_debug:
+        print("  Benign leftover pods (ignored by stability check; safe to delete):")
+        for p in (stale_installers + stale_debug)[:6]:
+            print(f"    - {p}")
+        if stale_installers:
+            print("    → oc delete pod -n openshift-kube-controller-manager <installer-* Failed pods>")
+        if stale_debug:
+            print("    → oc delete pod -n assisted-installer <*-debug-*>")
+
+    ok_deg, msg_deg = check_degraded_cluster_operators(kubeconfig)
+    if not ok_deg:
+        print(f"  {msg_deg}")
+
+    if not (missing_idms or pull_failures or argocd_issues or asc_issues):
+        print("  No known airgap patterns detected; inspect stuck pods with:")
+        print("    oc get pods -A | grep -Ev 'Running|Completed'")
+        print("    oc describe pod -n <ns> <pod>")
+
+
 def print_policy_summary(kubeconfig):
     """Print ACM policy status summary for local-cluster only: Compliant vs NonCompliant vs Pending."""
     data, _ = oc_get_json("policies.policy.open-cluster-management.io", None, kubeconfig)
@@ -868,6 +1244,16 @@ def main():
         metavar="DIR",
         help="Base directory for release-specific metrics (default: data); subdirs like release-419 created inside",
     )
+    parser.add_argument(
+        "--no-troubleshoot",
+        action="store_true",
+        help="Do not print airgap/day-2 troubleshooting report when stability checks fail",
+    )
+    parser.add_argument(
+        "--diagnose",
+        action="store_true",
+        help="Run one status cycle plus troubleshooting report and exit (rc 0 if stable, 1 otherwise)",
+    )
     args = parser.parse_args()
 
     if not args.kubeconfig:
@@ -887,8 +1273,16 @@ def main():
 
     print(f"Using KUBECONFIG={kubeconfig}")
     print(f"Auto-approve InstallPlans: {args.installplan}")
-    print(f"Stability: no CO Progressing, all nodes Ready, MCP not updating > 10 min, no pods in transient state > 10 min, no CSV stuck in Installing > 10 min, all {POLICY_NAMESPACE} policies Compliant")
-    if args.stable_for > 0:
+    print(
+        f"Stability: no CO Progressing/Degraded, all nodes Ready, MCP not updating > 10 min, "
+        f"no pods in transient state > 10 min, no CSV stuck in Installing > 10 min, "
+        f"all {POLICY_NAMESPACE} policies Compliant"
+    )
+    if not args.no_troubleshoot:
+        print("Troubleshooting report: enabled on stability failure (IDMS, ImagePullBackOff, ArgoCD, ASC osImages)")
+    if args.diagnose:
+        print("Diagnose mode: single iteration then exit.")
+    elif args.stable_for > 0:
         print(f"Exit rc 0 only after stable for {args.stable_for}s. Ctrl+C to stop.")
     else:
         print("Loop until stable (exit as soon as all checks pass once). Ctrl+C to stop.")
@@ -947,6 +1341,13 @@ def main():
         print(f"  Policies (ACM): {msg6}")
         if not ok6:
             all_ok = False
+        ok7, msg7 = check_degraded_cluster_operators(kubeconfig)
+        print(f"  Cluster operators (Degraded): {msg7}")
+        if not ok7:
+            all_ok = False
+
+        if not all_ok and not args.no_troubleshoot:
+            print_troubleshooting_report(kubeconfig)
 
         if all_ok:
             now = time.time()
@@ -963,6 +1364,9 @@ def main():
             print(f"  Stable for {int(now - stable_since)}s (need {args.stable_for}s); continuing...")
         else:
             stable_since = None
+
+        if args.diagnose:
+            sys.exit(0 if all_ok else 1)
 
         print(f"\nNext check in {args.interval}s...")
         try:

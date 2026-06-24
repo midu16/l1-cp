@@ -73,9 +73,33 @@ If `--apiserver-metrics` is set, each iteration also collects API server metrics
 
 5. **CSVs (operators)** – No ClusterServiceVersion in `Installing` state; any CSV in `Installing` for more than 10 minutes is treated as stuck. A short summary shows Installing vs Succeeded (and Failed/other) per namespace.
 
-6. **Policies (ACM)** – All ACM policies in namespace `local-cluster` are `Compliant`. Only policies applied in `local-cluster` are evaluated; disabled policies are ignored. A summary shows Compliant vs NonCompliant vs Pending vs Disabled. For any NonCompliant or Pending policy, the monitor also prints **violation details** (from the policy status history) so you can see what is preventing the policy from becoming Compliant.
+6. **Policies (ACM)** – All ACM policies in namespace `local-cluster` are `Compliant`. Only policies applied in `local-cluster` are evaluated; disabled policies are ignored. A summary shows Compliant vs NonCompliant vs Pending vs Disabled. For any NonCompliant or Pending policy, the monitor also prints **violation details** (from the policy history) so you can see what is preventing the policy from becoming Compliant.
 
-When all six are satisfied, the script exits with rc 0. By default it exits as soon as all checks pass once; use `--stable-for SECONDS` to require that the cluster remain stable for that many seconds before exiting. Use Ctrl+C to stop early.
+7. **Cluster operators (Degraded)** – None in `Degraded` state.
+
+When all seven are satisfied, the script exits with rc 0. By default it exits as soon as all checks pass once; use `--stable-for SECONDS` to require that the cluster remain stable for that many seconds before exiting. Use Ctrl+C to stop early.
+
+## Troubleshooting (disconnected hub)
+
+When stability checks fail, the monitor prints a **troubleshooting report** (unless `--no-troubleshoot` is set) covering patterns seen during hub/day-2 rollout:
+
+| Check | What it detects |
+|-------|-----------------|
+| MCP status | Node roll in progress after IDMS apply (`readyMachineCount` < `machineCount`) |
+| Missing IDMS | Supplemental `idms-operator-0` sources not on cluster (GitOps, OADP, MCE, ztp-site-generate, etc.) |
+| Image pull failures | `ImagePullBackOff` / `ErrImagePull` with image and remediation hints |
+| ArgoCD init images | `openshift-gitops` repo initContainers still on `registry.redhat.io` |
+| AgentServiceConfig | `osImages` URLs pointing at `mirror.example.com` or placeholders |
+| Assisted image service | `assisted-image-service-0` CrashLoopBackOff (bad RHCOS URLs) |
+| Stale pods | Failed `installer-*` and assisted-installer `*-debug-*` pods (safe to delete) |
+
+**One-shot diagnosis** (no loop):
+
+```bash
+python3 cluster_monitor.py --kubeconfig /path/to/kubeconfig --diagnose
+```
+
+Exit code is 0 if stable, 1 if any check fails (troubleshooting report is still printed).
 
 ## Requirements
 
