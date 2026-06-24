@@ -695,9 +695,19 @@ generate-openshift-install: ## Generate openshift-install from CatalogSource or 
 		exit 1; \
 	fi; \
 	RELEASE_IMAGE_URL=""; \
+	REGISTRY_HOST_PORT=""; \
+	REPO_BASE=""; \
 	if [ -n "$(RELEASE_IMAGE)" ]; then \
 		RELEASE_IMAGE_URL="$(RELEASE_IMAGE)"; \
 		echo "$(BLUE)Using provided RELEASE_IMAGE: $$RELEASE_IMAGE_URL$(NC)"; \
+		REGISTRY_AND_PATH=$$(echo "$$RELEASE_IMAGE_URL" | sed 's|:[^:/]*$$||'); \
+		REGISTRY_HOST_PORT=$$(echo "$$REGISTRY_AND_PATH" | cut -d'/' -f1); \
+		FULL_PATH=$$(echo "$$REGISTRY_AND_PATH" | cut -d'/' -f2-); \
+		REPO_BASE=$$(echo "$$FULL_PATH" | cut -d'/' -f1); \
+		if [ -z "$$REPO_BASE" ]; then \
+			REPO_BASE="hub-demo"; \
+		fi; \
+		echo "$(BLUE)IDMS mirror prefix: $$REGISTRY_HOST_PORT/$$REPO_BASE$(NC)"; \
 	elif [ -n "$(CATALOGSOURCE_FILE)" ]; then \
 		CATALOGSOURCE_PATH=$$(eval echo $(CATALOGSOURCE_FILE)); \
 		echo "$(BLUE)CatalogSource file: $$CATALOGSOURCE_PATH$(NC)"; \
@@ -816,6 +826,12 @@ generate-openshift-install: ## Generate openshift-install from CatalogSource or 
 	fi; \
 	IDMS_RENDERED=$$(mktemp); \
 	cp ./workingdir/openshift/idms-oc-mirror.yaml "$$IDMS_RENDERED"; \
+	if [ -z "$$REGISTRY_HOST_PORT" ]; then \
+		REGISTRY_HOST_PORT="$${REGISTRY_URL:-infra.5g-deployment.lab:8443}"; \
+	fi; \
+	if [ -z "$$REPO_BASE" ]; then \
+		REPO_BASE="hub-demo"; \
+	fi; \
 	chmod +x ./scripts/render-idms-oc-mirror.sh; \
 	./scripts/render-idms-oc-mirror.sh "$$REGISTRY_HOST_PORT/$$REPO_BASE" "$$IDMS_RENDERED"; \
 	echo "$(BLUE)Extracting openshift-install from release image: $$RELEASE_IMAGE_URL$(NC)"; \
