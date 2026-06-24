@@ -137,7 +137,7 @@ jobs:
 
   build-hub:
     runs-on: [self-hosted, linux, x64]
-    timeout-minutes: 90
+    timeout-minutes: 130
     needs: clean-hub
     env:
       REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
