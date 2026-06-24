@@ -41,3 +41,25 @@ spec:
     - .spec.tolerations
     - .metadata.annotations
     - .metadata.labels
+  - group: agent-install.openshift.io
+    kind: AgentServiceConfig
+    name: agent
+    jqPathExpressions:
+    - .metadata
+    - .status
+  - kind: Node
+    jqPathExpressions:
+    - .metadata.labels
+    - .metadata.annotations
+  - group: policy.open-cluster-management.io
+    kind: Policy
+    name: ztp-argocd-plugins-installer
+    namespace: hub-policies
+    jsonPointers:
+    - /metadata/resourceVersion
+    - /metadata/generation
+    - /metadata/creationTimestamp
+    - /metadata/uid
+    jqPathExpressions:
+    - .status
+    - .metadata.annotations
