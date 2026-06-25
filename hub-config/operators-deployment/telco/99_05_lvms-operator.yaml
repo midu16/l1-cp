@@ -1,0 +1,34 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    workload.openshift.io/allowed: management
+  name: openshift-storage
+  labels:
+    openshift.io/cluster-monitoring: "true"
+---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: lvms-operator-operatorgroup
+  namespace: openshift-storage
+spec:
+  targetNamespaces:
+  - openshift-storage
+  upgradeStrategy: Default
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  name: lvms-operator
+  namespace: openshift-storage
+spec:
+  channel: stable-4.21
+  installPlanApproval: Automatic
+  name: lvms-operator
+  source: redhat-operators-disconnected
+  sourceNamespace: openshift-marketplace

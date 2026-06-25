@@ -52,6 +52,14 @@ get_operator_head_version_fallback() {
     odr-cluster-operator@stable-4.21) echo "v4.21.8-rhodf" ;;
     recipe@stable-4.21) echo "v4.21.8-rhodf" ;;
     openshift-cert-manager-operator@stable-v1) echo "v1.19.0" ;;
+    kubernetes-nmstate-operator@stable) echo "4.22.0-202606101156" ;;
+    metallb-operator@stable) echo "v4.22.0-202606101422" ;;
+    numaresources-operator@4.22) echo "v4.22.0" ;;
+    numaresources-operator@stable) echo "v4.22.0" ;;
+    lvms-operator@stable-4.21) echo "v4.21.0" ;;
+    o-cloud-manager@stable) echo "v4.22.0" ;;
+    ptp-operator@stable) echo "v4.22.0-202606091522" ;;
+    sriov-network-operator@stable) echo "v4.22.0-202606081046" ;;
     *) echo "" ;;
   esac
 }
@@ -1265,6 +1273,29 @@ mirror:
       defaultChannel: stable-4.21
       channels:
       - name: stable-4.21
+    - name: kubernetes-nmstate-operator
+      channels:
+      - name: stable
+    - name: metallb-operator
+      channels:
+      - name: stable
+    - name: numaresources-operator
+      defaultChannel: "4.22"
+      channels:
+      - name: "4.22"
+    - name: lvms-operator
+      defaultChannel: stable-4.21
+      channels:
+      - name: stable-4.21
+    - name: o-cloud-manager
+      channels:
+      - name: stable
+    - name: ptp-operator
+      channels:
+      - name: stable
+    - name: sriov-network-operator
+      channels:
+      - name: stable
     - name: openshift-cert-manager-operator
       defaultChannel: stable-v1
       channels:

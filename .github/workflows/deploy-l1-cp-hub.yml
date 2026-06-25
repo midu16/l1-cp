@@ -346,28 +346,68 @@ jobs:
 
   scale-up-hub:
     runs-on: [self-hosted, linux, x64]
-    timeout-minutes: 90
+    timeout-minutes: 120
     needs: build-hub
     env:
       REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
       REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
       REPO_PATH: ${{ github.workspace }}
-      
+
     steps:
       # Reuse the same workspace as build-hub (do not run checkout here — checkout clean removes gitignored dirs like bin/ and breaks ./bin/oc).
       - name: Fix workspace ownership (reuse build-hub artifacts)
         run: sudo chown -R "$(whoami):$(whoami)" "${GITHUB_WORKSPACE}/"
 
-      - name: Expand the cluster with 2 additional nodes
-        run: | 
-          echo | openssl s_client -connect infra.5g-deployment.lab:8443 -servername infra.5g-deployment.lab 2>/dev/null | openssl x509 -outform PEM -out cert.pem
-          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" adm node-image create nodes-config.yaml --registry-config=/root/.docker/config.json --certificate-authority=./cert.pem
+      - name: Verify post-build prerequisites
+        run: |
+          set -euo pipefail
+          for path in \
+            "${KUBECONFIG_PATH}" \
+            "${REPO_PATH}/bin/oc" \
+            "${REPO_PATH}/workingdir/nodes-config.yaml"; do
+            if [[ ! -e "$path" ]]; then
+              echo "::error::Missing required path: $path"
+              exit 1
+            fi
+          done
+          echo "✅ kubeconfig, oc, and nodes-config.yaml present"
 
-      - name: Copy the node.x86_64.iso to remove hypervisor
-        run: sudo scp -r node.x86_64.iso root@INBACRNRDL0103:/opt/
+      - name: Install telco operators (nmstate, metallb, NROP, LVMS, o-cloud-manager, PTP, SR-IOV)
+        run: |
+          set -euo pipefail
+          TELCO_DIR="${REPO_PATH}/hub-config/operators-deployment/telco"
+          shopt -s nullglob
+          manifests=("$TELCO_DIR"/*.yaml)
+          if (( ${#manifests[@]} == 0 )); then
+            echo "::error::No telco operator manifests under ${TELCO_DIR}"
+            exit 1
+          fi
+          for manifest in "${manifests[@]}"; do
+            echo "Applying ${manifest}"
+            sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" apply -f "${manifest}"
+          done
+
+      - name: Wait for telco operator InstallPlans and CSV rollout
+        run: |
+          sudo python3 "${REPO_PATH}/monitoring/cluster_monitor.py" \
+            --kubeconfig "${KUBECONFIG_PATH}" \
+            --installplan \
+            --stable-for 600
+          echo "✅ Telco operators installed successfully"
+
+      - name: Expand the cluster with 2 additional nodes
+        run: |
+          echo | openssl s_client -connect "${REGISTRY_URL}" -servername "${REGISTRY_URL%%:*}" 2>/dev/null | openssl x509 -outform PEM -out cert.pem
+          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" adm node-image create \
+            --dir="${REPO_PATH}/workingdir" \
+            --registry-config=/root/.docker/config.json \
+            --certificate-authority="${REPO_PATH}/cert.pem"
+
+      - name: Copy the node.x86_64.iso to remote hypervisor
+        run: sudo scp -r "${REPO_PATH}/workingdir/node.x86_64.iso" root@INBACRNRDL0103:/opt/
 
       # MACs / IPs match dnsmasq hub.ipv4: 01:04→.23 (worker-0), 01:05→.24 (worker-1); names match nodes-config.yaml
-      - name: 🖥️ Create Hub worker VMs 
+      - name: 🖥️ Create Hub worker VMs
         run: |
           sudo ssh root@INBACRNRDL0103 bash -s << 'ENDSSH'
           w=0
