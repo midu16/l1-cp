@@ -1205,6 +1205,7 @@ mirror:
       channels:
       - name: stable
     - name: cluster-logging
+      defaultChannel: stable-6.5
       channels:
       - name: stable-6.5
     - name: amq-streams
