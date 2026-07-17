@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       ocp_version:
-        description: "OpenShift version (e.g., 4.19.23)"
+        description: "Target OpenShift version (e.g., 4.19.23)"
         required: true
         default: "4.19.23"
       registry_url:
@@ -26,10 +26,27 @@ on:
         description: "Seed VM name (optional)"
         required: false
         default: "sno1"
-      argocd_app: 
+      argocd_app:
         description: "ArgoCD application name (e.g., rds-hub-upgrade-argoapps.yaml)"
         required: true
         default: "rds-hub-upgrade-argoapps.yaml"
+      telco_reference_url:
+        description: "Telco reference Git URL"
+        required: true
+        default: "http://infra.5g-deployment.lab:3000/student/telco-reference.git"
+      telco_reference_branch:
+        description: "Telco reference Git branch (e.g., release-4.19)"
+        required: true
+        default: "release-4.19"
+      argocd_app_name:
+        description: "ArgoCD Application resource name to sync"
+        required: true
+        default: "rds-hub-upgrade"
+      worker_mcp_name:
+        description: "Worker MachineConfigPool name"
+        required: true
+        default: "worker"
+
 defaults:
   run:
     shell: bash
@@ -41,33 +58,137 @@ env:
   VM_NAME: ${{ github.event.inputs.vm_name }}
   KUBECONFIG_PATH: '/root/.kcli/clusters/hub/auth/kubeconfig'
   ARGOCD_APP: ${{ github.event.inputs.argocd_app }}
-  
+  TELCO_REF_URL: ${{ github.event.inputs.telco_reference_url }}
+  TELCO_REF_BRANCH: ${{ github.event.inputs.telco_reference_branch }}
+  ARGOCD_APP_NAME: ${{ github.event.inputs.argocd_app_name }}
+  WORKER_MCP: ${{ github.event.inputs.worker_mcp_name }}
+
 jobs:
 
   upgrade-l1-cp-hub:
     runs-on: [self-hosted, linux, x64]
-    timeout-minutes: 180
+    timeout-minutes: 300
     env:
       REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
       REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
       REPO_PATH: ${{ github.workspace }}
 
     steps:
+
+      # ──────────────────────────────────────────────────────────────────────
+      # PHASE 1: SETUP & PRE-FLIGHT
+      # ──────────────────────────────────────────────────────────────────────
+
       - name: 🔧 Fix workspace ownership (prevents EACCES on checkout/cleanup)
         run: |
           sudo chown -R $(whoami):$(whoami) "${GITHUB_WORKSPACE}"
-          # Remove leftover root-owned oc-mirror / hub dirs so checkout and oc-mirror can run cleanly
-          sudo rm -rf "${GITHUB_WORKSPACE}/hub-demo" "${GITHUB_WORKSPACE}/hub-demo" "${GITHUB_WORKSPACE}/hub-demo" 2>/dev/null || true
+          sudo rm -rf "${GITHUB_WORKSPACE}/hub-demo" 2>/dev/null || true
           sudo rm -rf "${GITHUB_WORKSPACE}/.docker" 2>/dev/null || true
+          sudo rm -rf "${GITHUB_WORKSPACE}/telco-reference" 2>/dev/null || true
 
       - uses: actions/checkout@v4
 
       - name: 📥 Download OCP tools
         run: sudo make download-oc-tools VERSION="${OCP_VERSION}"
 
+      - name: 🔑 Validate KUBECONFIG connectivity
+        run: |
+          echo "--- Validating cluster access ---"
+          if ! sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" whoami; then
+            echo "❌ Cannot authenticate to cluster with KUBECONFIG at ${KUBECONFIG_PATH}"
+            exit 1
+          fi
+          echo "✅ Cluster access validated"
+
+      - name: 📋 Capture source cluster version
+        id: source_version
+        run: |
+          SOURCE_VERSION=$(sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" get clusterversion version \
+            -o jsonpath='{.status.desired.version}')
+          SOURCE_MAJOR_MINOR="${SOURCE_VERSION%.*}"
+          echo "source_version=${SOURCE_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "source_major_minor=${SOURCE_MAJOR_MINOR}" >> "$GITHUB_OUTPUT"
+          echo "📌 Current cluster version: ${SOURCE_VERSION} (${SOURCE_MAJOR_MINOR})"
+
+          TARGET_MAJOR_MINOR="${OCP_VERSION%.*}"
+          echo "target_major_minor=${TARGET_MAJOR_MINOR}" >> "$GITHUB_OUTPUT"
+          echo "🎯 Target cluster version: ${OCP_VERSION} (${TARGET_MAJOR_MINOR})"
+
+          if [[ "${SOURCE_MAJOR_MINOR}" == "${TARGET_MAJOR_MINOR}" ]]; then
+            echo "ℹ️  Z-stream upgrade: ${SOURCE_VERSION} → ${OCP_VERSION}"
+          else
+            echo "ℹ️  Y-stream upgrade: ${SOURCE_VERSION} → ${OCP_VERSION}"
+          fi
+
+      - name: 🏥 Pre-upgrade cluster health check
+        run: |
+          OC="sudo ./bin/oc --kubeconfig=${KUBECONFIG_PATH}"
+          FAILURES=0
+
+          echo "--- ClusterVersion ---"
+          CV_AVAILABLE=$($OC get clusterversion version -o jsonpath='{.status.conditions[?(@.type=="Available")].status}')
+          CV_PROGRESSING=$($OC get clusterversion version -o jsonpath='{.status.conditions[?(@.type=="Progressing")].status}')
+          CV_FAILING=$($OC get clusterversion version -o jsonpath='{.status.conditions[?(@.type=="Failing")].status}')
+          if [[ "${CV_AVAILABLE}" != "True" || "${CV_FAILING}" == "True" ]]; then
+            echo "❌ ClusterVersion unhealthy: Available=${CV_AVAILABLE}, Failing=${CV_FAILING}"
+            FAILURES=$((FAILURES + 1))
+          else
+            echo "✅ ClusterVersion healthy (Available=${CV_AVAILABLE}, Progressing=${CV_PROGRESSING}, Failing=${CV_FAILING})"
+          fi
+
+          echo "--- Cluster Operators ---"
+          DEGRADED_COS=$($OC get co -o json | jq -r '
+            .items[] | select(
+              (.status.conditions // [] | map(select(.type == "Degraded" and .status == "True")) | length > 0) or
+              (.status.conditions // [] | map(select(.type == "Available" and .status == "False")) | length > 0)
+            ) | .metadata.name')
+          if [[ -n "${DEGRADED_COS}" ]]; then
+            echo "❌ Degraded/Unavailable cluster operators:"
+            echo "${DEGRADED_COS}"
+            FAILURES=$((FAILURES + 1))
+          else
+            CO_COUNT=$($OC get co --no-headers | wc -l)
+            echo "✅ All ${CO_COUNT} cluster operators healthy"
+          fi
+
+          echo "--- Nodes ---"
+          NOT_READY_NODES=$($OC get nodes -o json | jq -r '
+            .items[] | select(
+              (.status.conditions // [] | map(select(.type == "Ready" and .status == "True")) | length == 0)
+            ) | .metadata.name')
+          if [[ -n "${NOT_READY_NODES}" ]]; then
+            echo "❌ NotReady nodes:"
+            echo "${NOT_READY_NODES}"
+            FAILURES=$((FAILURES + 1))
+          else
+            NODE_COUNT=$($OC get nodes --no-headers | wc -l)
+            echo "✅ All ${NODE_COUNT} nodes Ready"
+          fi
+
+          echo "--- MachineConfigPools ---"
+          UPDATING_MCPS=$($OC get mcp -o json | jq -r '
+            .items[] | select(
+              (.status.conditions // [] | map(select(.type == "Updating" and .status == "True")) | length > 0)
+            ) | .metadata.name')
+          if [[ -n "${UPDATING_MCPS}" ]]; then
+            echo "⚠️ MCPs currently updating (will block upgrade): ${UPDATING_MCPS}"
+            FAILURES=$((FAILURES + 1))
+          else
+            echo "✅ All MCPs idle"
+          fi
+
+          if [[ ${FAILURES} -gt 0 ]]; then
+            echo "❌ Pre-upgrade health check failed with ${FAILURES} issue(s)"
+            exit 1
+          fi
+          echo "✅ Pre-upgrade health check passed"
+
+      # ──────────────────────────────────────────────────────────────────────
+      # PHASE 2: IMAGE MIRRORING
+      # ──────────────────────────────────────────────────────────────────────
+
       - name: 📝 Render imageset-config.yml
         run: |
-          # Extract major.minor from OCP_VERSION (e.g., 4.19.23 -> 4.19)
           OCP_MAJOR_MINOR="${OCP_VERSION%.*}"
           export SOURCE_INDEX="registry.redhat.io/redhat/redhat-operator-index:v${OCP_MAJOR_MINOR}"
           echo "Using SOURCE_INDEX: ${SOURCE_INDEX}"
@@ -75,8 +196,15 @@ jobs:
 
       - name: 🔍 Validate AirGapped registry catalog
         run: |
-          curl -sk -u "${REGISTRY_USERNAME}:${REGISTRY_PASSWORD}" \
-            "https://${REGISTRY_URL}/v2/_catalog" | jq . || echo "⚠️ Registry check failed"
+          CATALOG=$(curl -sk -u "${REGISTRY_USERNAME}:${REGISTRY_PASSWORD}" \
+            "https://${REGISTRY_URL}/v2/_catalog")
+          if echo "${CATALOG}" | jq -e '.repositories' > /dev/null 2>&1; then
+            REPO_COUNT=$(echo "${CATALOG}" | jq '.repositories | length')
+            echo "✅ Registry accessible — ${REPO_COUNT} repositories"
+          else
+            echo "❌ Registry check failed — cannot reach ${REGISTRY_URL}"
+            exit 1
+          fi
 
       - name: 📦 Mirror images to AirGapped registry
         run: |
@@ -106,12 +234,940 @@ jobs:
           curl -sk -u "${REGISTRY_USERNAME}:${REGISTRY_PASSWORD}" \
               "https://${REGISTRY_URL}/v2/_catalog" | jq . || echo "⚠️ Registry check failed"
 
-      - name: Apply the upgrade CGU
-        run: |
-          git clone -b release-4.19 http://infra.5g-deployment.lab:3000/student/telco-reference.git
-          sudo ./bin/oc --kubeconfig="${KUBECONFIG_PATH}" apply -f ./telco-reference/telco-hub/upgrade/${ARGOCD_APP}
+      # ──────────────────────────────────────────────────────────────────────
+      # PHASE 3: PRE-UPGRADE CONFIG VALIDATION
+      # ──────────────────────────────────────────────────────────────────────
 
-      - name: 🔄 Waiting for Hub Operators upgrade, Monitoring the progress of the upgrade and approving InstallPlans
+      - name: 📂 Clone telco-reference
         run: |
-          sudo python3 "${REPO_PATH}/monitoring/cluster_monitor.py" --kubeconfig "${KUBECONFIG_PATH}" --installplan --stable-for 600 --apiserver-metrics
-          echo "✅ Hub Operators upgrade completed successfully"
+          rm -rf "${REPO_PATH}/telco-reference"
+          git clone -b "${TELCO_REF_BRANCH}" "${TELCO_REF_URL}" "${REPO_PATH}/telco-reference"
+          echo "✅ Cloned ${TELCO_REF_URL} branch ${TELCO_REF_BRANCH}"
+
+      - name: 🏗️ Validate kustomize build (pre-sync)
+        run: |
+          OC="sudo ./bin/oc --kubeconfig=${KUBECONFIG_PATH}"
+          CONFIG_DIR="${REPO_PATH}/telco-reference/telco-hub/configuration"
+
+          echo "--- Validating kustomize build for ${CONFIG_DIR} ---"
+          if ! $OC kustomize "${CONFIG_DIR}" > /dev/null 2>&1; then
+            echo "❌ Kustomize build failed. Errors:"
+            $OC kustomize "${CONFIG_DIR}" 2>&1 || true
+
+            echo ""
+            echo "--- Checking for missing kustomization.yaml files ---"
+            for dir in $(find "${CONFIG_DIR}" -type d); do
+              if [[ -d "${dir}" ]] && [[ ! -f "${dir}/kustomization.yaml" ]] && [[ ! -f "${dir}/kustomization.yml" ]] && [[ ! -f "${dir}/Kustomization" ]]; then
+                PARENT_KUST=$(find "${CONFIG_DIR}" -name 'kustomization.yaml' -exec grep -l "$(basename ${dir})/" {} \;)
+                if [[ -n "${PARENT_KUST}" ]]; then
+                  echo "⚠️ Directory ${dir} is referenced as a resource but has no kustomization.yaml"
+                fi
+              fi
+            done
+            exit 1
+          fi
+
+          RESOURCE_COUNT=$($OC kustomize "${CONFIG_DIR}" 2>/dev/null | grep -c '^kind:' || true)
+          echo "✅ Kustomize build succeeded — ${RESOURCE_COUNT} resources rendered"
+
+      - name: 🔒 Validate MCH spec matches live state
+        run: |
+          OC="sudo ./bin/oc --kubeconfig=${KUBECONFIG_PATH}"
+
+          LIVE_LOCAL_CLUSTER=$($OC get multiclusterhub multiclusterhub -n open-cluster-management \
+            -o jsonpath='{.spec.localClusterName}' 2>/dev/null || echo "")
+
+          if [[ -n "${LIVE_LOCAL_CLUSTER}" ]]; then
+            MCH_FILE="${REPO_PATH}/telco-reference/telco-hub/configuration/reference-crs/required/acm/acmMCH.yaml"
+            if [[ -f "${MCH_FILE}" ]]; then
+              GIT_LOCAL_CLUSTER=$(grep 'localClusterName:' "${MCH_FILE}" | awk '{print $2}' | head -1)
+              if [[ "${GIT_LOCAL_CLUSTER}" != "${LIVE_LOCAL_CLUSTER}" ]]; then
+                echo "❌ MCH localClusterName mismatch: live='${LIVE_LOCAL_CLUSTER}' git='${GIT_LOCAL_CLUSTER}'"
+                echo "   The MCH validating webhook will reject this update."
+                echo "   Fix: add 'localClusterName: ${LIVE_LOCAL_CLUSTER}' to spec in ${MCH_FILE}"
+                exit 1
+              fi
+              echo "✅ MCH localClusterName matches live state: '${LIVE_LOCAL_CLUSTER}'"
+            else
+              echo "⚠️ MCH file not found at ${MCH_FILE} — skipping validation"
+            fi
+          else
+            echo "ℹ️  MCH does not exist yet or has no localClusterName — skipping"
+          fi
+
+      - name: 🪞 Validate IDMS mirror coverage
+        run: |
+          OC="sudo ./bin/oc --kubeconfig=${KUBECONFIG_PATH}"
+          TARGET_MAJOR_MINOR="${OCP_VERSION%.*}"
+
+          REQUIRED_MIRRORS=(
+            "registry.redhat.io/rhacm2"
+            "registry.redhat.io/multicluster-engine"
+            "registry.redhat.io/openshift4"
+            "registry.redhat.io/redhat"
+            "registry.redhat.io/odf4"
+            "registry.redhat.io/ocs4"
+            "registry.redhat.io/rhceph"
+            "registry.redhat.io/openshift-logging"
+            "registry.redhat.io/oadp"
+          )
+
+          echo "--- Checking IDMS mirror coverage ---"
+          IDMS_SOURCES=$($OC get imagedigestmirrorset -o json 2>/dev/null | \
+            jq -r '.items[].spec.imageDigestMirrors[].source' 2>/dev/null | sort -u || echo "")
+
+          MISSING=()
+          for mirror in "${REQUIRED_MIRRORS[@]}"; do
+            if echo "${IDMS_SOURCES}" | grep -q "^${mirror}$"; then
+              echo "  ✅ ${mirror}"
+            else
+              echo "  ❌ ${mirror} — NOT configured in any IDMS"
+              MISSING+=("${mirror}")
+            fi
+          done
+
+          if [[ ${#MISSING[@]} -gt 0 ]]; then
+            echo ""
+            echo "⚠️ ${#MISSING[@]} missing IDMS mirror(s). Pods pulling from these registries will fail in disconnected mode."
+            echo "   Missing: ${MISSING[*]}"
+            echo "   These will be applied after oc-mirror generates updated IDMS resources."
+            echo "   Continuing — the mirroring step should produce the required IDMS."
+          else
+            echo "✅ All required IDMS mirrors configured"
+          fi
+
+      # ──────────────────────────────────────────────────────────────────────
+      # PHASE 4: UPGRADE ORCHESTRATION
+      # Applies the ArgoCD upgrade app (switches targetRevision from
+      # release-4.18 to release-4.19), acknowledges Kube API removals,
+      # pauses the worker MCP to minimize reboots across the full EUS
+      # 4.18 → 4.19 → 4.20 transition, sets the eus-4.20 channel, and
+      # triggers the OCP platform upgrade.
+      # ──────────────────────────────────────────────────────────────────────
+
+      - name: 🚀 Apply the upgrade ArgoCD APP
+        run: |
+          OC="sudo ./bin/oc --kubeconfig=${KUBECONFIG_PATH}"
+          echo "--- Applying upgrade rds-hub-upgrade-argoapps.yaml from ${ARGOCD_APP} ---"
+          $OC apply -f "${REPO_PATH}/telco-reference/telco-hub/upgrade/${ARGOCD_APP}"
+          echo "✅ Upgrade ArgoCD application applied (targetRevision switched to ${TELCO_REF_BRANCH})"
+
+      - name: 🔓 Acknowledge Kube API removals for 4.19
+        run: |
+          OC="sudo ./bin/oc --kubeconfig=${KUBECONFIG_PATH}"
+          SOURCE_MAJOR_MINOR="${{ steps.source_version.outputs.source_major_minor }}"
+
+          echo "--- Acknowledging kube API removals (v1beta1 deprecations) ---"
+          echo "   Required for the Upgradeable condition to clear on 4.18 → 4.19"
+          $OC -n openshift-config patch cm admin-acks \
+            --patch '{"data":{"ack-4.18-kube-1.32-api-removals-in-4.19":"true"}}' \
+            --type=merge
+          echo "✅ Admin acknowledgment applied: ack-4.18-kube-1.32-api-removals-in-4.19=true"
+
+          # Verify the ack was applied
+          ACK_VALUE=$($OC get cm admin-acks -n openshift-config \
+            -o jsonpath='{.data.ack-4\.18-kube-1\.32-api-removals-in-4\.19}' 2>/dev/null || echo "")
+          if [[ "${ACK_VALUE}" != "true" ]]; then
+            echo "❌ Admin acknowledgment was not applied correctly"
+            exit 1
+          fi
+          echo "✅ Verified: admin-acks configmap contains the acknowledgment"
+
+      - name: ⏸️ Pause worker MCP (minimize reboots during EUS transition)
+        run: |
+          OC="sudo ./bin/oc --kubeconfig=${KUBECONFIG_PATH}"
+
+          echo "--- Pausing worker MCP '${WORKER_MCP}' ---"
+          echo "   By pausing the worker pool, the total count of node restarts"
+          echo "   is minimized throughout the complete 4.18 → 4.19 → 4.20 EUS transition."
+          $OC patch mcp/${WORKER_MCP} --type merge -p '{"spec":{"paused":true}}'
+
+          # Verify the pause was applied
+          PAUSED=$($OC get mcp "${WORKER_MCP}" -o jsonpath='{.spec.paused}')
+          if [[ "${PAUSED}" != "true" ]]; then
+            echo "❌ Worker MCP was not paused"
+            exit 1
+          fi
+          echo "✅ Worker MCP '${WORKER_MCP}' paused"
+
+      - name: 📡 Set upgrade channel to eus-4.20
+        run: |
+          OC="sudo ./bin/oc --kubeconfig=${KUBECONFIG_PATH}"
+
+          echo "--- Configuring upgrade channel to eus-4.20 ---"
+          $OC adm upgrade channel eus-4.20
+
+          # Verify the channel was set
+          CHANNEL=$($OC get clusterversion version -o jsonpath='{.spec.channel}')
+          echo "  Cluster channel: ${CHANNEL}"
+          if [[ "${CHANNEL}" != "eus-4.20" ]]; then
+            echo "⚠️ Channel is '${CHANNEL}', expected 'eus-4.20' — retrying with patch"
+            $OC patch clusterversion version --type merge \
+              -p '{"spec": {"channel": "eus-4.20"}}'
+            CHANNEL=$($OC get clusterversion version -o jsonpath='{.spec.channel}')
+          fi
+          echo "✅ Upgrade channel set to: ${CHANNEL}"
+
+      - name: ⬆️ Trigger OCP platform upgrade to ${OCP_VERSION}
+        run: |
+          OC="sudo ./bin/oc --kubeconfig=${KUBECONFIG_PATH}"
+
+          echo "--- Triggering platform upgrade to ${OCP_VERSION} ---"
+          $OC adm upgrade --to="${OCP_VERSION}"
+          echo "✅ Platform upgrade to ${OCP_VERSION} initiated"
+
+          # Wait briefly and verify upgrade started
+          sleep 15
+          CV_PROGRESSING=$($OC get clusterversion version \
+            -o jsonpath='{.status.conditions[?(@.type=="Progressing")].status}')
+          CV_MESSAGE=$($OC get clusterversion version \
+            -o jsonpath='{.status.conditions[?(@.type=="Progressing")].message}')
+          echo "  Progressing: ${CV_PROGRESSING}"
+          echo "  Message: ${CV_MESSAGE}"
+
+          if [[ "${CV_PROGRESSING}" != "True" ]]; then
+            echo "⚠️ ClusterVersion not yet Progressing — checking desired version..."
+            DESIRED=$($OC get clusterversion version -o jsonpath='{.status.desired.version}')
+            if [[ "${DESIRED}" == "${OCP_VERSION}" ]]; then
+              echo "  Desired version is ${OCP_VERSION} — upgrade is queued"
+            else
+              echo "❌ Desired version is ${DESIRED}, expected ${OCP_VERSION}"
+              echo "   The upgrade may not have been accepted. Check Upgradeable condition."
+              $OC get clusterversion version -o json | jq '.status.conditions[] | select(.type == "Upgradeable")'
+              exit 1
+            fi
+          fi
+
+      - name: 🩺 Monitor OCP platform upgrade health
+        run: |
+          OC="sudo ./bin/oc --kubeconfig=${KUBECONFIG_PATH}"
+
+          echo "--- Monitoring platform upgrade to ${OCP_VERSION} ---"
+          MAX_WAIT=5400
+          INTERVAL=60
+          elapsed=0
+
+          while [[ ${elapsed} -lt ${MAX_WAIT} ]]; do
+            CV_VERSION=$($OC get clusterversion version -o jsonpath='{.status.desired.version}')
+            CV_PROGRESSING=$($OC get clusterversion version \
+              -o jsonpath='{.status.conditions[?(@.type=="Progressing")].status}')
+            CV_AVAILABLE=$($OC get clusterversion version \
+              -o jsonpath='{.status.conditions[?(@.type=="Available")].status}')
+            CV_FAILING=$($OC get clusterversion version \
+              -o jsonpath='{.status.conditions[?(@.type=="Failing")].status}')
+            HISTORY_STATE=$($OC get clusterversion version \
+              -o jsonpath='{.status.history[0].state}')
+
+            echo "  [${elapsed}s] version=${CV_VERSION} progressing=${CV_PROGRESSING} available=${CV_AVAILABLE} failing=${CV_FAILING} state=${HISTORY_STATE}"
+
+            # Print detailed health status
+            $OC adm upgrade status --details=health 2>/dev/null || true
+
+            if [[ "${CV_FAILING}" == "True" ]]; then
+              echo "❌ ClusterVersion reports Failing=True"
+              $OC get clusterversion version -o json | jq '.status.conditions[] | select(.type == "Failing")'
+            fi
+
+            if [[ "${HISTORY_STATE}" == "Completed" && "${CV_VERSION}" == "${OCP_VERSION}" ]]; then
+              echo "✅ Platform upgrade to ${OCP_VERSION} completed"
+              break
+            fi
+
+            sleep ${INTERVAL}
+            elapsed=$((elapsed + INTERVAL))
+          done
+
+          if [[ ${elapsed} -ge ${MAX_WAIT} ]]; then
+            echo "❌ Platform upgrade did not complete within ${MAX_WAIT}s"
+            $OC adm upgrade status --details=health 2>/dev/null || true
+            exit 1
+          fi
+
+      # ──────────────────────────────────────────────────────────────────────
+      # PHASE 5: OPERATOR UPGRADE MONITORING
+      # ──────────────────────────────────────────────────────────────────────
+
+      - name: 🔄 Monitor operator upgrades and approve InstallPlans
+        run: |
+          sudo python3 "${REPO_PATH}/monitoring/cluster_monitor.py" \
+            --kubeconfig "${KUBECONFIG_PATH}" \
+            --installplan \
+            --stable-for 600 \
+            --apiserver-metrics
+          echo "✅ Hub Operators upgrade monitoring completed"
+
+      # ──────────────────────────────────────────────────────────────────────
+      # PHASE 6: OLM REMEDIATION
+      # ──────────────────────────────────────────────────────────────────────
+
+      - name: 🧹 Clean stale ODF subscriptions from source version
+        run: |
+          OC="sudo ./bin/oc --kubeconfig=${KUBECONFIG_PATH}"
+          SOURCE_MAJOR_MINOR="${{ steps.source_version.outputs.source_major_minor }}"
+          TARGET_MAJOR_MINOR="${{ steps.source_version.outputs.target_major_minor }}"
+
+          if [[ "${SOURCE_MAJOR_MINOR}" == "${TARGET_MAJOR_MINOR}" ]]; then
+            echo "ℹ️  Z-stream upgrade — skipping stale subscription cleanup"
+            exit 0
+          fi
+
+          SOURCE_CHANNEL="stable-${SOURCE_MAJOR_MINOR}"
+          echo "--- Cleaning stale ODF subscriptions with channel ${SOURCE_CHANNEL} ---"
+
+          STALE_SUBS=$($OC get subscription.operators.coreos.com -n openshift-storage -o json | \
+            jq -r --arg ch "${SOURCE_CHANNEL}" '
+              .items[] | select(.spec.channel == $ch) | .metadata.name' 2>/dev/null || echo "")
+
+          if [[ -z "${STALE_SUBS}" ]]; then
+            echo "✅ No stale ODF subscriptions found with channel ${SOURCE_CHANNEL}"
+          else
+            echo "Found stale subscriptions:"
+            echo "${STALE_SUBS}"
+            while IFS= read -r sub; do
+              [[ -z "${sub}" ]] && continue
+              echo "  Deleting subscription: ${sub}"
+              $OC delete subscription.operators.coreos.com "${sub}" -n openshift-storage --ignore-not-found
+            done <<< "${STALE_SUBS}"
+            echo "✅ Stale ODF subscriptions cleaned"
+          fi
+
+      - name: 🧹 Clean stale CSVs from source version
+        run: |
+          OC="sudo ./bin/oc --kubeconfig=${KUBECONFIG_PATH}"
+          SOURCE_MAJOR_MINOR="${{ steps.source_version.outputs.source_major_minor }}"
+          TARGET_MAJOR_MINOR="${{ steps.source_version.outputs.target_major_minor }}"
+
+          if [[ "${SOURCE_MAJOR_MINOR}" == "${TARGET_MAJOR_MINOR}" ]]; then
+            echo "ℹ️  Z-stream upgrade — skipping stale CSV cleanup"
+            exit 0
+          fi
+
+          echo "--- Cleaning stale CSVs from openshift-storage ---"
+          # ODF CSVs from the source version block OLM resolution when the catalog no longer has their channel
+          SOURCE_CSV_PATTERN="v${SOURCE_MAJOR_MINOR}"
+          STALE_CSVS=$($OC get csv -n openshift-storage -o json | \
+            jq -r --arg pat "${SOURCE_CSV_PATTERN}" '
+              .items[] | select(.metadata.name | contains($pat)) | .metadata.name' 2>/dev/null || echo "")
+
+          if [[ -z "${STALE_CSVS}" ]]; then
+            echo "✅ No stale CSVs found matching ${SOURCE_CSV_PATTERN}"
+          else
+            echo "Found stale CSVs:"
+            echo "${STALE_CSVS}"
+            while IFS= read -r csv; do
+              [[ -z "${csv}" ]] && continue
+              echo "  Deleting CSV: ${csv}"
+              $OC delete csv "${csv}" -n openshift-storage --ignore-not-found
+            done <<< "${STALE_CSVS}"
+            echo "✅ Stale CSVs cleaned"
+          fi
+
+      - name: 🔄 Restart OLM catalog-operator if resolution failures exist
+        run: |
+          OC="sudo ./bin/oc --kubeconfig=${KUBECONFIG_PATH}"
+
+          RESOLUTION_FAILURES=$($OC get subscription.operators.coreos.com -n openshift-storage -o json | \
+            jq -r '.items[] | select(
+              .status.conditions // [] | map(select(.type == "ResolutionFailed" and .status == "True")) | length > 0
+            ) | .metadata.name' 2>/dev/null || echo "")
+
+          if [[ -n "${RESOLUTION_FAILURES}" ]]; then
+            echo "⚠️ OLM resolution failures detected:"
+            echo "${RESOLUTION_FAILURES}"
+            echo "--- Restarting catalog-operator to clear resolution cache ---"
+            $OC delete pod -n openshift-operator-lifecycle-manager \
+              -l app=catalog-operator --ignore-not-found
+            echo "Waiting 30s for catalog-operator to restart..."
+            sleep 30
+            $OC wait pod -n openshift-operator-lifecycle-manager \
+              -l app=catalog-operator --for=condition=Ready --timeout=120s
+            echo "✅ Catalog-operator restarted"
+          else
+            echo "✅ No OLM resolution failures detected"
+          fi
+
+      - name: ✅ Verify OLM subscription resolution
+        run: |
+          OC="sudo ./bin/oc --kubeconfig=${KUBECONFIG_PATH}"
+          TARGET_MAJOR_MINOR="${{ steps.source_version.outputs.target_major_minor }}"
+
+          echo "--- Verifying OLM subscriptions in openshift-storage ---"
+          MAX_WAIT=300
+          INTERVAL=15
+          elapsed=0
+
+          while [[ ${elapsed} -lt ${MAX_WAIT} ]]; do
+            FAILURES=$($OC get subscription.operators.coreos.com -n openshift-storage -o json | \
+              jq -r '.items[] | select(
+                .status.conditions // [] | map(select(.type == "ResolutionFailed" and .status == "True")) | length > 0
+              ) | .metadata.name' 2>/dev/null || echo "")
+
+            if [[ -z "${FAILURES}" ]]; then
+              echo "✅ All OLM subscriptions in openshift-storage resolved"
+              break
+            fi
+            echo "  ⏳ Waiting for resolution (${elapsed}s/${MAX_WAIT}s)..."
+            sleep ${INTERVAL}
+            elapsed=$((elapsed + INTERVAL))
+          done
+
+          if [[ ${elapsed} -ge ${MAX_WAIT} ]]; then
+            echo "❌ OLM resolution still failing after ${MAX_WAIT}s:"
+            $OC get subscription.operators.coreos.com -n openshift-storage \
+              -o custom-columns='NAME:.metadata.name,CHANNEL:.spec.channel,STATE:.status.state'
+            exit 1
+          fi
+
+      - name: ✅ Approve pending InstallPlans (post-remediation)
+        run: |
+          OC="sudo ./bin/oc --kubeconfig=${KUBECONFIG_PATH}"
+
+          echo "--- Checking for pending InstallPlans across all namespaces ---"
+          PENDING_IPS=$($OC get installplan -A -o json | \
+            jq -r '.items[] | select(.spec.approved == false) |
+              "\(.metadata.namespace)/\(.metadata.name)"' 2>/dev/null || echo "")
+
+          if [[ -z "${PENDING_IPS}" ]]; then
+            echo "✅ No pending InstallPlans"
+          else
+            echo "Found pending InstallPlans:"
+            echo "${PENDING_IPS}"
+            while IFS= read -r ip; do
+              [[ -z "${ip}" ]] && continue
+              NS="${ip%%/*}"
+              NAME="${ip##*/}"
+              echo "  Approving: ${NS}/${NAME}"
+              $OC patch installplan "${NAME}" -n "${NS}" \
+                --type=merge -p '{"spec":{"approved": true}}'
+            done <<< "${PENDING_IPS}"
+            echo "✅ All pending InstallPlans approved"
+          fi
+
+      # ──────────────────────────────────────────────────────────────────────
+      # PHASE 7: ARGOCD SYNC MANAGEMENT
+      # ──────────────────────────────────────────────────────────────────────
+
+      - name: 🔄 ArgoCD hard refresh and sync
+        run: |
+          OC="sudo ./bin/oc --kubeconfig=${KUBECONFIG_PATH}"
+          APP="${ARGOCD_APP_NAME}"
+          APP_NS=$($OC get application -A -o json | \
+            jq -r --arg name "${APP}" '.items[] | select(.metadata.name == $name) | .metadata.namespace' | head -1)
+
+          if [[ -z "${APP_NS}" ]]; then
+            echo "⚠️ ArgoCD Application '${APP}' not found — skipping sync management"
+            exit 0
+          fi
+
+          echo "--- Managing ArgoCD Application ${APP} in ${APP_NS} ---"
+
+          # Check for ComparisonError
+          HEALTH=$($OC get application "${APP}" -n "${APP_NS}" -o jsonpath='{.status.conditions}' 2>/dev/null || echo "[]")
+          if echo "${HEALTH}" | grep -q "ComparisonError"; then
+            echo "⚠️ ComparisonError detected — this usually means a kustomize build failure"
+            echo "   The pre-upgrade kustomize validation should have caught this."
+            echo "   Attempting hard refresh..."
+          fi
+
+          # Remove stale operation if present (blocks new syncs)
+          OP_PHASE=$($OC get application "${APP}" -n "${APP_NS}" \
+            -o jsonpath='{.operation.sync.revision}' 2>/dev/null || echo "")
+          SYNC_REV=$($OC get application "${APP}" -n "${APP_NS}" \
+            -o jsonpath='{.status.sync.revision}' 2>/dev/null || echo "")
+
+          if [[ -n "${OP_PHASE}" && "${OP_PHASE}" != "${SYNC_REV}" ]]; then
+            echo "  Clearing stale operation (op=${OP_PHASE} != sync=${SYNC_REV})"
+            $OC patch application "${APP}" -n "${APP_NS}" \
+              --type=json -p '[{"op":"remove","path":"/operation"}]' 2>/dev/null || true
+            sleep 5
+          fi
+
+          # Trigger hard refresh via annotation
+          $OC annotate application "${APP}" -n "${APP_NS}" \
+            argocd.argoproj.io/refresh=hard --overwrite
+          echo "  Hard refresh triggered"
+          sleep 10
+
+          # Trigger sync via annotation
+          $OC annotate application "${APP}" -n "${APP_NS}" \
+            argocd.argoproj.io/sync=force --overwrite 2>/dev/null || true
+          echo "  Sync triggered"
+
+      - name: ⏳ Wait for ArgoCD Synced and Healthy
+        run: |
+          OC="sudo ./bin/oc --kubeconfig=${KUBECONFIG_PATH}"
+          APP="${ARGOCD_APP_NAME}"
+          APP_NS=$($OC get application -A -o json | \
+            jq -r --arg name "${APP}" '.items[] | select(.metadata.name == $name) | .metadata.namespace' | head -1)
+
+          if [[ -z "${APP_NS}" ]]; then
+            echo "⚠️ ArgoCD Application '${APP}' not found — skipping"
+            exit 0
+          fi
+
+          MAX_WAIT=600
+          INTERVAL=20
+          elapsed=0
+
+          while [[ ${elapsed} -lt ${MAX_WAIT} ]]; do
+            SYNC_STATUS=$($OC get application "${APP}" -n "${APP_NS}" \
+              -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "Unknown")
+            HEALTH_STATUS=$($OC get application "${APP}" -n "${APP_NS}" \
+              -o jsonpath='{.status.health.status}' 2>/dev/null || echo "Unknown")
+
+            echo "  ArgoCD: sync=${SYNC_STATUS} health=${HEALTH_STATUS} (${elapsed}s/${MAX_WAIT}s)"
+
+            if [[ "${SYNC_STATUS}" == "Synced" && "${HEALTH_STATUS}" == "Healthy" ]]; then
+              echo "✅ ArgoCD Application ${APP} is Synced and Healthy"
+              exit 0
+            fi
+
+            # Check for ComparisonError that won't self-resolve
+            CONDITIONS=$($OC get application "${APP}" -n "${APP_NS}" \
+              -o jsonpath='{.status.conditions}' 2>/dev/null || echo "[]")
+            if echo "${CONDITIONS}" | grep -q "ComparisonError"; then
+              echo "❌ ArgoCD ComparisonError persists — kustomize build is broken"
+              echo "   Check the telco-reference repo for missing kustomization.yaml files"
+              exit 1
+            fi
+
+            sleep ${INTERVAL}
+            elapsed=$((elapsed + INTERVAL))
+          done
+
+          echo "❌ ArgoCD Application ${APP} did not reach Synced/Healthy after ${MAX_WAIT}s"
+          echo "   Last status: sync=${SYNC_STATUS} health=${HEALTH_STATUS}"
+          $OC get application "${APP}" -n "${APP_NS}" -o yaml | tail -50
+          exit 1
+
+      # ──────────────────────────────────────────────────────────────────────
+      # PHASE 8: MCP ROLLOUT
+      # ──────────────────────────────────────────────────────────────────────
+
+      - name: 🔓 Unpause worker MCP and monitor rollout
+        run: |
+          OC="sudo ./bin/oc --kubeconfig=${KUBECONFIG_PATH}"
+
+          PAUSED=$($OC get mcp "${WORKER_MCP}" -o jsonpath='{.spec.paused}' 2>/dev/null || echo "false")
+          if [[ "${PAUSED}" == "true" ]]; then
+            echo "--- Unpausing worker MCP '${WORKER_MCP}' ---"
+            $OC patch mcp "${WORKER_MCP}" --type=merge -p '{"spec":{"paused": false}}'
+            echo "✅ Worker MCP unpaused"
+            sleep 15
+          else
+            echo "ℹ️  Worker MCP '${WORKER_MCP}' is not paused"
+          fi
+
+          echo "--- Monitoring MCP rollout ---"
+          MAX_WAIT=3600
+          INTERVAL=30
+          elapsed=0
+
+          while [[ ${elapsed} -lt ${MAX_WAIT} ]]; do
+            UPDATED=$($OC get mcp "${WORKER_MCP}" -o jsonpath='{.status.conditions[?(@.type=="Updated")].status}' 2>/dev/null || echo "Unknown")
+            UPDATING=$($OC get mcp "${WORKER_MCP}" -o jsonpath='{.status.conditions[?(@.type=="Updating")].status}' 2>/dev/null || echo "Unknown")
+            DEGRADED=$($OC get mcp "${WORKER_MCP}" -o jsonpath='{.status.conditions[?(@.type=="Degraded")].status}' 2>/dev/null || echo "Unknown")
+            READY=$($OC get mcp "${WORKER_MCP}" -o jsonpath='{.status.readyMachineCount}' 2>/dev/null || echo "0")
+            TOTAL=$($OC get mcp "${WORKER_MCP}" -o jsonpath='{.status.machineCount}' 2>/dev/null || echo "0")
+
+            echo "  MCP ${WORKER_MCP}: Updated=${UPDATED} Updating=${UPDATING} Degraded=${DEGRADED} Ready=${READY}/${TOTAL} (${elapsed}s)"
+
+            if [[ "${DEGRADED}" == "True" ]]; then
+              echo "❌ Worker MCP is degraded"
+              $OC get mcp "${WORKER_MCP}" -o json | jq '.status.conditions[] | select(.type == "Degraded")'
+              exit 1
+            fi
+
+            if [[ "${UPDATED}" == "True" && "${UPDATING}" != "True" ]]; then
+              echo "✅ Worker MCP rollout complete — ${READY}/${TOTAL} nodes ready"
+              break
+            fi
+
+            sleep ${INTERVAL}
+            elapsed=$((elapsed + INTERVAL))
+          done
+
+          if [[ ${elapsed} -ge ${MAX_WAIT} ]]; then
+            echo "❌ Worker MCP rollout did not complete within ${MAX_WAIT}s"
+            exit 1
+          fi
+
+      # ──────────────────────────────────────────────────────────────────────
+      # PHASE 9: POST-UPGRADE VALIDATION
+      # ──────────────────────────────────────────────────────────────────────
+
+      - name: ✅ Validate ClusterVersion
+        run: |
+          OC="sudo ./bin/oc --kubeconfig=${KUBECONFIG_PATH}"
+          echo "--- ClusterVersion Validation ---"
+
+          CV_VERSION=$($OC get clusterversion version -o jsonpath='{.status.desired.version}')
+          CV_AVAILABLE=$($OC get clusterversion version -o jsonpath='{.status.conditions[?(@.type=="Available")].status}')
+          CV_PROGRESSING=$($OC get clusterversion version -o jsonpath='{.status.conditions[?(@.type=="Progressing")].status}')
+          CV_FAILING=$($OC get clusterversion version -o jsonpath='{.status.conditions[?(@.type=="Failing")].status}')
+
+          echo "  Version:     ${CV_VERSION}"
+          echo "  Available:   ${CV_AVAILABLE}"
+          echo "  Progressing: ${CV_PROGRESSING}"
+          echo "  Failing:     ${CV_FAILING}"
+
+          if [[ "${CV_VERSION}" != "${OCP_VERSION}" ]]; then
+            echo "❌ ClusterVersion ${CV_VERSION} does not match target ${OCP_VERSION}"
+            exit 1
+          fi
+          if [[ "${CV_AVAILABLE}" != "True" || "${CV_FAILING}" == "True" ]]; then
+            echo "❌ ClusterVersion unhealthy"
+            exit 1
+          fi
+          echo "✅ ClusterVersion ${OCP_VERSION} — Available, Not Failing"
+
+      - name: ✅ Validate all cluster operators
+        run: |
+          OC="sudo ./bin/oc --kubeconfig=${KUBECONFIG_PATH}"
+          echo "--- Cluster Operators Validation ---"
+
+          CO_JSON=$($OC get co -o json)
+          CO_COUNT=$(echo "${CO_JSON}" | jq '.items | length')
+
+          NOT_AVAILABLE=$(echo "${CO_JSON}" | jq -r '
+            .items[] | select(
+              .status.conditions // [] | map(select(.type == "Available" and .status == "True")) | length == 0
+            ) | .metadata.name')
+
+          DEGRADED=$(echo "${CO_JSON}" | jq -r '
+            .items[] | select(
+              .status.conditions // [] | map(select(.type == "Degraded" and .status == "True")) | length > 0
+            ) | .metadata.name')
+
+          WRONG_VERSION=$(echo "${CO_JSON}" | jq -r --arg ver "${OCP_VERSION}" '
+            .items[] | select(
+              (.status.versions // [] | map(select(.name == "operator")) | .[0].version) != $ver
+            ) | "\(.metadata.name)=\(.status.versions // [] | map(select(.name == "operator")) | .[0].version // "unknown")"')
+
+          FAILURES=0
+          if [[ -n "${NOT_AVAILABLE}" ]]; then
+            echo "❌ Unavailable operators: ${NOT_AVAILABLE}"
+            FAILURES=$((FAILURES + 1))
+          fi
+          if [[ -n "${DEGRADED}" ]]; then
+            echo "❌ Degraded operators: ${DEGRADED}"
+            FAILURES=$((FAILURES + 1))
+          fi
+          if [[ -n "${WRONG_VERSION}" ]]; then
+            echo "⚠️ Operators not at target version ${OCP_VERSION}:"
+            echo "${WRONG_VERSION}"
+          fi
+
+          if [[ ${FAILURES} -gt 0 ]]; then
+            exit 1
+          fi
+          echo "✅ All ${CO_COUNT} cluster operators Available, not Degraded"
+
+      - name: ✅ Validate node versions
+        run: |
+          OC="sudo ./bin/oc --kubeconfig=${KUBECONFIG_PATH}"
+          echo "--- Node Versions Validation ---"
+
+          # Derive expected kubelet version from OCP version (4.19.x -> 1.32.x)
+          OCP_MINOR=$(echo "${OCP_VERSION}" | cut -d. -f2)
+          EXPECTED_KUBE_MINOR=$((OCP_MINOR + 13))
+
+          NODE_JSON=$($OC get nodes -o json)
+          NODE_COUNT=$(echo "${NODE_JSON}" | jq '.items | length')
+
+          NOT_READY=$(echo "${NODE_JSON}" | jq -r '
+            .items[] | select(
+              .status.conditions // [] | map(select(.type == "Ready" and .status == "True")) | length == 0
+            ) | .metadata.name')
+
+          if [[ -n "${NOT_READY}" ]]; then
+            echo "❌ NotReady nodes: ${NOT_READY}"
+            exit 1
+          fi
+
+          echo "Node versions:"
+          echo "${NODE_JSON}" | jq -r '
+            .items[] | "  \(.metadata.name): kubelet=\(.status.nodeInfo.kubeletVersion) cri-o=\(.status.nodeInfo.containerRuntimeVersion)"'
+
+          WRONG_KUBE=$(echo "${NODE_JSON}" | jq -r --arg minor "v1.${EXPECTED_KUBE_MINOR}" '
+            .items[] | select(.status.nodeInfo.kubeletVersion | startswith($minor) | not) |
+            "\(.metadata.name)=\(.status.nodeInfo.kubeletVersion)"')
+
+          if [[ -n "${WRONG_KUBE}" ]]; then
+            echo "⚠️ Nodes not on expected kubelet v1.${EXPECTED_KUBE_MINOR}.x:"
+            echo "${WRONG_KUBE}"
+          fi
+
+          echo "✅ All ${NODE_COUNT} nodes Ready"
+
+      - name: ✅ Validate MCP convergence
+        run: |
+          OC="sudo ./bin/oc --kubeconfig=${KUBECONFIG_PATH}"
+          echo "--- MCP Convergence Validation ---"
+
+          MCP_JSON=$($OC get mcp -o json)
+
+          NOT_UPDATED=$(echo "${MCP_JSON}" | jq -r '
+            .items[] | select(
+              .status.conditions // [] | map(select(.type == "Updated" and .status == "True")) | length == 0
+            ) | .metadata.name')
+
+          STILL_UPDATING=$(echo "${MCP_JSON}" | jq -r '
+            .items[] | select(
+              .status.conditions // [] | map(select(.type == "Updating" and .status == "True")) | length > 0
+            ) | .metadata.name')
+
+          MCP_DEGRADED=$(echo "${MCP_JSON}" | jq -r '
+            .items[] | select(
+              .status.conditions // [] | map(select(.type == "Degraded" and .status == "True")) | length > 0
+            ) | .metadata.name')
+
+          echo "MCP status:"
+          echo "${MCP_JSON}" | jq -r '
+            .items[] | "  \(.metadata.name): ready=\(.status.readyMachineCount)/\(.status.machineCount) updated=\(.status.updatedMachineCount)/\(.status.machineCount)"'
+
+          FAILURES=0
+          if [[ -n "${MCP_DEGRADED}" ]]; then
+            echo "❌ Degraded MCPs: ${MCP_DEGRADED}"
+            FAILURES=$((FAILURES + 1))
+          fi
+          if [[ -n "${STILL_UPDATING}" ]]; then
+            echo "⚠️ Still updating MCPs: ${STILL_UPDATING}"
+            FAILURES=$((FAILURES + 1))
+          fi
+          if [[ -n "${NOT_UPDATED}" ]]; then
+            echo "❌ MCPs not updated: ${NOT_UPDATED}"
+            FAILURES=$((FAILURES + 1))
+          fi
+
+          if [[ ${FAILURES} -gt 0 ]]; then
+            exit 1
+          fi
+          echo "✅ All MCPs converged"
+
+      - name: ✅ Validate OLM subscription channels and CSVs
+        run: |
+          OC="sudo ./bin/oc --kubeconfig=${KUBECONFIG_PATH}"
+          TARGET_MAJOR_MINOR="${{ steps.source_version.outputs.target_major_minor }}"
+          SOURCE_MAJOR_MINOR="${{ steps.source_version.outputs.source_major_minor }}"
+          echo "--- OLM Subscription/CSV Validation ---"
+
+          FAILURES=0
+
+          # ACM
+          ACM_CHANNEL=$($OC get subscription.operators.coreos.com advanced-cluster-management \
+            -n open-cluster-management -o jsonpath='{.spec.channel}' 2>/dev/null || echo "NOT_FOUND")
+          echo "  ACM channel: ${ACM_CHANNEL}"
+
+          # MCE
+          MCE_CHANNEL=$($OC get subscription.operators.coreos.com multicluster-engine \
+            -n multicluster-engine -o jsonpath='{.spec.channel}' 2>/dev/null || echo "NOT_FOUND")
+          echo "  MCE channel: ${MCE_CHANNEL}"
+
+          # GitOps
+          GITOPS_CHANNEL=$($OC get subscription.operators.coreos.com openshift-gitops-operator \
+            -n openshift-gitops-operator -o jsonpath='{.spec.channel}' 2>/dev/null || echo "NOT_FOUND")
+          echo "  GitOps channel: ${GITOPS_CHANNEL}"
+
+          # ODF
+          ODF_CHANNEL=$($OC get subscription.operators.coreos.com odf-operator \
+            -n openshift-storage -o jsonpath='{.spec.channel}' 2>/dev/null || echo "NOT_FOUND")
+          EXPECTED_ODF_CHANNEL="stable-${TARGET_MAJOR_MINOR}"
+          echo "  ODF channel: ${ODF_CHANNEL} (expected: ${EXPECTED_ODF_CHANNEL})"
+          if [[ "${ODF_CHANNEL}" != "${EXPECTED_ODF_CHANNEL}" ]]; then
+            echo "  ❌ ODF channel mismatch"
+            FAILURES=$((FAILURES + 1))
+          fi
+
+          # Check for stale source-version CSVs in openshift-storage
+          STALE_CSV_COUNT=$($OC get csv -n openshift-storage -o json | \
+            jq --arg pat "v${SOURCE_MAJOR_MINOR}" '[.items[] | select(.metadata.name | contains($pat))] | length' 2>/dev/null || echo "0")
+          if [[ "${STALE_CSV_COUNT}" -gt 0 && "${SOURCE_MAJOR_MINOR}" != "${TARGET_MAJOR_MINOR}" ]]; then
+            echo "  ❌ ${STALE_CSV_COUNT} stale v${SOURCE_MAJOR_MINOR} CSVs remain in openshift-storage"
+            FAILURES=$((FAILURES + 1))
+          fi
+
+          # Check all CSVs are Succeeded
+          FAILED_CSVS=$($OC get csv -A -o json | jq -r '
+            .items[] | select(.status.phase != "Succeeded") |
+            "\(.metadata.namespace)/\(.metadata.name)=\(.status.phase)"' 2>/dev/null || echo "")
+          if [[ -n "${FAILED_CSVS}" ]]; then
+            echo "  ⚠️ Non-Succeeded CSVs:"
+            echo "${FAILED_CSVS}"
+          fi
+
+          # Verify all subscription states
+          NOT_AT_LATEST=$($OC get subscription.operators.coreos.com -A -o json | jq -r '
+            .items[] | select(.status.state != "AtLatestKnown") |
+            "\(.metadata.namespace)/\(.metadata.name)=\(.status.state // "unknown")"' 2>/dev/null || echo "")
+          if [[ -n "${NOT_AT_LATEST}" ]]; then
+            echo "  ⚠️ Subscriptions not AtLatestKnown:"
+            echo "${NOT_AT_LATEST}"
+          fi
+
+          if [[ ${FAILURES} -gt 0 ]]; then
+            exit 1
+          fi
+          echo "✅ OLM subscriptions and CSVs validated"
+
+      - name: ✅ Validate ODF and Ceph health
+        run: |
+          OC="sudo ./bin/oc --kubeconfig=${KUBECONFIG_PATH}"
+          echo "--- ODF/Ceph Health Validation ---"
+
+          FAILURES=0
+
+          # StorageCluster
+          SC_PHASE=$($OC get storagecluster -n openshift-storage -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "NOT_FOUND")
+          echo "  StorageCluster phase: ${SC_PHASE}"
+          if [[ "${SC_PHASE}" != "Ready" && "${SC_PHASE}" != "NOT_FOUND" ]]; then
+            echo "  ❌ StorageCluster not Ready"
+            FAILURES=$((FAILURES + 1))
+          fi
+
+          # CephCluster health
+          CEPH_HEALTH=$($OC get cephcluster -n openshift-storage -o jsonpath='{.items[0].status.ceph.health}' 2>/dev/null || echo "NOT_FOUND")
+          CEPH_DETAILS=$($OC get cephcluster -n openshift-storage -o jsonpath='{.items[0].status.ceph.details}' 2>/dev/null || echo "{}")
+          echo "  CephCluster health: ${CEPH_HEALTH}"
+          if [[ "${CEPH_HEALTH}" == "HEALTH_ERR" ]]; then
+            echo "  ❌ CephCluster is in HEALTH_ERR"
+            echo "  Details: ${CEPH_DETAILS}"
+            FAILURES=$((FAILURES + 1))
+          elif [[ "${CEPH_HEALTH}" == "HEALTH_WARN" ]]; then
+            # MON_CLOCK_SKEW is transient after node reboots — advisory only
+            if echo "${CEPH_DETAILS}" | grep -q "MON_CLOCK_SKEW"; then
+              echo "  ⚠️ HEALTH_WARN: MON_CLOCK_SKEW (transient — NTP will self-correct after node reboots)"
+            else
+              echo "  ⚠️ HEALTH_WARN: ${CEPH_DETAILS}"
+            fi
+          elif [[ "${CEPH_HEALTH}" == "HEALTH_OK" ]]; then
+            echo "  ✅ CephCluster healthy"
+          fi
+
+          # NooBaa
+          NOOBAA_PHASE=$($OC get noobaa -n openshift-storage -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "NOT_FOUND")
+          echo "  NooBaa phase: ${NOOBAA_PHASE}"
+          if [[ "${NOOBAA_PHASE}" != "Ready" && "${NOOBAA_PHASE}" != "NOT_FOUND" ]]; then
+            echo "  ❌ NooBaa not Ready"
+            FAILURES=$((FAILURES + 1))
+          fi
+
+          # ObjectBucketClaim (observability)
+          OBC_PHASE=$($OC get objectbucketclaim observability-obc \
+            -n open-cluster-management-observability \
+            -o jsonpath='{.status.phase}' 2>/dev/null || echo "NOT_FOUND")
+          echo "  Observability OBC phase: ${OBC_PHASE}"
+          if [[ "${OBC_PHASE}" != "Bound" && "${OBC_PHASE}" != "NOT_FOUND" ]]; then
+            echo "  ⚠️ Observability OBC not Bound: ${OBC_PHASE}"
+          fi
+
+          if [[ ${FAILURES} -gt 0 ]]; then
+            exit 1
+          fi
+          echo "✅ ODF/Ceph health validated"
+
+      - name: ✅ Validate policy compliance
+        run: |
+          OC="sudo ./bin/oc --kubeconfig=${KUBECONFIG_PATH}"
+          echo "--- Policy Compliance Validation ---"
+
+          POLICY_JSON=$($OC get policy -A -o json 2>/dev/null)
+          TOTAL_POLICIES=$(echo "${POLICY_JSON}" | jq '.items | length')
+
+          if [[ "${TOTAL_POLICIES}" -eq 0 ]]; then
+            echo "ℹ️  No policies found"
+            exit 0
+          fi
+
+          NON_COMPLIANT=$(echo "${POLICY_JSON}" | jq -r '
+            .items[] | select(.status.compliant != "Compliant") |
+            "\(.metadata.namespace)/\(.metadata.name)=\(.status.compliant // "Unknown")"')
+
+          echo "  Total policies: ${TOTAL_POLICIES}"
+          if [[ -n "${NON_COMPLIANT}" ]]; then
+            echo "  ⚠️ Non-compliant policies:"
+            echo "${NON_COMPLIANT}"
+            NC_COUNT=$(echo "${NON_COMPLIANT}" | wc -l)
+            COMPLIANT_COUNT=$((TOTAL_POLICIES - NC_COUNT))
+            echo "  ${COMPLIANT_COUNT}/${TOTAL_POLICIES} compliant"
+          else
+            echo "✅ All ${TOTAL_POLICIES} policies Compliant"
+          fi
+
+      - name: ✅ Validate ArgoCD application final state
+        run: |
+          OC="sudo ./bin/oc --kubeconfig=${KUBECONFIG_PATH}"
+          echo "--- ArgoCD Final State Validation ---"
+
+          APPS=$($OC get application -A -o json 2>/dev/null)
+          APP_COUNT=$(echo "${APPS}" | jq '.items | length')
+
+          if [[ "${APP_COUNT}" -eq 0 ]]; then
+            echo "ℹ️  No ArgoCD applications found"
+            exit 0
+          fi
+
+          echo "ArgoCD applications:"
+          echo "${APPS}" | jq -r '
+            .items[] | "  \(.metadata.name): sync=\(.status.sync.status // "Unknown") health=\(.status.health.status // "Unknown")"'
+
+          NOT_SYNCED=$(echo "${APPS}" | jq -r '
+            .items[] | select(.status.sync.status != "Synced") | .metadata.name')
+          NOT_HEALTHY=$(echo "${APPS}" | jq -r '
+            .items[] | select(.status.health.status != "Healthy") | .metadata.name')
+
+          if [[ -n "${NOT_SYNCED}" ]]; then
+            echo "⚠️ Not synced: ${NOT_SYNCED}"
+          fi
+          if [[ -n "${NOT_HEALTHY}" ]]; then
+            echo "⚠️ Not healthy: ${NOT_HEALTHY}"
+          fi
+
+          echo "✅ ArgoCD state validated"
+
+      # ──────────────────────────────────────────────────────────────────────
+      # UPGRADE REPORT
+      # ──────────────────────────────────────────────────────────────────────
+
+      - name: 📋 Generate upgrade summary report
+        if: always()
+        run: |
+          OC="sudo ./bin/oc --kubeconfig=${KUBECONFIG_PATH}"
+          SOURCE_VERSION="${{ steps.source_version.outputs.source_version }}"
+
+          echo "╔══════════════════════════════════════════════════════════════╗"
+          echo "║           OCP Hub Cluster Upgrade Report                    ║"
+          echo "╚══════════════════════════════════════════════════════════════╝"
+          echo ""
+          echo "  Source Version:  ${SOURCE_VERSION}"
+          echo "  Target Version:  ${OCP_VERSION}"
+          echo "  Workflow Run:    ${GITHUB_RUN_ID}"
+          echo "  Timestamp:       $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          echo ""
+
+          CV_VERSION=$($OC get clusterversion version -o jsonpath='{.status.desired.version}' 2>/dev/null || echo "UNKNOWN")
+          echo "  Current Version: ${CV_VERSION}"
+
+          if [[ "${CV_VERSION}" == "${OCP_VERSION}" ]]; then
+            echo ""
+            echo "  ✅ UPGRADE SUCCESSFUL"
+          else
+            echo ""
+            echo "  ❌ UPGRADE INCOMPLETE — cluster at ${CV_VERSION}, expected ${OCP_VERSION}"
+          fi
+
+          echo ""
+          echo "--- Component Summary ---"
+          $OC get clusterversion version 2>/dev/null | head -2 || true
+          echo ""
+          $OC get nodes -o wide 2>/dev/null || true
+          echo ""
+          $OC get mcp 2>/dev/null || true
+          echo ""
+          echo "--- Operator CSVs ---"
+          $OC get csv -A -o custom-columns='NAMESPACE:.metadata.namespace,NAME:.metadata.name,VERSION:.spec.version,PHASE:.status.phase' 2>/dev/null | head -40 || true
+          echo ""
+          echo "--- Policies ---"
+          $OC get policy -A -o custom-columns='NAMESPACE:.metadata.namespace,NAME:.metadata.name,COMPLIANT:.status.compliant' 2>/dev/null || true
+          echo ""
+          echo "═══════════════════════════════════════════════════════════════"
