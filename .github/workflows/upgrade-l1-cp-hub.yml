@@ -413,6 +413,8 @@ jobs:
           OC="sudo ./bin/oc --kubeconfig=${KUBECONFIG_PATH}"
 
           echo "--- Triggering platform upgrade to ${OCP_VERSION} ---"
+          echo "  Waiting 30s for channel and admin-acks to propagate..."
+          sleep 30
           $OC adm upgrade --to="${OCP_VERSION}"
           echo "✅ Platform upgrade to ${OCP_VERSION} initiated"
 
@@ -448,28 +450,49 @@ jobs:
           elapsed=0
 
           while [[ ${elapsed} -lt ${MAX_WAIT} ]]; do
+            # Capture upgrade status output once per iteration
+            UPGRADE_STATUS=$($OC adm upgrade status --details=health 2>/dev/null || echo "")
+
             CV_VERSION=$($OC get clusterversion version -o jsonpath='{.status.desired.version}')
             CV_PROGRESSING=$($OC get clusterversion version \
               -o jsonpath='{.status.conditions[?(@.type=="Progressing")].status}')
-            CV_AVAILABLE=$($OC get clusterversion version \
-              -o jsonpath='{.status.conditions[?(@.type=="Available")].status}')
             CV_FAILING=$($OC get clusterversion version \
               -o jsonpath='{.status.conditions[?(@.type=="Failing")].status}')
-            HISTORY_STATE=$($OC get clusterversion version \
-              -o jsonpath='{.status.history[0].state}')
 
-            echo "  [${elapsed}s] version=${CV_VERSION} progressing=${CV_PROGRESSING} available=${CV_AVAILABLE} failing=${CV_FAILING} state=${HISTORY_STATE}"
+            # Parse completion percentage from "Completion:   XX%"
+            COMPLETION=$(echo "${UPGRADE_STATUS}" | grep -oP 'Completion:\s+\K[0-9]+(?=%)' || echo "0")
 
-            # Print detailed health status
-            $OC adm upgrade status --details=health 2>/dev/null || true
+            # Parse control plane node versions — extract VERSION column values
+            CP_VERSIONS=$(echo "${UPGRADE_STATUS}" | \
+              awk '/^Control Plane Nodes/,/^$/' | \
+              awk 'NR>2 && NF>0 {print $4}' || echo "")
+            CP_AT_TARGET=true
+            CP_NODES_DETAIL=""
+            if [[ -n "${CP_VERSIONS}" ]]; then
+              while IFS= read -r ver; do
+                [[ -z "${ver}" ]] && continue
+                CP_NODES_DETAIL="${CP_NODES_DETAIL} ${ver}"
+                if [[ "${ver}" != "${OCP_VERSION}" ]]; then
+                  CP_AT_TARGET=false
+                fi
+              done <<< "${CP_VERSIONS}"
+            else
+              CP_AT_TARGET=false
+            fi
+
+            echo "  [${elapsed}s] completion=${COMPLETION}% cp_versions=[${CP_NODES_DETAIL# }] progressing=${CV_PROGRESSING} failing=${CV_FAILING}"
+
+            # Print full upgrade status for detailed logging
+            echo "${UPGRADE_STATUS}"
 
             if [[ "${CV_FAILING}" == "True" ]]; then
               echo "❌ ClusterVersion reports Failing=True"
               $OC get clusterversion version -o json | jq '.status.conditions[] | select(.type == "Failing")'
             fi
 
-            if [[ "${HISTORY_STATE}" == "Completed" && "${CV_VERSION}" == "${OCP_VERSION}" ]]; then
-              echo "✅ Platform upgrade to ${OCP_VERSION} completed"
+            # Upgrade is done when completion hits 100% AND all control plane nodes are at target version
+            if [[ "${COMPLETION}" == "100" ]] && [[ "${CP_AT_TARGET}" == "true" ]]; then
+              echo "✅ Platform upgrade to ${OCP_VERSION} completed (Completion: 100%, all control plane nodes at ${OCP_VERSION})"
               break
             fi
 
@@ -479,6 +502,8 @@ jobs:
 
           if [[ ${elapsed} -ge ${MAX_WAIT} ]]; then
             echo "❌ Platform upgrade did not complete within ${MAX_WAIT}s"
+            echo "   Last completion: ${COMPLETION}%"
+            echo "   Control plane versions: [${CP_NODES_DETAIL# }]"
             $OC adm upgrade status --details=health 2>/dev/null || true
             exit 1
           fi
