@@ -15,8 +15,6 @@ metadata:
   name: o-cloud-manager
   namespace: oran-o2ims
 spec:
-  targetNamespaces:
-  - oran-o2ims
   upgradeStrategy: Default
 ---
 apiVersion: operators.coreos.com/v1alpha1
